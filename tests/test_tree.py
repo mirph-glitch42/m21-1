@@ -7,7 +7,7 @@ builds the exact portal wrapper shape `{"topic": {...}, "topicTree": [...]}`.
 import copy
 import random
 
-from m21_crawl.tree import flatten_tree, leaf_topics
+from m21_crawl.tree import TopicNode, breadcrumb_paths, flatten_tree, leaf_topics
 
 
 def W(topic_id: int, name: str, *children: dict) -> dict:
@@ -198,3 +198,47 @@ def test_leaf_topics_filters_and_preserves_order() -> None:
     wrappers = [W(1, "R", W(2, "P1", W(3, "C11"), W(4, "C12")), W(5, "P2"))]
     leaves = leaf_topics(flatten_tree(wrappers))
     assert [n.id for n in leaves] == ["3", "4", "5"]
+
+
+# --- breadcrumb_paths ------------------------------------------------------------------
+
+
+def _node(nid: str, name: str, depth: int, parent_id: str | None) -> TopicNode:
+    return TopicNode(
+        id=nid,
+        name=name,
+        depth=depth,
+        is_leaf=depth > 0,
+        article_count=0,
+        article_total_count=0,
+        parent_id=parent_id,
+    )
+
+
+def test_breadcrumb_paths_chain_excludes_root_includes_self() -> None:
+    nodes = [
+        _node("root", "M21-1 Manual", 0, None),
+        _node("p1", "Part 1", 1, "root"),
+        _node("c1", "Chapter 1-1", 2, "p1"),
+        _node("s1", "Section 1-1-1", 3, "c1"),
+    ]
+    paths = breadcrumb_paths(nodes)
+    assert paths == {
+        "root": "",
+        "p1": "Part 1",
+        "c1": "Part 1 \u203a Chapter 1-1",
+        "s1": "Part 1 \u203a Chapter 1-1 \u203a Section 1-1-1",
+    }
+
+
+def test_breadcrumb_paths_missing_parent_stops_chain() -> None:
+    nodes = [_node("x", "X", 2, "ghost")]  # parent id not in the node set
+    assert breadcrumb_paths(nodes) == {"x": "X"}
+
+
+def test_breadcrumb_paths_parent_cycle_terminates() -> None:
+    nodes = [_node("a", "A", 1, "b"), _node("b", "B", 2, "a")]  # a -> b -> a (malformed)
+    paths = breadcrumb_paths(nodes)
+    # walk stops before revisiting a node: each id appears at most once
+    assert paths["a"] == "B \u203a A"
+    assert paths["b"] == "A \u203a B"

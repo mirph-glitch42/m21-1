@@ -29,3 +29,4 @@ CRAWL_DELAY_SECONDS = 0.1
 
 # --- deliverable --------------------------------------------------------------
 MANUAL_FILENAME = "M21-1-Adjudication-Procedures-Manual.md"
+MANUAL_TITLE = "M21-1 Adjudication Procedures Manual"

@@ -112,3 +112,25 @@ def flatten_tree(wrappers: list[dict]) -> list[TopicNode]:
 def leaf_topics(nodes: list[TopicNode]) -> list[TopicNode]:
     """Return the leaf nodes (structural leaf-ness) in the same order."""
     return [node for node in nodes if node.is_leaf]
+
+
+def breadcrumb_paths(nodes: list[TopicNode]) -> dict[str, str]:
+    """Map each topic id to its ancestor chain joined by ``\u203a``.
+
+    The chain walks ``parent_id`` links upward while ``depth > 0`` (the
+    depth-0 root — the manual title itself — is excluded) and includes the
+    topic's own name. Order is root-to-topic. A missing parent id or a
+    parent cycle stops the walk early (loud nowhere, but never hangs).
+    """
+    by_id: dict[str, TopicNode] = {node.id: node for node in nodes}
+    paths: dict[str, str] = {}
+    for node in nodes:
+        chain: list[str] = []
+        seen: set[str] = set()
+        current: TopicNode | None = node
+        while current is not None and current.depth > 0 and current.id not in seen:
+            seen.add(current.id)
+            chain.append(current.name)
+            current = by_id.get(current.parent_id) if current.parent_id is not None else None
+        paths[node.id] = " \u203a ".join(reversed(chain))
+    return paths
