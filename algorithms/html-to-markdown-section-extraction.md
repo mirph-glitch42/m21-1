@@ -4,12 +4,12 @@
 id	start_line	end_line
 INDEX_BLOCK	3	13
 METADATA	15	36
-THEORY	37	156
-PSEUDOCODE	157	340
-WALKTHROUGH	341	414
-IMPLEMENTATION	415	512
-TESTS	513	569
-REFERENCES	570	585
+THEORY	37	188
+PSEUDOCODE	189	372
+WALKTHROUGH	373	446
+IMPLEMENTATION	447	548
+TESTS	549	608
+REFERENCES	609	624
 <!-- INDEX:END -->
 
 <!-- SECTION:METADATA -->
@@ -19,14 +19,14 @@ REFERENCES	570	585
 |---|---|
 | Name | Rich HTML → Markdown block converter for eGain article content |
 | Slug | html-to-markdown-section-extraction |
-| Version | 0.1.0 |
-| Status | draft |
+| Version | 0.2.0 |
+| Status | implemented |
 | Author | Bionic agent (on behalf of murphyjj) |
 | Created | 2026-10-02 |
-| Last modified | 2026-10-02 |
-| Status history | 0.1.0 (2026-10-02): initial draft |
+| Last modified | 2026-10-03 |
+| Status history | 0.1.0 (2026-10-02): initial draft; 0.2.0 (2026-10-03): implemented in src/m21_crawl/mdconv.py |
 | Languages | Python 3.12 (implementation); pseudocode is language-agnostic |
-| Implementation location | src/m21_crawl/mdconv.py — fill exact lines after implementation; "—" until then |
+| Implementation location | src/m21_crawl/mdconv.py — HtmlConversionError L53–60; _parse L62–65; convert L67–93; block context L98–161; inline context L167–241; tables L245–327; lists L329–356; normalization and URLs L359–397 (v0.2.0, 2026-10-03) |
 | Time complexity | O(C) — C = characters of input HTML (single pass over the parsed tree) |
 | Space complexity | O(C) — parsed tree + output string |
 | Determinism | deterministic (no timestamps, no randomness, fixed BASE_URL constant) |
@@ -142,7 +142,39 @@ alternation).
 
 ### 2.6 Deviations
 
-none — documented before implementation.
+The pseudocode in section 3 is descriptive; where it contradicts the
+byte-exact TESTS table (section 6 — the stated contract), the tests win.
+The implementation therefore deviates as follows (all pinned by tests):
+
+- **D1 — `normalize_text` does not strip.** Pseudocode 3 ends
+  `normalize_text` with `s.strip()`. Stripping inline text pieces would
+  destroy the boundary whitespace that `&nbsp;` separators provide (TESTS
+  case 11: `red text` needs the space between `red` and `text` to survive
+  inline rendering). The implementation therefore does **not** strip inside
+  `_normalize_text`; stripping happens only at block boundaries (finished
+  heading/paragraph/list-item/cell/text-node blocks).
+- **D2 — `join_inline` also inserts one space before a word after
+  punctuation.** Pseudocode 3's E8 inserts a space only where emphasis/code
+  markers would touch. The implementation also inserts exactly one space
+  when the left piece ends in a non-alphanumeric, non-marker character and
+  the right piece starts with an alphanumeric (TESTS case 13: `...topics:
+  Topic \| Name...` — the space after the colon is required by the expected
+  output). All other joins are verbatim concatenation (TESTS case 25:
+  `ab`).
+- **D3 — Pipe escaping happens exactly once, in the outer table.**
+  Pseudocode 3's `render_table_inline` escapes pipes *and* the outer
+  `render_table` escapes again (double escape). The implementation leaves
+  nested-table pipes raw inside `_render_table_inline` (cells joined with
+  `" | "`, rows with `" <br> "`); the single escape pass in
+  `_render_table` turns them into `\|` (TESTS case 13 expects a single
+  `\|`).
+- **D4 — lxml wraps fragments in `<html><body>`; the converter unwraps.**
+  Section 5.5 (v0.1.0) claimed `soup.contents` on a fragment stays flat.
+  In fact `BeautifulSoup(fragment, "lxml")` injects
+  `<html><body>...</body></html>`; `convert` therefore renders the
+  innermost `<body>`'s children (falling back to `soup.contents`) in block
+  context. lxml remains the parser of record (lenient repair, predictable
+  tree).
 
 ### 2.7 Error model (summary)
 
@@ -495,13 +527,17 @@ from bs4 import BeautifulSoup, NavigableString, Tag
 def convert(html, *, base_url, article_id=""):
     ...
     soup = BeautifulSoup(html, "lxml")
-    blocks = render_block_list(soup.contents, base_url)
+    root = soup.find("body") or soup  # lxml wraps fragments in <html><body>
+    blocks = render_block_list(root.contents, base_url)
     ...
 ```
 
-- `soup.contents` on a fragment gives the top-level nodes without an injected
-  `<html>/<body>` (unlike html5lib) — this is why lxml is the parser of
-  record.
+- **`BeautifulSoup(fragment, "lxml")` wraps fragments in
+  `<html><body>...</body></html>`** (unlike the raw lxml fragment API).
+  `convert` therefore renders the innermost `<body>`'s children — the
+  fragment's top level — in block context (deviation D4). lxml remains the
+  parser of record because its lenient repair keeps the fragment's tree
+  predictable.
 - `Tag.name` is the lowercased name; `Tag.attrs` is a dict; `Tag.children` is
   a generator — materialize if iterated twice.
 - Keep `render_block_list` / `render_inline_*` as plain recursive functions
@@ -555,7 +591,10 @@ building fragments from the vocabulary above:
 - **P2 (shape):** output is `""` or ends with exactly one `"\n"`.
 - **P3 (no empty markers):** output contains no substring `**` with nothing
   between a matching pair produced by the converter — operationalized: no
-  `****`, no `* *`-style empties, no backtick-only `` ` ` ``.
+  `****`, no `* *`-style empties, no backtick-only `` ` ` ``. (The generator
+  avoids same-type nested emphasis — alternating `strong`/`em` — because
+  `**<em>` nesting legitimately yields `****` in valid GFM; the check is
+  about *empty* markers, not marker adjacency in general.)
 - **P4 (word preservation):** with emphasis/link markup stripped from both
   sides, the multiset of words in the output equals the multiset of words in
   the input (for generated inputs without tables — tables are covered by the

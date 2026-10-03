@@ -1,0 +1,397 @@
+"""mdconv: deterministic rich-HTML -> GFM block converter for eGain article content.
+
+Implements ``algorithms/html-to-markdown-section-extraction.md`` (v0.2.0):
+
+- total, deterministic two-context (block/inline) tree walk over a lenient
+  lxml parse (BeautifulSoup is the parser of record: fragments stay flat);
+- text fidelity: decorative spans/divs unwrap, ``&nbsp;`` -> space,
+  zero-width junk removed, whitespace runs collapsed to a single space;
+- emphasis/code/strikethrough markers hug their content (E10: empty
+  emphasis is dropped); one space is inserted only between touching
+  emphasis markers (E8) or between a non-word boundary and a word start,
+  so punctuation never glues to a following word (TESTS case 13);
+- tables are GFM: first row is the header, ragged rows padded (E12),
+  literal pipes escaped exactly once (E13); a table inside a cell renders
+  as its rows joined by ``<br>`` (2.6 ``render_table_inline``);
+- ``javascript:`` hrefs are dropped (E6); empty-text links use their URL
+  (E7); eGain article URLs are canonicalized (query string dropped);
+- output = blocks joined by ``"\\n\\n"`` + exactly one trailing ``"\\n"``.
+
+Pure and side-effect free: same input + same ``base_url`` => byte-identical
+output. No timestamps, no randomness, no sorting, no dedupe.
+"""
+
+import re
+
+from bs4 import BeautifulSoup, NavigableString, Tag
+
+__all__ = ["HtmlConversionError", "convert"]
+
+_WS_RUN = re.compile(r"[ \t\r\n\f\v]+")
+_ZERO_WIDTH = ("\u200b", "\ufeff", "\u200e", "\u200f")
+_ARTICLE_URL = re.compile(r"^(https?://[^/]+/system/ws/v\d+/ss/article/)(\d+)(\?.*)?$")
+_MARKER = set("*_`~")
+_HEADING = frozenset({"h1", "h2", "h3", "h4", "h5", "h6"})
+_UNWRAP_BLOCK = frozenset({"div", "span", "font", "center"})
+_LIST = frozenset({"ul", "ol"})
+_BLOCKISH = _HEADING | {"p", "ul", "ol", "table", "blockquote", "pre", "hr", "div"}
+_INLINE_UNWRAP = _HEADING | {
+    "p",
+    "div",
+    "span",
+    "font",
+    "u",
+    "center",
+    "small",
+    "big",
+    "sup",
+    "sub",
+    "blockquote",
+}
+
+
+class HtmlConversionError(RuntimeError):
+    """Raised when an article's HTML cannot be parsed at all (doc 2.7)."""
+
+    def __init__(self, article_id: str, cause: BaseException) -> None:
+        super().__init__(f"HTML conversion failed for article '{article_id}': {cause}")
+        self.article_id = article_id
+        self.cause = cause
+
+
+def _parse(html: str) -> BeautifulSoup:
+    """Lenient tree parse (lxml). Module-level seam for failure injection."""
+    return BeautifulSoup(html, "lxml")
+
+
+def convert(html: str | None, *, base_url: str, article_id: str = "") -> str:
+    """Convert one article's HTML fragment to a GFM string (doc contract 2.1).
+
+    ``None`` / ``""`` / whitespace-only input returns ``""`` (rule 4).
+    Parser-level failure raises :class:`HtmlConversionError`; the caller
+    (assemble step) decides how to record it (doc 2.7).
+    """
+    if html is None:
+        return ""
+    if not isinstance(html, str):
+        raise TypeError("html must be a str or None")
+    if html.strip() == "":
+        return ""
+    try:
+        soup = _parse(html)
+    except Exception as cause:  # parser-level failure (doc 2.7)
+        raise HtmlConversionError(article_id, cause) from cause
+    # The lxml builder wraps a fragment in <html><body>; render the innermost
+    # body's children (the fragment's top level) in block context.
+    root = soup.find("body")
+    if root is None:
+        root = soup
+    blocks = [b for b in _render_block_list(root.contents, base_url) if b != ""]
+    if not blocks:
+        return ""
+    return "\n\n".join(blocks) + "\n"
+
+
+# --- block context -----------------------------------------------------------
+
+
+def _render_block_list(children, base_url: str) -> list[str]:
+    blocks: list[str] = []
+    for child in children:
+        if isinstance(child, NavigableString):
+            t = _normalize_text(str(child)).strip()
+            if t != "":  # rule E11: whitespace-only text vanishes in block context
+                blocks.append(t)
+            continue
+        if not isinstance(child, Tag):
+            continue
+        name = child.name or ""
+        if name in _HEADING:
+            t = _render_inline_children(child, base_url).strip()
+            if t != "":
+                blocks.append("#" * int(name[1]) + " " + t)
+        elif name == "p":
+            t = _render_inline_children(child, base_url).strip()
+            if t != "":
+                blocks.append(t)
+        elif name in _LIST:
+            b = _render_list(child, base_url)
+            if b != "":
+                blocks.append(b)
+        elif name == "table":
+            b = _render_table(child, base_url)
+            if b != "":
+                blocks.append(b)
+        elif name == "hr":
+            blocks.append("---")
+        elif name == "blockquote":
+            inner = [x for x in _render_block_list(child.children, base_url) if x != ""]
+            if inner:
+                body = "\n\n".join(inner)
+                blocks.append("\n".join("> " + line for line in body.split("\n")))
+        elif name == "pre":
+            code = child.get_text()  # newlines/indentation preserved verbatim
+            fence = "````" if "```" in code else "```"
+            blocks.append(f"{fence}\n{code}\n{fence}")
+        elif name == "a":
+            _append_block_link(child, base_url, blocks)
+        elif name in _UNWRAP_BLOCK:
+            blocks.extend(_render_block_list(child.children, base_url))  # container
+        else:
+            # Unknown or inline tag in block position: unwrap (totality).
+            t = _render_inline_children(child, base_url).strip()
+            if t != "":
+                blocks.append(t)
+    return blocks
+
+
+def _append_block_link(a: Tag, base_url: str, blocks: list[str]) -> None:
+    inner = _render_inline_children(a, base_url).strip()
+    if inner == "" or _has_blockish_descendant(a):
+        blocks.extend(_render_block_list(a.children, base_url))  # link dropped
+        return
+    url = _rewrite_url(a.get("href"), base_url)
+    if url is not None:
+        blocks.append(f"[{inner}]({url})")
+    else:  # E6: no usable href -> plain text
+        blocks.append(inner)
+
+
+def _has_blockish_descendant(el: Tag) -> bool:
+    return any(isinstance(desc, Tag) and (desc.name or "") in _BLOCKISH for desc in el.descendants)
+
+
+# --- inline context ----------------------------------------------------------
+
+
+def _render_inline_children(el: Tag, base_url: str) -> str:
+    out = ""
+    for child in el.children:
+        out = _join_inline(out, _render_inline_piece(child, base_url))
+    return out
+
+
+def _join_inline(left: str, right: str) -> str:
+    """Join two inline pieces (doc rule E8 + TESTS case 13/25 boundaries).
+
+    One space is inserted only where the concatenation would be ambiguous or
+    glue a word onto a preceding non-word boundary; otherwise pieces join
+    verbatim (document order preserved).
+    """
+    if left == "" or right == "":
+        return left + right
+    if left[-1] == " " or right[0] == " ":
+        return left + right
+    if left[-1] in _MARKER and right[0] in _MARKER:
+        return left + " " + right  # E8: adjacent emphasis markers disambiguated
+    if not left[-1].isalnum() and left[-1] not in _MARKER and right[0].isalnum():
+        return left + " " + right  # word after punctuation (TESTS case 13)
+    return left + right
+
+
+def _render_inline_piece(child, base_url: str) -> str:
+    if isinstance(child, NavigableString):
+        return _normalize_text(str(child))
+    name = child.name or ""
+    if name in {"b", "strong"}:
+        return _wrap(_render_inline_children(child, base_url), "**")
+    if name in {"i", "em"}:
+        return _wrap(_render_inline_children(child, base_url), "*")
+    if name in {"s", "strike", "del"}:
+        return _wrap(_render_inline_children(child, base_url), "~~")
+    if name == "code":
+        text = child.get_text().strip()
+        return f"`{text}`" if text != "" else ""
+    if name == "a":
+        inner = _render_inline_children(child, base_url).strip()
+        url = _rewrite_url(child.get("href"), base_url)
+        if url is None:
+            return inner  # E6: no usable href -> plain text
+        if inner == "":
+            inner = url  # E7: link with no text uses its URL
+        return f"[{inner}]({url})"
+    if name == "br":
+        return " "  # E9
+    if name == "img":
+        src = child.get("src")
+        if src is None:
+            return ""
+        url = _rewrite_url(src, base_url)
+        if url is None:
+            return ""
+        alt = child.get("alt") or ""
+        return f"![{alt}]({url})"
+    if name in _LIST:
+        return _render_list_inline(child, base_url)
+    if name == "table":
+        return _render_table_inline(child, base_url)
+    if name in _INLINE_UNWRAP:
+        return _render_inline_children(child, base_url)  # level lost in cells
+    if name == "hr":
+        return " — "  # hr in inline position
+    if name == "pre":
+        return child.get_text()
+    return _render_inline_children(child, base_url)  # unknown: unwrap (totality)
+
+
+def _wrap(inner: str, marker: str) -> str:
+    inner = inner.strip()
+    return "" if inner == "" else marker + inner + marker  # E10: never empty markers
+
+
+# --- tables ------------------------------------------------------------------
+
+
+def _render_table(el: Tag, base_url: str) -> str:
+    rows: list[list[str]] = []
+    for tr in _table_rows(el):
+        cells = [_render_cell(c, base_url) for c in _cells_of(tr)]
+        if cells:  # non-empty cell list (doc render_table)
+            rows.append(cells)
+    if not rows:
+        return ""
+    width = max(len(r) for r in rows)
+    rows = [r + [""] * (width - len(r)) for r in rows]  # E12: pad ragged rows
+    lines = [
+        "| " + " | ".join(_escape_pipe(c) for c in rows[0]) + " |",
+        "| " + " | ".join(["---"] * width) + " |",
+    ]
+    for r in rows[1:]:
+        lines.append("| " + " | ".join(_escape_pipe(c) for c in r) + " |")
+    return "\n".join(lines)
+
+
+def _render_table_inline(el: Tag, base_url: str) -> str:
+    """Nested table (inside a cell): rows joined by ``<br>`` (doc 2.6).
+
+    Cell pipes stay raw here; the enclosing :func:`_render_table` escapes
+    every literal pipe in the cell exactly once (E13), so nested separators
+    surface as ``\\|`` in the final output without double escaping.
+    """
+    parts = []
+    for tr in _table_rows(el):
+        cells = [_render_cell(c, base_url) for c in _cells_of(tr)]
+        parts.append(" | ".join(cells))
+    return " <br> ".join(parts)
+
+
+def _render_cell(cell: Tag, base_url: str) -> str:
+    return _render_inline_children(cell, base_url).strip()
+
+
+def _render_list_inline(el: Tag, base_url: str) -> str:
+    """List in inline position (inside a cell): items joined by ``"; "``."""
+    items = []
+    for li in el.find_all("li"):  # all li descendants, document order (doc 2.6)
+        item = _normalize_text(_render_inline_children(li, base_url)).strip()
+        if item != "":
+            items.append(item)
+    return "; ".join(items)
+
+
+def _escape_pipe(s: str) -> str:
+    return s.replace("|", "\\|")  # E13
+
+
+def _table_rows(table: Tag) -> list[Tag]:
+    """``tr`` elements that belong to *this* table, in document order.
+
+    ``find_all`` is recursive; rows of nested tables must not be rendered as
+    rows of the outer table (TESTS case 13), so keep only rows whose nearest
+    table ancestor is ``table`` itself.
+    """
+    rows = []
+    for tr in table.find_all("tr"):
+        if _nearest_ancestor(tr, {"table"}) is table:
+            rows.append(tr)
+    return rows
+
+
+def _cells_of(tr: Tag) -> list[Tag]:
+    """``td``/``th`` cells that belong to *this* row, in document order."""
+    cells = []
+    for c in tr.find_all(["td", "th"]):
+        if _nearest_ancestor(c, {"tr"}) is tr:
+            cells.append(c)
+    return cells
+
+
+def _nearest_ancestor(el: Tag, names: set[str]) -> Tag | None:
+    for anc in el.parents:
+        if isinstance(anc, Tag) and (anc.name or "") in names:
+            return anc
+    return None
+
+
+# --- lists -------------------------------------------------------------------
+
+
+def _render_list(el: Tag, base_url: str) -> str:
+    ordered = el.name == "ol"
+    lines: list[str] = []
+    i = 1
+    for li in [
+        c for c in el.children if isinstance(c, Tag) and (c.name or "") == "li"
+    ]:  # direct <li> only
+        marker = f"{i}. " if ordered else "- "  # E14
+        inline_parts: list[str] = []
+        sublists: list[Tag] = []
+        for c in li.children:
+            if isinstance(c, Tag) and (c.name or "") in _LIST:
+                sublists.append(c)
+            else:
+                inline_parts.append(_render_inline_piece(c, base_url))
+        text = ""
+        for piece in inline_parts:
+            text = _join_inline(text, piece)
+        if text.strip() != "":
+            lines.append(marker + text.strip())
+        for sl in sublists:  # E15: 4-space indent for nested lists
+            for line in _render_list(sl, base_url).split("\n"):
+                lines.append("    " + line)
+        i += 1
+    return "\n".join(lines)
+
+
+# --- normalization and URLs --------------------------------------------------
+
+
+def _normalize_text(s: str) -> str:
+    """Nbsp -> space (FIRST), zero-width junk deleted, runs collapsed to one.
+
+    Deliberately NOT stripped: inline pieces keep boundary whitespace so that
+    ``&nbsp;`` separators survive (TESTS case 11); block boundaries apply
+    ``strip()`` where a finished block is assembled.
+    """
+    s = s.replace("\u00a0", " ")
+    for zw in _ZERO_WIDTH:
+        s = s.replace(zw, "")
+    return _WS_RUN.sub(" ", s)
+
+
+def _rewrite_url(href: str | None, base_url: str) -> str | None:
+    """Resolve ``href`` to a canonical absolute URL, or ``None`` to drop it.
+
+    ``javascript:`` hrefs are dropped (E6); article URLs
+    (``/system/ws/vNN/ss/article/{id}``) lose their query string because the
+    id is already in the path.
+    """
+    if href is None:
+        return None
+    h = href.strip()
+    if h == "":
+        return None
+    if h.lower().startswith("javascript:"):  # E6
+        return None
+    if h.startswith("http://") or h.startswith("https://"):
+        absolute = h
+    elif h.startswith("//"):
+        absolute = "https:" + h
+    elif h.startswith("/"):
+        absolute = base_url + h
+    else:
+        absolute = h  # scheme-relative oddities: keep verbatim (doc 3)
+    m = _ARTICLE_URL.match(absolute)
+    if m is not None:
+        return m.group(1) + m.group(2)
+    return absolute
