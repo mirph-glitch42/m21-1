@@ -1,0 +1,28 @@
+title = "gitleaks config — m21-1"
+
+# Inherit gitleaks' full built-in ruleset (GitHub/AWS/Stripe tokens, private
+# keys, generic high-entropy secrets, ...).
+# IMPORTANT: a config that does not extend the default REPLACES the ruleset
+# entirely — an allowlist-only config is a no-op scanner (gate bug found
+# 2026-07-21 by the "prove the gate fails" exercise).
+[extend]
+useDefault = true
+
+# Paths that legitimately contain non-live material.
+[[allowlists]]
+description = "Paths that legitimately contain non-live material"
+paths = [
+  '''.venv/.*''',
+  '''\.pytest_cache/.*''',
+  '''.ruff_cache/.*''',
+  # requirements.lock pins published PyPI packages — no credentials possible.
+  '''requirements\.lock''',
+]
+
+# Test fixtures may contain obviously-fake credentials.
+[[allowlists]]
+description = "Obvious fixture/placeholder credential material in tests"
+regexTarget = "line"
+regexes = [
+  '''(?i)(mock|fake|dummy|placeholder|xxx+|example|sample|not_a_real)[-_ ]?(key|token|secret|password)'''
+]

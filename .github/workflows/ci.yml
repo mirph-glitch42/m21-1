@@ -1,0 +1,54 @@
+# CI gate: cheap -> expensive, one workflow file.
+# - pull_request: full gate on every PR (the unit of review)
+# - push to main: verify the merge result, not assume it
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A branch update makes the old run stale — cancel it.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# This pipeline only reads code — deny everything else.
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0 # full history for gitleaks
+
+      - name: Setup Python (pinned)
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: "3.12"
+
+      - name: Install pinned dependencies (lockfile)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.lock
+
+      - name: Format check
+        run: ruff format --check .
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Algorithm doc index check
+        run: make doc-index-check
+
+      - name: Unit tests (no network)
+        run: python -m pytest -q tests -m "not live"
+
+      - name: Secret scan (full history)
+        uses: gitleaks/gitleaks-action@1938557f6a58837331b99822ab17b8e536e7bef9 # v2.3.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

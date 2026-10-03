@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# pre-push gate: full test suite + algorithm-doc index freshness + secret scan of full history.
+# Last local line of defense before the remote.
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+PY=".venv/bin/python"
+
+echo "→ full test suite"
+"$PY" -m pytest -q tests -m "not live" \
+  || { echo "✗ full suite failing — push blocked" >&2; exit 1; }
+
+echo "→ algorithm doc index check"
+for doc in algorithms/*.md; do
+  [ -e "$doc" ] || continue
+  case "$doc" in */INDEX.md) continue ;; esac
+  "$PY" scripts/build_index.py "$doc" --check \
+    || { echo "✗ stale algorithm index: $doc — run: make doc-index" >&2; exit 1; }
+done
+
+echo "→ secret scan (full history)"
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --redact --config .gitleaks.toml -v \
+    || { echo "✗ secrets detected in history — push blocked" >&2; exit 1; }
+fi
+
+echo "✓ all pre-push gates passed"

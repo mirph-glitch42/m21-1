@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# pre-commit gate: format check -> lint -> secret scan -> fast unit tests.
+# Any failure blocks the commit with an actionable message. No bypassing (--no-verify).
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+PY=".venv/bin/python"
+RUFF=".venv/bin/ruff"
+
+if [ ! -x "$PY" ]; then
+  echo "✗ .venv missing. Run: make setup" >&2
+  exit 1
+fi
+
+echo "→ format check (ruff format)"
+"$RUFF" format --check . || { echo "✗ formatting off — run: make format" >&2; exit 1; }
+
+echo "→ lint (ruff)"
+"$RUFF" check . || { echo "✗ lint errors — fix or run: make lint" >&2; exit 1; }
+
+echo "→ secret scan (gitleaks, staged changes)"
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --redact --config .gitleaks.toml -v \
+    || { echo "✗ secrets detected in staged changes — commit blocked" >&2; exit 1; }
+else
+  echo "  (gitleaks not on PATH — skipping local scan; CI still enforces it)"
+fi
+
+echo "→ unit tests (fast, no network)"
+"$PY" -m pytest -q -x tests -m "not live" \
+  || { echo "✗ tests failing — commit blocked" >&2; exit 1; }
+
+echo "✓ all pre-commit gates passed"

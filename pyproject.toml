@@ -1,0 +1,32 @@
+[project]
+name = "m21-1"
+version = "0.1.0"
+description = "Crawler that builds the complete M21-1 Adjudication Procedures Manual in Markdown from the VA Knowva portal."
+requires-python = ">=3.12"
+# Runtime deps are installed from the committed requirements.lock (reproducible builds).
+# Dev deps (pytest, ruff) live in the same lockfile.
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [".venv", "output"]
+
+[tool.ruff.lint]
+# E/F pycodcore+pyflakes baseline, I isort, D docstrings for public API,
+# UP pyupgrade, B bugbear, SIM simplify.
+select = ["E", "F", "I", "UP", "B", "SIM"]
+# Docstring rules would flag generated prose in the manual; enforce per-file in src/tests.
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
+"src/m21_crawl/**" = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+# Network-touching tests are opt-in (CI never runs them).
+addopts = "-m \"not live\""
+markers = [
+    "live: tests that hit the real Knowva API (deselected by default; run with -m live)",
+]

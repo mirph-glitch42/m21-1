@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Environments / secrets — real env files never enter the repo
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# Test / tooling caches
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Generated artifacts that are NOT committed (the manual itself under output/ IS committed)
+*.tmp
+
+# OS / editor noise
+.DS_Store
+.idea/
+.vscode/
