@@ -4,8 +4,10 @@ Wires the pipeline modules together:
 
     Client (anonymous session + bounded retries)
       → topic tree (``config.ENDPOINT_TOPIC`` for root ``config.ROOT_TOPIC_ID``)
-      → ``tree.flatten_tree`` → ``tree.leaf_topics`` → ``tree.breadcrumb_paths``
-      → per leaf: ``articles.list_topic_articles`` → per article:
+      → ``tree.flatten_tree`` → ``tree.breadcrumb_paths``
+      → per topic in pre-order that carries direct articles
+        (``articleCount > 0`` — internal topics may carry articles too):
+        ``articles.list_topic_articles`` → per article:
         ``articles.get_article_content`` → ``mdconv.convert``
       → ``assemble.assemble`` (completeness check vs the root's
         ``articleTotalCount``)
@@ -38,7 +40,7 @@ from .config import (
     USERTYPE,
 )
 from .mdconv import HtmlConversionError, convert
-from .tree import breadcrumb_paths, flatten_tree, leaf_topics
+from .tree import breadcrumb_paths, flatten_tree
 
 #: Default deliverable location (relative to the working directory).
 DEFAULT_OUT = os.path.join("output", MANUAL_FILENAME)
@@ -76,16 +78,16 @@ def _topic_tree_wrappers(client: Client) -> list[dict[str, Any]]:
     return wrappers
 
 
-def _article_entries(client: Client, leaf_id: str) -> list[tuple[str, str]]:
-    """Return ``(article_id, name)`` pairs for one leaf topic, portal order."""
-    entries = list_topic_articles(client, leaf_id)
+def _article_entries(client: Client, topic_id: str) -> list[tuple[str, str]]:
+    """Return ``(article_id, name)`` pairs for one topic, portal order."""
+    entries = list_topic_articles(client, topic_id)
     pairs: list[tuple[str, str]] = []
     for entry in entries:
         if not isinstance(entry, dict) or "id" not in entry:
-            raise ValueError(f"article entry in topic {leaf_id!r} is missing 'id'")
+            raise ValueError(f"article entry in topic {topic_id!r} is missing 'id'")
         article_id = str(entry["id"])
         if "name" not in entry:
-            raise ValueError(f"article {article_id} in topic {leaf_id!r} is missing 'name'")
+            raise ValueError(f"article {article_id} in topic {topic_id!r} is missing 'name'")
         pairs.append((article_id, str(entry["name"])))
     return pairs
 
@@ -100,8 +102,11 @@ def crawl_manual(
 
     - expected article count = the root topic's ``articleTotalCount``; a
       mismatch raises ``CompletenessError`` (from ``assemble``);
-    - articles are fetched in portal order (tree pre-order → leaf order →
-      listing order); nothing is ever re-sorted;
+    - articles are fetched in portal order (tree pre-order → listing order);
+      every topic with direct articles (``articleCount > 0``) is fetched —
+      internal topics may carry articles as well as children — and topics
+      without direct articles trigger no article-list request; nothing is
+      ever re-sorted;
     - ``sleep(delay)`` runs before every article content fetch except the
       first (politeness);
     - an article whose HTML cannot be converted is recorded as
@@ -123,8 +128,10 @@ def crawl_manual(
     articles: list[Article] = []
     failures = 0
     first = True
-    for leaf in leaf_topics(nodes):
-        for article_id, name in _article_entries(client, leaf.id):
+    for node in nodes:
+        if node.article_count == 0:
+            continue  # no direct articles (e.g. the root) — no list request
+        for article_id, name in _article_entries(client, node.id):
             if not first:
                 sleeper(delay)
             first = False
@@ -139,7 +146,7 @@ def crawl_manual(
                     Article(
                         id=article_id,
                         name=name,
-                        breadcrumb=crumbs.get(leaf.id, ""),
+                        breadcrumb=crumbs.get(node.id, ""),
                         error=str(exc),
                     )
                 )
@@ -149,7 +156,7 @@ def crawl_manual(
                     id=article_id,
                     name=name,
                     body_md=body,
-                    breadcrumb=crumbs.get(leaf.id, ""),
+                    breadcrumb=crumbs.get(node.id, ""),
                 )
             )
 

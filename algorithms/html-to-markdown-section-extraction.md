@@ -616,8 +616,8 @@ full crawl of 785 articles is network-bound, not conversion-bound.
   tags) — <https://lxml.de/parsing.html>.
 - BeautifulSoup 4 documentation, `NavigableString` / `Tag.children`
   semantics — <https://www.crummy.com/software/BeautifulSoup/bs4/doc/>.
-- Sibling document: [manual-tree-crawl](manual-tree-crawl.md) (article order
-  and leaf enumeration feeding this converter).
+- Sibling document: [manual-tree-crawl](manual-tree-crawl.md) (the pre-order topic
+  traversal that fixes the article order feeding this converter).
 - Live CMS samples (verified 2026-10-02): element census and the "In This
   Section" layout-table pattern used in TESTS case 13.
 - algorithm-records-keeper skill, `references/use-cases/parsers-and-construction.md`

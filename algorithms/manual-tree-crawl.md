@@ -423,6 +423,6 @@ unverified — trivially within O(N+E) for N=290).
 - CLRS 3rd ed., §22 (graph search): DFS pre-order properties and the
   visited-set termination argument used in 2.3.
 - Sibling document: [html-to-markdown-section-extraction](html-to-markdown-section-extraction.md)
-  (consumes the leaf topics and article ordering established here).
+  (converts each article's HTML body once the crawl has walked this tree).
 - algorithm-records-keeper skill, `references/use-cases/graph.md` checklist
   (applied in 2.5).
