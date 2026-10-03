@@ -19,14 +19,14 @@ REFERENCES	417	428
 |---|---|
 | Name | In-order manual topic-tree crawl (pre-order flatten with dedupe) |
 | Slug | manual-tree-crawl |
-| Version | 0.1.0 |
-| Status | draft |
+| Version | 0.2.0 |
+| Status | implemented |
 | Author | Bionic agent (on behalf of murphyjj) |
 | Created | 2026-10-02 |
-| Last modified | 2026-10-02 |
-| Status history | 0.1.0 (2026-10-02): initial draft |
+| Last modified | 2026-10-03 |
+| Status history | 0.1.0 (2026-10-02): initial draft; 0.2.0 (2026-10-03): implemented in src/m21_crawl/tree.py |
 | Languages | Python 3.12 (implementation); pseudocode is language-agnostic |
-| Implementation location | src/m21_crawl/tree.py — fill exact lines after implementation; "—" until then |
+| Implementation location | src/m21_crawl/tree.py — TopicNode L21–30; flatten_tree L60–109; leaf_topics L112–114 (v0.2.0, 2026-10-03) |
 | Time complexity | O(N + E) — N distinct topic ids, E child references (see 2.4) |
 | Space complexity | O(N + E) worst case (explicit stack + visited set) |
 | Determinism | deterministic (pure function of input order and content) |
