@@ -148,7 +148,20 @@ class FakeClient:
             topic_id = params["topicId"]
             if topic_id not in self.articles_by_topic:
                 raise AssertionError(f"unexpected article-list request for topic {topic_id}")
-            return {"article": self.articles_by_topic[topic_id]}
+            entries = self.articles_by_topic[topic_id]
+            # Fixture topics fit one page (the portal caps lists at 10 per
+            # response and reports the total via `pagingInfo` — see
+            # algorithms/topic-article-paging.md).
+            return {
+                "article": entries,
+                "pagingInfo": {
+                    "count": len(entries),
+                    "pageNumber": 1,
+                    "rangeStart": 0,
+                    "rangeSize": 10,
+                    "maxRange": len(entries),
+                },
+            }
         match = re.fullmatch(r"/ws/v11/ss/article/(\d+)", path)
         if match:
             return {"article": [{"id": match.group(1), "content": CONTENT[match.group(1)]}]}
