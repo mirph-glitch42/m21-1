@@ -21,7 +21,7 @@ echo "→ lint (ruff)"
 
 echo "→ secret scan (gitleaks, staged changes)"
 if command -v gitleaks >/dev/null 2>&1; then
-  gitleaks protect --staged --redact --config .gitleaks.toml -v \
+  gitleaks git --staged --redact --config .gitleaks.toml -v \
     || { echo "✗ secrets detected in staged changes — commit blocked" >&2; exit 1; }
 else
   echo "  (gitleaks not on PATH — skipping local scan; CI still enforces it)"

@@ -25,10 +25,10 @@ test-live: ## Run network tests against the real API (manual, explicit)
 	$(PY) -m pytest -q tests -m "live"
 
 secrets: ## Secret scan of staged changes
-	gitleaks protect --staged --redact --config .gitleaks.toml -v
+	gitleaks git --staged --redact --config .gitleaks.toml -v
 
 secrets-history: ## Secret scan of full git history
-	gitleaks protect --redact --config .gitleaks.toml -v
+	gitleaks git --redact --config .gitleaks.toml -v
 
 doc-index: ## Regenerate algorithm-doc line indexes
 	@for doc in algorithms/*.md; do \

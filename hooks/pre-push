@@ -21,7 +21,7 @@ done
 
 echo "→ secret scan (full history)"
 if command -v gitleaks >/dev/null 2>&1; then
-  gitleaks protect --redact --config .gitleaks.toml -v \
+  gitleaks git --redact --config .gitleaks.toml -v \
     || { echo "✗ secrets detected in history — push blocked" >&2; exit 1; }
 fi
 
