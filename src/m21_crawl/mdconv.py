@@ -1,6 +1,6 @@
 """mdconv: deterministic rich-HTML -> GFM block converter for eGain article content.
 
-Implements ``algorithms/html-to-markdown-section-extraction.md`` (v0.2.0):
+Implements ``algorithms/html-to-markdown-section-extraction.md`` (v0.3.0):
 
 - total, deterministic two-context (block/inline) tree walk over a lenient
   lxml parse (BeautifulSoup is the parser of record: fragments stay flat);
@@ -12,7 +12,10 @@ Implements ``algorithms/html-to-markdown-section-extraction.md`` (v0.2.0):
   so punctuation never glues to a following word (TESTS case 13);
 - tables are GFM: first row is the header, ragged rows padded (E12),
   literal pipes escaped exactly once (E13); a table inside a cell renders
-  as its rows joined by ``<br>`` (2.6 ``render_table_inline``);
+  as its rows joined by ``<br>`` (2.6 ``render_table_inline``); a table whose
+  every row's first cell leads with a heading is a *layout frame* and
+  dissolves into real headings at their native level with block-rendered
+  content (D5, ``_render_layout_frame``);
 - ``javascript:`` hrefs are dropped (E6); empty-text links use their URL
   (E7); eGain article URLs are canonicalized (query string dropped);
 - output = blocks joined by ``"\\n\\n"`` + exactly one trailing ``"\\n"``.
@@ -243,6 +246,8 @@ def _wrap(inner: str, marker: str) -> str:
 
 
 def _render_table(el: Tag, base_url: str) -> str:
+    if _is_layout_frame(el):
+        return _render_layout_frame(el, base_url)  # D5: dissolve the frame
     rows: list[list[str]] = []
     for tr in _table_rows(el):
         cells = [_render_cell(c, base_url) for c in _cells_of(tr)]
@@ -259,6 +264,70 @@ def _render_table(el: Tag, base_url: str) -> str:
     for r in rows[1:]:
         lines.append("| " + " | ".join(_escape_pipe(c) for c in r) + " |")
     return "\n".join(lines)
+
+
+def _layout_heading(cell: Tag) -> Tag | None:
+    """D5: the cell's first *significant* child, if it is a heading ``h1``-``h6``.
+
+    Whitespace-only text is skipped; any other first child (visible text,
+    ``th``, a list, ...) disqualifies the cell. No container unwrapping — the
+    heading must lead the cell directly, so a label cell with preceding text
+    conservatively falls back to GFM rendering (never drop text).
+    """
+    for child in cell.children:
+        if isinstance(child, NavigableString):
+            if _normalize_text(str(child)).strip() != "":
+                return None  # text first: not a label cell
+            continue
+        if isinstance(child, Tag):
+            return child if (child.name or "") in _HEADING else None
+        return None  # comments and other nodes disqualify
+    return None
+
+
+def _is_layout_frame(el: Tag) -> bool:
+    """D5: a table whose EVERY row's first cell leads with a heading.
+
+    eGain wraps article content in ``label | spacer | content`` grids whose
+    label cells carry the section marks (e.g. ``I.i.1.A.1.a. ...``). Tables
+    that fail the test are genuine data tables and keep the GFM rendering.
+    """
+    rows = _table_rows(el)
+    if not rows:
+        return False
+    for tr in rows:
+        cells = _cells_of(tr)
+        if not cells or _layout_heading(cells[0]) is None:
+            return False
+    return True
+
+
+def _render_layout_frame(el: Tag, base_url: str) -> str:
+    """D5: dissolve a layout frame into real headings + block content.
+
+    Each row emits its label heading at the heading's *native level* with its
+    text rendered verbatim, then renders every remaining cell's children in
+    **block** context, so a real data table nested in the content column
+    surfaces as a real GFM table (user goals 2/3). Blocks are joined by one
+    blank line. Called only on tables that passed :func:`_is_layout_frame`.
+    """
+    blocks: list[str] = []
+    for tr in _table_rows(el):
+        cells = _cells_of(tr)
+        if not cells:
+            continue
+        heading = _layout_heading(cells[0])
+        if heading is not None:
+            t = _render_inline_children(heading, base_url).strip()
+            if t != "":
+                blocks.append("#" * int(heading.name[1]) + " " + t)
+        else:  # unreachable for frames (guarded); conservative text fallback
+            t = _render_inline_children(cells[0], base_url).strip()
+            if t != "":
+                blocks.append(t)
+        for cell in cells[1:]:
+            blocks.extend(b for b in _render_block_list(cell.children, base_url) if b != "")
+    return "\n\n".join(blocks)
 
 
 def _render_table_inline(el: Tag, base_url: str) -> str:

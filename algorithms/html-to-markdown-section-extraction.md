@@ -4,12 +4,12 @@
 id	start_line	end_line
 INDEX_BLOCK	3	13
 METADATA	15	36
-THEORY	37	188
-PSEUDOCODE	189	372
-WALKTHROUGH	373	446
-IMPLEMENTATION	447	548
-TESTS	549	608
-REFERENCES	609	624
+THEORY	37	213
+PSEUDOCODE	214	438
+WALKTHROUGH	439	521
+IMPLEMENTATION	522	624
+TESTS	625	689
+REFERENCES	690	705
 <!-- INDEX:END -->
 
 <!-- SECTION:METADATA -->
@@ -19,14 +19,14 @@ REFERENCES	609	624
 |---|---|
 | Name | Rich HTML → Markdown block converter for eGain article content |
 | Slug | html-to-markdown-section-extraction |
-| Version | 0.2.0 |
+| Version | 0.3.0 |
 | Status | implemented |
 | Author | Bionic agent (on behalf of murphyjj) |
 | Created | 2026-10-02 |
-| Last modified | 2026-10-03 |
-| Status history | 0.1.0 (2026-10-02): initial draft; 0.2.0 (2026-10-03): implemented in src/m21_crawl/mdconv.py |
+| Last modified | 2026-10-04 |
+| Status history | 0.1.0 (2026-10-02): initial draft; 0.2.0 (2026-10-03): implemented in src/m21_crawl/mdconv.py; 0.3.0 (2026-10-04): layout-frame dissolution (D5) — tables whose rows all lead with a heading dissolve into real headings + block content; TESTS case 13 rewritten, cases 26–30 added |
 | Languages | Python 3.12 (implementation); pseudocode is language-agnostic |
-| Implementation location | src/m21_crawl/mdconv.py — HtmlConversionError L53–60; _parse L62–65; convert L67–93; block context L98–161; inline context L167–241; tables L245–327; lists L329–356; normalization and URLs L359–397 (v0.2.0, 2026-10-03) |
+| Implementation location | src/m21_crawl/mdconv.py — HtmlConversionError L56–63; _parse L65–68; convert L70–96; block context L98–165; inline context L167–243; tables L245–393 (layout frames D5: L269–331); lists L395–423; normalization and URLs L425–466 (v0.3.0, 2026-10-04) |
 | Time complexity | O(C) — C = characters of input HTML (single pass over the parsed tree) |
 | Space complexity | O(C) — parsed tree + output string |
 | Determinism | deterministic (no timestamps, no randomness, fixed BASE_URL constant) |
@@ -98,7 +98,10 @@ The walk is a **total function** over the element vocabulary:
 
 - Every element name is covered by exactly one row of the block-context table
   or the inline-context table (2.6); the fallback row (`unknown → unwrap`)
-  covers everything else, so no input can reach an undefined case.
+  covers everything else, so no input can reach an undefined case. The only
+  structural classification beyond element names is the **layout-frame** test
+  (D5), which reads the table's own rows and first cells — a pure tree
+  property that adds no runtime choice.
 - Traversal is pre-order over a finite tree ⇒ it terminates; each node is
   processed once per context ⇒ O(C) work.
 - Text is emitted in document order (pre-order); the only insertion is a
@@ -124,9 +127,11 @@ alternation).
   `normalize_text` specification, and the `rewrite_url` specification are the
   formal rule set; the pseudocode in section 3 is the executable form.
 - **Ambiguity policy:** element→output mapping is a single deterministic rule
-  per element. The only context-sensitivity is *block vs inline position*,
-  which is structurally determined by the parent (a cell/list-item renders
-  inline; a document top level renders block) — no runtime choice.
+  per element. The context-sensitivities are *block vs inline position*
+  (structurally determined by the parent: a cell/list-item renders inline, a
+  document top level renders block) and the *layout-frame* test (D5), which
+  reads the table's own rows — both are structural tree properties, so there
+  is no runtime choice.
 - **Error model:** 2.7.
 - **Whitespace policy:** 2.6, `normalize_text` + rule E11 (whitespace-only
   text nodes vanish in block context).
@@ -175,6 +180,26 @@ The implementation therefore deviates as follows (all pinned by tests):
   innermost `<body>`'s children (falling back to `soup.contents`) in block
   context. lxml remains the parser of record (lenient repair, predictable
   tree).
+- **D5 — Layout frames are dissolved, not tabled.** eGain wraps most article
+  content in *layout* tables: a `label | spacer | content` grid whose first
+  cell of every row carries a heading (the section mark, e.g.
+  `I.i.1.A.1.a. Description of PL 106-475`). GFM cells cannot hold headings,
+  so the old rendering flattened every label to inline cell text — a wall of
+  table borders that obscured the manual's structure (user goal 2, backlog
+  B1) and forced nested data tables into `<br>`-joined inline rows (goal 3).
+  The implementation therefore classifies each table structurally: a table is
+  a **layout frame** when it has at least one row and **every** row's first
+  cell *leads with* a heading (`h1`–`h6` as the first significant child;
+  whitespace-only text is skipped, any other first child — text, `th`, list,
+  … — disqualifies). A frame is dissolved: each row emits its label heading
+  at the heading's **native level** with its text rendered verbatim, then
+  renders every remaining cell's children in **block context**, so a real
+  data table nested in the content column becomes a real GFM table. A table
+  failing the rule renders as a GFM table exactly as before (headings in
+  cells flattened to text, nested tables inline) — the conservative fallback
+  guarantees no text is ever dropped. The classification is a pure structural
+  read of the tree, so totality and determinism are preserved (TESTS case 13,
+  cases 26–30).
 
 ### 2.7 Error model (summary)
 
@@ -301,6 +326,8 @@ function wrap(inner, marker) -> str:
 
 # --- tables ----------------------------------------------------------------
 function render_table(el, base_url) -> str:
+    if is_layout_frame(el):
+        return render_layout_frame(el, base_url)      # D5: dissolve the frame
     rows <- []
     for tr in all tr descendants in document order:
         cells <- [render_inline_children(c, base_url) for c in tr's direct td/th]
@@ -314,6 +341,45 @@ function render_table(el, base_url) -> str:
     for r in rows[1:]:
         lines.append("| " + join(esc(c) for c in r, " | ") + " |")
     return join(lines, "\n")
+
+function layout_heading(cell) -> Tag | None:
+    # D5: the cell's first significant child (whitespace-only text skipped);
+    # returned when it is a heading, else None.
+    for child in cell.children:
+        if child is text:
+            if trim(child) != "": return None          # text first: not a label cell
+            continue
+        if child is a tag:
+            return child if child.name in {h1..h6} else None
+        return None
+    return None
+
+function is_layout_frame(table) -> bool:
+    # D5: non-empty, and EVERY row's first cell leads with a heading.
+    rows <- the table's own tr rows (nearest-table rule)
+    if rows is empty: return false
+    for tr in rows:
+        cells <- tr's direct td/th cells
+        if cells is empty or layout_heading(cells[0]) is None:
+            return false
+    return true
+
+function render_layout_frame(table, base_url) -> str:
+    # D5: dissolve — each row yields its label heading at the heading's
+    # native level, then the remaining cells' children in BLOCK context
+    # (nested data tables become real GFM tables; user goals 2/3).
+    blocks <- []
+    for tr in the table's own tr rows (nearest-table rule):
+        cells <- tr's direct td/th cells
+        if cells is empty: continue
+        heading <- layout_heading(cells[0])
+        t <- render_inline_children(heading, base_url)
+        if t != "":
+            blocks.append(("#" * int(heading.name[1])) + " " + t)
+        for cell in cells[1:]:
+            blocks.extend([b for b in render_block_list(cell.children, base_url)
+                           if b != ""])
+    return join(blocks, "\n\n")
 
 function render_table_inline(el, base_url) -> str:
     # Nested table (inside a cell): one escaped-pipe row per <tr>,
@@ -392,9 +458,13 @@ string or a recursive call on a strictly smaller subtree.
 7. Links get a URL rewrite: relative paths become absolute; `javascript:` is
    dropped (plain text); VA article URLs lose their query string so the manual
    contains stable, canonical links.
-8. Tables are built row by row: the first row is the header, ragged rows are
-   padded, pipes in cell text are escaped. A table *inside* a cell is rendered
-   as escaped rows joined by `<br>`.
+8. Tables are classified first: a *layout frame* — every row's first cell
+   leads with a heading (eGain's `label | spacer | content` grid) — is
+   dissolved into real headings at their native levels, with each remaining
+   cell rendered in block context so nested data tables surface as real GFM
+   tables (D5). Any other table is built row by row: the first row is the
+   header, ragged rows are padded, pipes in cell text are escaped. A table
+   *inside such a table's cell* is rendered as escaped rows joined by `<br>`.
 9. Lists number or dash their items; nested lists indent by four spaces.
 10. All finished blocks are joined with a blank line and one trailing newline.
 
@@ -419,30 +489,35 @@ layout pattern):
 Trace:
 
 1. `convert` sees one top-level child: `<table>` → `render_table`.
-2. One `<tr>`; two direct `<td>` cells → each cell is rendered *inline*.
-   - Cell 1: child `<h3>` → heading in inline position → unwrap to its text:
-     `In This Section`.
-   - Cell 2: children in order:
-     - `<div>` → inline unwrap → `<p>`-less text:
-       `This section contains the following topics:` (normalized; the source's
-       surrounding newlines collapse to the single space already present).
-     - inner `<table>` → `render_table_inline`: row 1 = `Topic`, `Name`;
-       row 2 = `1`, `Alpha` → `Topic \| Name <br> 1 \| Alpha`.
-     - Joined: `This section contains the following topics: Topic \| Name <br> 1 \| Alpha`.
-3. Rows: only one row → it is the header; width 2; no body rows.
-4. Output block:
+2. `is_layout_frame`: one row, and the first cell's first significant child is
+   the `<h3>` → **layout frame** (D5) → `render_layout_frame`.
+3. The row dissolves into blocks:
+   - Label cell: `<h3>In This Section</h3>` → emitted at its *native* level:
+     `### In This Section`.
+   - Content cell, rendered in **block** context:
+     - `<div>` → container unwrap → text block:
+       `This section contains the following topics:`.
+     - inner `<table>` → `render_table` → *not* a layout frame (its first
+       cell leads with `<th>Topic`, not a heading) → a real GFM table:
+       `| Topic | Name |`, `| --- | --- |`, `| 1 | Alpha |`.
+4. Blocks are joined with a blank line, and `convert` appends the trailing
+   newline. Final output (TESTS case 13 asserts byte equality):
 
    ```
-   | In This Section | This section contains the following topics: Topic \| Name <br> 1 \| Alpha |
+   ### In This Section
+
+   This section contains the following topics:
+
+   | Topic | Name |
    | --- | --- |
+   | 1 | Alpha |
    ```
 
-5. `convert` appends the trailing newline. Final string is exactly the block
-   above + `"\n"` (TESTS case 13 asserts byte equality).
-
-Note what *did not* happen: the `<h3>` inside the cell did not become `###`
-(GFM cells cannot hold headings — documented), the decorative `<div>`/`<td>`
-borders and `style` attributes vanished, and nothing was reordered.
+Note what *did not* happen: the text was not touched or reordered, the
+decorative `<div>`/`<td>` borders vanished without a trace, the label heading
+became a real navigable heading (instead of flattened cell text), and the
+nested data table became a real GFM table (instead of `<br>`-joined inline
+rows).
 
 <!-- SECTION:IMPLEMENTATION -->
 ## 5. Implementation notes (entry-level guide)
@@ -476,8 +551,9 @@ so the function stays pure and testable.
 | Table with a single row | that row is the header; no body | GFM requires a header row |
 | Ragged table row | padded with empty cells to the widest row (E12) | GFM rows must be uniform |
 | Pipe in cell text | escaped `\|` (E13) | unescaped pipes break the table |
-| Nested table in a cell | escaped rows joined by `<br>` (2.6 `render_table_inline`) | GFM has no cell tables |
-| Heading inside a cell | plain inline text, level lost (documented) | GFM cells cannot hold headings |
+| Table whose every row's first cell leads with a heading | layout frame: dissolved into real headings (native level) + block-rendered content (D5; TESTS 13, 26–30) | eGain's `label \| spacer \| content` grid; user goals 2/3 |
+| Nested table in a real table's cell | escaped rows joined by `<br>` (2.6 `render_table_inline`) | GFM has no cell tables |
+| Heading elsewhere in a table cell | plain inline text, level lost (documented) | GFM cells cannot hold headings |
 | List inside a cell | items joined `"; "` | compact, unambiguous |
 | `<hr>` in a cell | ` — ` | visible separator, no block break |
 | `<pre>` whose code contains ` ``` ` | fence of four backticks | fence must exceed content |
@@ -568,7 +644,7 @@ shown as `""`).
 | 10 | ordered list | `<ol><li>first</li><li>second</li></ol>` | `1. first\n2. second\n` | E14 numbering |
 | 11 | span-style stripping + `&nbsp;` | `<p><span style="color: red">red</span>&nbsp;text</p>` | `red text\n` | decoration removal + NBSP |
 | 12 | adjacent emphasis disambiguation | `<p><strong>a</strong><em>b</em></p>` | `**a** *b*\n` | E8 space insertion |
-| 13 | layout table with nested table | `<table><tbody><tr><td><h3>In This Section</h3></td><td><div>This section contains the following topics:</div><table><tr><th>Topic</th><th>Name</th></tr><tr><td>1</td><td>Alpha</td></tr></table></td></tr></tbody></table>` | `| In This Section | This section contains the following topics: Topic \| Name <br> 1 \| Alpha |\n| --- | --- |\n` | live-portal pattern (worked example 4.2) |
+| 13 | layout frame with nested data table | `<table><tbody><tr><td><h3>In This Section</h3></td><td><div>This section contains the following topics:</div><table><tr><th>Topic</th><th>Name</th></tr><tr><td>1</td><td>Alpha</td></tr></table></td></tr></tbody></table>` | `### In This Section\n\nThis section contains the following topics:\n\n\| Topic \| Name \|\n\| --- \| --- \|\n\| 1 \| Alpha \|\n` | live-portal pattern (worked example 4.2); D5 dissolution + un-nested data table |
 | 14 | javascript: link dropped | `<a href="javascript:void(0)">click</a>` | `click\n` | E6 |
 | 15 | image with alt | `<p><img src="/img/x.png" alt="Figure 1"></p>` | `![Figure 1](https://www.knowva.ebenefits.va.gov/img/x.png)\n` | E5/E4 image rule |
 | 16 | br becomes space | `<p>line one<br>line two</p>` | `line one line two\n` | E9 |
@@ -581,6 +657,11 @@ shown as `""`).
 | 23 | empty/whitespace input | `""`, `"   \n  "` | `""` | contract 4 |
 | 24 | nesting depth probe | 50 nested `<div>` around `<p>deep</p>` | `deep\n` | 2.5 depth policy |
 | 25 | empty emphasis dropped | `<p>a<strong></strong>b</p>` | `ab\n` | E10 |
+| 26 | layout frame, spacer column | `<table><tr><td><h2>Overview</h2></td><td></td><td><p>Body text</p></td></tr></table>` | `## Overview\n\nBody text\n` | D5 dissolution; the empty spacer cell contributes nothing |
+| 27 | section-mark label with named anchor | `<table><tr><td><h3>I.i.1.A.1.a<a id="1a" name="1a">.</a>&nbsp;Description of PL 106-475</h3></td><td></td><td><p>Body text</p></td></tr></table>` | `### I.i.1.A.1.a. Description of PL 106-475\n\nBody text\n` | the anchor's `.` text + `&nbsp;` yield the canonical `mark. Title` spacing |
+| 28 | heading in a non-leading cell → GFM table | `<table><tr><th>K</th><th>Head</th></tr><tr><td><h3>Deep</h3></td><td>x</td></tr></table>` | `\| K \| Head \|\n\| --- \| --- \|\n\| Deep \| x \|\n` | the frame rule needs EVERY row to lead with a heading; otherwise GFM (level lost in cell) |
+| 29 | one non-layout row → GFM fallback | `<table><tr><td><h2>Head</h2></td><td>x</td></tr><tr><td>plain</td><td>y</td></tr></table>` | `\| Head \| x \|\n\| --- \| --- \|\n\| plain \| y \|\n` | all-rows condition; a single text-led row kills the frame |
+| 30 | nested layout frame dissolves recursively | `<table><tr><td><h2>Outer</h2></td><td></td><td><table><tr><td><h3>Inner</h3></td><td></td><td><p>Deep</p></td></tr></table></td></tr></table>` | `## Outer\n\n### Inner\n\nDeep\n` | block-context content cells recurse through `render_table` (D5) |
 
 ### 6.1 Property tests (preferred)
 

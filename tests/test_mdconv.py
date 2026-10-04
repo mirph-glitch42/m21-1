@@ -1,6 +1,6 @@
 """mdconv: rich HTML -> GFM converter (TDD per html-to-markdown-section-extraction.md).
 
-All 25 TESTS cases are transcribed byte-exact from doc section 6 (G11
+All 30 TESTS cases are transcribed byte-exact from doc section 6 (G11
 synthetic inputs shaped like live CMS output). Property tests P1-P4 follow
 doc 6.1 with the fixed seed 20261002.
 """
@@ -16,7 +16,7 @@ from m21_crawl.mdconv import HtmlConversionError, convert
 
 BASE_URL = "https://www.knowva.ebenefits.va.gov"
 
-# (name, input, expected) — doc section 6, cases 1-25, byte-exact expected.
+# (name, input, expected) — doc section 6, cases 1-30, byte-exact expected.
 CASES: list[tuple[str, str, str]] = [
     (
         "case01 minimal paragraph",
@@ -82,13 +82,13 @@ CASES: list[tuple[str, str, str]] = [
         "**a** *b*\n",
     ),
     (
-        "case13 layout table with nested table",
+        "case13 layout frame with nested data table",
         "<table><tbody><tr><td><h3>In This Section</h3></td>"
         "<td><div>This section contains the following topics:</div>"
         "<table><tr><th>Topic</th><th>Name</th></tr>"
         "<tr><td>1</td><td>Alpha</td></tr></table></td></tr></tbody></table>",
-        "| In This Section | This section contains the following topics: "
-        "Topic \\| Name <br> 1 \\| Alpha |\n| --- | --- |\n",
+        "### In This Section\n\nThis section contains the following topics:\n\n"
+        "| Topic | Name |\n| --- | --- |\n| 1 | Alpha |\n",
     ),
     (
         "case14 javascript link dropped",
@@ -154,6 +154,34 @@ CASES: list[tuple[str, str, str]] = [
         "case25 empty emphasis dropped",
         "<p>a<strong></strong>b</p>",
         "ab\n",
+    ),
+    (
+        "case26 layout frame, spacer column",
+        "<table><tr><td><h2>Overview</h2></td><td></td><td><p>Body text</p></td></tr></table>",
+        "## Overview\n\nBody text\n",
+    ),
+    (
+        "case27 section-mark label with named anchor",
+        '<table><tr><td><h3>I.i.1.A.1.a<a id="1a" name="1a">.</a>'
+        "&nbsp;Description of PL 106-475</h3></td>"
+        "<td></td><td><p>Body text</p></td></tr></table>",
+        "### I.i.1.A.1.a. Description of PL 106-475\n\nBody text\n",
+    ),
+    (
+        "case28 heading in non-leading cell falls back to GFM table",
+        "<table><tr><th>K</th><th>Head</th></tr><tr><td><h3>Deep</h3></td><td>x</td></tr></table>",
+        "| K | Head |\n| --- | --- |\n| Deep | x |\n",
+    ),
+    (
+        "case29 one non-layout row falls back to GFM table",
+        "<table><tr><td><h2>Head</h2></td><td>x</td></tr><tr><td>plain</td><td>y</td></tr></table>",
+        "| Head | x |\n| --- | --- |\n| plain | y |\n",
+    ),
+    (
+        "case30 nested layout frame dissolves recursively",
+        "<table><tr><td><h2>Outer</h2></td><td></td>"
+        "<td><table><tr><td><h3>Inner</h3></td><td></td><td><p>Deep</p></td></tr></table></td></tr></table>",
+        "## Outer\n\n### Inner\n\nDeep\n",
     ),
 ]
 
