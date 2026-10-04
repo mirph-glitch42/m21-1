@@ -137,6 +137,78 @@ split observed in B2 (lowercase month targets resolve, capitalized ones
 don't) is evidence the eGain anchor scheme is its own thing, independent
 of heading slugs — B2 and B3 are related but distinct work.
 
+## B4. Inline emphasis split into standalone paragraphs (goal-1 bug) — **open, root cause confirmed**
+
+**Symptom (user-reported 2026-10-04, with screenshots):** emphasized or
+bold inline text inside a sentence renders as its *own paragraph* with a
+blank line above and below, breaking the sentence into separate blocks.
+Example, current output L2714–L2720 (`### I.i.1.A.4.i. Definition:
+Initial Claim`):
+
+    An
+
+    *initial claim*
+
+    is a substantially complete claim for a benefit, other than a
+    supplemental claim, …
+
+whereas the source is the single sentence
+"An *initial claim* is a substantially complete claim …". This violates
+goal 1 (do not change the ORGANIZATION of the manual): inline emphasis
+has been promoted to block level.
+
+**Scale (measured on the regenerated manual):** **8,779** standalone
+emphasis blocks + **1,072** standalone bold blocks, each sandwiched
+between non-empty text above and below — **≈9,851 fragmented inline
+runs**. Other samples: `…an / *not* / intended…`, `…claims proc / *must*
+/ take…`, `…for the / *Example* / : The example…`, `**References** / :
+For more information…`.
+
+**Root cause (reproduced + confirmed 2026-10-04):** `_render_block_list`
+treats **every child** of an unwrapped container (`_UNWRAP_BLOCK` =
+`div`/`span`/`font`/`center`) — and every top-level fragment child — as
+an independent block. A bare text node becomes one block; an inline tag
+(`em`, `span`, …) becomes another. Reproduction:
+
+- `<p>An <em>initial claim</em> is a …</p>` → **1 block** (correct).
+- `<div>An <em>initial claim</em> is a …</div>` → **3 blocks** (bug).
+- `<div><span>An</span> <em>initial claim</em> <span>is a …</span></div>`
+  → **3 blocks** (bug).
+- top-level `An <em>initial claim</em> is a …` → **3 blocks** (bug).
+
+eGain mixes both structures (body text in `<p>` *and* in bare `<div>`),
+so the damage is widespread. `<p>`-wrapped content is unaffected; content
+sitting directly in a `div`/`span`/top-level is fragmented.
+
+**Blast radius:** the block dispatcher `_render_block_list` (~L101) and
+every block path that unwraps containers — including
+`_render_layout_frame` (B1) and `blockquote` rendering (both call
+`_render_block_list`). A fix therefore interacts with B1's output and
+must re-verify it. Existing TESTS cases that currently encode the
+fragmented output must be rewritten *first*.
+
+**Required process (governing skills):** full algorithm-records-keeper
+cycle — doc-first (new rule, e.g. "inline-run coalescing in block
+context" + a TESTS row), RED tests, then code, `make gate` green, one
+atomic commit. Not a tweak.
+
+**Fix direction (proposed, needs sign-off):** in block context,
+**coalesce consecutive inline children** (bare text nodes + inline tags
+`em`/`strong`/`span`/`a`/`b`/`i`/`u`/`code`/`sup`/`sub`/`s`/…) into a
+single inline-rendered paragraph; let only block-level children
+(`p`/`h1`–`h6`/`ul`/`ol`/`table`/`blockquote`/`pre`/`hr`) delimit
+blocks. Open sub-question: whether a lone emphasis that is itself a
+complete label (e.g. a standalone `**References**`) should stay
+standalone or join its neighbours — needs a precise rule + any enumerated
+exceptions.
+
+**Acceptance criteria:** the L2714 example renders as one sentence; the
+count of emphasis/bold blocks sandwiched between non-empty text above and
+below drops from ≈9,851 to ~0 (or to a small, enumerated set of
+genuinely standalone labels); text and organization unchanged; existing
+TESTS cases updated to the coalesced output; `make gate` green; doc +
+tests + code in one commit.
+
 ## Standing constraints (apply to all items)
 
 - The manual's TEXT and ORGANIZATION must not change — formatting only
