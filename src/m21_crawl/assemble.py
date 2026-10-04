@@ -1,4 +1,4 @@
-"""assemble: ordered document assembly + completeness check.
+"""assemble: ordered document assembly + completeness check + internal links.
 
 Turns the crawled, per-article Markdown into the final deliverable:
 
@@ -7,7 +7,12 @@ Turns the crawled, per-article Markdown into the final deliverable:
      order (never re-sorted);
   3. one ``## {name}`` section per article, optionally preceded by a
      ``> {breadcrumb}`` blockquote (the topic chain, root excluded) and
-     followed by the article body.
+     followed by the article body;
+  4. internal link resolution (final pass):
+     ``algorithms/internal-link-resolution.md`` — cross-article hyperlinks
+     (eGain article URLs) whose target id is in the manual become in-document
+     anchors of that article's ``## {name}`` heading (``heading_anchor``);
+     unknown ids, images, and external links stay verbatim.
 
 Guarantees (pinned by tests/test_assemble.py):
 
@@ -19,16 +24,21 @@ Guarantees (pinned by tests/test_assemble.py):
     ``algorithms/historical-rescinded-exclusion.md``);
   - an article carrying ``error`` renders the placeholder
     ``> [content unavailable: {error}]`` instead of its body;
-  - blocks joined by ``\\n\\n``; exactly one trailing ``\\n``.
-
-Assembly is deliberately trivial (documented in code, per the
-pragmatic-programmer skill; no separate algorithm doc — see the package
-docstring module list).
+  - blocks joined by ``\\n\\n``; exactly one trailing ``\\n``;
+  - internal link resolution is a pure, single-pass rewrite: it never
+    creates or removes links, only redirects known cross-article ids to
+    existing headings (doc invariants A/B/C).
 """
 
+import re
 from dataclasses import dataclass
 
 from .config import MANUAL_TITLE
+
+# eGain article-URL link destination (any host; mdconv already canonicalized
+# the shape — algorithms/html-to-markdown-section-extraction.md ``_rewrite_url``).
+# Group 2 is the article id: the canonical identity used for resolution.
+_ARTICLE_LINK = re.compile(r"\]\((https?://[^/\s)]+/system/ws/v\d+/ss/article/(\d+))\)")
 
 
 class CompletenessError(RuntimeError):
@@ -57,6 +67,33 @@ class Article:
     body_md: str = ""
     breadcrumb: str = ""
     error: str | None = None
+
+
+def heading_anchor(heading: str) -> str:
+    """GitHub/GFM anchor slug for a heading (internal-link-resolution.md 2.5).
+
+    Lowercase; keep Unicode letters/digits, spaces, hyphens; spaces → ``-``.
+    ``"M21-1, Part II - POA"`` → ``"m21-1-part-ii---poa"`` (the triple
+    hyphen from ``" - "`` is intentional — it matches the renderer).
+    """
+    kept = "".join(ch for ch in heading.lower() if ch.isalnum() or ch in " -")
+    return kept.replace(" ", "-")
+
+
+def _internalize_links(document: str, anchor_by_id: dict[str, str]) -> str:
+    """Rewrite known cross-article links to in-document anchors (doc C1–C7).
+
+    Unknown ids, images, external links, and every non-candidate byte pass
+    through verbatim (invariant A: identity recovery).
+    """
+
+    def _replace(match: re.Match[str]) -> str:
+        anchor = anchor_by_id.get(match.group(2))
+        if anchor is None:
+            return match.group(0)  # unknown id: keep the portal URL (C7)
+        return f"](#{anchor})"
+
+    return _ARTICLE_LINK.sub(_replace, document)
 
 
 def _dedupe_first_wins(articles: list[Article]) -> list[Article]:
@@ -109,4 +146,9 @@ def assemble(
     else:
         parts.append("## Table of Contents")
     parts.extend(_article_block(a) for a in deduped)
-    return "\n\n".join(parts) + "\n"
+    document = "\n\n".join(parts) + "\n"
+    # Final pass (after the gates): resolve cross-article hyperlinks to the
+    # headings this same list produced. Ids are unique post-dedupe; duplicate
+    # names share the first heading's slug (first-occurrence semantics, C4).
+    anchor_by_id = {a.id: heading_anchor(a.name) for a in deduped}
+    return _internalize_links(document, anchor_by_id)

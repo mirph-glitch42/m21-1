@@ -14,12 +14,21 @@ Contract (pinned by these byte-exact tests):
     ``> [content unavailable: {error}]`` instead of its body;
   - empty breadcrumb / empty body lines are omitted (no stray ``>`` or
     blank paragraphs);
-  - deterministic: same input, byte-identical output.
+  - deterministic: same input, byte-identical output;
+  - cross-article hyperlinks (eGain article URLs) whose target id is in the
+    manual are rewritten to in-document anchors of that article's ``## ``
+    heading; unknown ids, images, and external links stay verbatim
+    (algorithms/internal-link-resolution.md).
 """
+
+import re
 
 import pytest
 
-from m21_crawl.assemble import Article, CompletenessError, assemble
+from m21_crawl.assemble import Article, CompletenessError, assemble, heading_anchor
+
+# Synthetic portal ids and the live article-URL host (shape verified 2026-10-03).
+_LINK_BASE = "https://www.knowva.ebenefits.va.gov/system/ws/v11/ss/article/"
 
 
 def _articles(n: int) -> list[Article]:
@@ -150,3 +159,83 @@ def test_custom_title() -> None:
         title="Custom Manual",
     )
     assert out.startswith("# Custom Manual\n\n")
+
+
+# --- internal link resolution (algorithms/internal-link-resolution.md) ------
+
+
+def test_cross_article_link_resolves_to_anchor() -> None:
+    articles = [
+        Article(
+            id="554400000011111",
+            name="M21-1, Part I, Subpart i - Intro",
+            body_md=f"[see POA]({_LINK_BASE}554400000022222)\n",
+        ),
+        Article(id="554400000022222", name="M21-1, Part II - POA", body_md="POA body.\n"),
+    ]
+    out = assemble(articles, expected_count=2)
+    assert "[see POA](#m21-1-part-ii---poa)" in out
+    assert f"[see POA]({_LINK_BASE}554400000022222)" not in out
+
+
+def test_no_candidate_links_byte_identical() -> None:
+    body = "Plain text. [ext](https://www.ecfr.gov/current)\n"
+    article = Article(id="1", name="General", body_md=body)
+    out1 = assemble([article], expected_count=1)
+    out2 = assemble([article], expected_count=1)
+    assert out1 == out2
+    assert "[ext](https://www.ecfr.gov/current)" in out1
+
+
+def test_unknown_id_and_image_untouched() -> None:
+    body = f"[old]({_LINK_BASE}999)\n\n![d](https://www.knowva.ebenefits.va.gov/img/cpkm/x.png)\n"
+    out = assemble([Article(id="1", name="General", body_md=body)], expected_count=1)
+    assert f"[old]({_LINK_BASE}999)" in out
+    assert "![d](https://www.knowva.ebenefits.va.gov/img/cpkm/x.png)" in out
+
+
+def test_heading_anchor_real_name_shape() -> None:
+    assert heading_anchor("M21-1, Part II, Subpart iii - X") == "m21-1-part-ii-subpart-iii---x"
+    assert heading_anchor("General") == "general"
+    assert heading_anchor("VA's POA Rules") == "vas-poa-rules"
+
+
+def test_self_link_resolves() -> None:
+    body = f"[self]({_LINK_BASE}11)\n"
+    out = assemble([Article(id="11", name="General", body_md=body)], expected_count=1)
+    assert "[self](#general)" in out
+
+
+def test_duplicate_names_share_first_anchor() -> None:
+    articles = [
+        Article(
+            id="1",
+            name="General",
+            body_md=f"[to 2]({_LINK_BASE}2)\n",
+        ),
+        Article(id="2", name="General", body_md="Second general.\n"),
+    ]
+    out = assemble(articles, expected_count=2)
+    assert "[to 2](#general)" in out
+
+
+def test_all_resolved_anchors_exist_as_headings() -> None:
+    names = [
+        "M21-1, Part I, Subpart i, Chapter 1 - A",
+        "M21-1, Part II, Subpart iii - B",
+        "M21-1, Part V - C",
+    ]
+    articles = [
+        Article(
+            id=str(i),
+            name=name,
+            body_md=f"[a]({_LINK_BASE}{i}) [b]({_LINK_BASE}{1 + (i - 1) % 3})\n",
+        )
+        for i, name in enumerate(names, start=1)
+    ]
+    out = assemble(articles, expected_count=3)
+    headings = {
+        heading_anchor(line[3:].strip()) for line in out.splitlines() if line.startswith("## ")
+    }
+    anchors = set(re.findall(r"\]\(#([^)]+)\)", out))
+    assert anchors <= headings

@@ -40,7 +40,10 @@ VA Knowva eBenefits self-service portal and renders it as a single Markdown file
 5. `assemble.py` — stitches everything into one ordered document and verifies
    completeness with two gates: the listed article count matches the portal's
    own root total (truncation backstop), and the assembled count matches
-   listed − excluded (see `algorithms/historical-rescinded-exclusion.md`).
+   listed − excluded (see `algorithms/historical-rescinded-exclusion.md`);
+   then resolves cross-article hyperlinks to in-document section anchors,
+   keeping unknown targets on their portal URLs (see
+   `algorithms/internal-link-resolution.md`).
 
 ## Setup
 
