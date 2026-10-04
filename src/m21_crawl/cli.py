@@ -8,9 +8,12 @@ Wires the pipeline modules together:
       → per topic in pre-order that carries direct articles
         (``articleCount > 0`` — internal topics may carry articles too):
         ``articles.list_topic_articles`` → per article:
+        skip names marked Historical/Rescinded
+        (``articles.is_excluded_article`` — no fetch, no delay) →
         ``articles.get_article_content`` → ``mdconv.convert``
-      → ``assemble.assemble`` (completeness check vs the root's
-        ``articleTotalCount``)
+      → gate A: listed entries == the root's ``articleTotalCount``
+        (truncation backstop; skipping never decrements the listed count)
+      → ``assemble.assemble`` (gate B: assembled == listed − excluded)
       → deliverable file write.
 
 Exit codes: ``0`` = every article converted; ``1`` = deliverable written but
@@ -25,7 +28,7 @@ import time
 from collections.abc import Callable, Sequence
 from typing import Any
 
-from .articles import get_article_content, list_topic_articles
+from .articles import get_article_content, is_excluded_article, list_topic_articles
 from .assemble import Article, CompletenessError, assemble
 from .client import Client, HttpTransport
 from .config import (
@@ -98,17 +101,28 @@ def crawl_manual(
     delay: float = CRAWL_DELAY_SECONDS,
     sleep: Callable[[float], None] | None = None,
 ) -> tuple[str, int]:
-    """Crawl the complete manual; return ``(markdown, failure_count)``.
+    """Crawl the current manual; return ``(markdown, failure_count)``.
 
-    - expected article count = the root topic's ``articleTotalCount``; a
-      mismatch raises ``CompletenessError`` (from ``assemble``);
+    Articles marked Historical/Rescinded (see
+    ``articles.is_excluded_article``) are skipped: no content request, no
+    politeness delay. Completeness is checked with two gates (see
+    ``algorithms/historical-rescinded-exclusion.md`` §3):
+
+    - gate A (truncation): the LISTED entries across all topics must equal
+      the root topic's ``articleTotalCount``; a mismatch raises
+      ``CompletenessError``. Skipping never decrements the listed count, so
+      a silently truncated list still fails loudly;
+    - gate B (fetch/assemble): the assembled count must equal listed −
+      excluded; ``assemble`` raises ``CompletenessError`` on a mismatch;
+
     - articles are fetched in portal order (tree pre-order → listing order);
       every topic with direct articles (``articleCount > 0``) is fetched —
       internal topics may carry articles as well as children — and topics
       without direct articles trigger no article-list request; nothing is
       ever re-sorted;
     - ``sleep(delay)`` runs before every article content fetch except the
-      first (politeness);
+      first (politeness) — marked articles are never fetched, so they add no
+      delay;
     - an article whose HTML cannot be converted is recorded as
       ``Article.error`` (rendered as a placeholder by ``assemble``) and
       counted in the returned failure count; it does not abort the crawl.
@@ -127,11 +141,19 @@ def crawl_manual(
 
     articles: list[Article] = []
     failures = 0
+    listed = 0
+    excluded = 0
     first = True
     for node in nodes:
         if node.article_count == 0:
             continue  # no direct articles (e.g. the root) — no list request
         for article_id, name in _article_entries(client, node.id):
+            listed += 1
+            if is_excluded_article(name):
+                # Marked Historical/Rescinded: counted for gate A but never
+                # fetched — no content request, no politeness delay.
+                excluded += 1
+                continue
             if not first:
                 sleeper(delay)
             first = False
@@ -160,7 +182,13 @@ def crawl_manual(
                 )
             )
 
-    return assemble(articles, expected_count=expected), failures
+    # Gate A (truncation): the portal's complete list must have been seen.
+    # Skipping marked articles never decrements `listed`, so this stays loud.
+    if listed != expected:
+        raise CompletenessError(expected, listed)
+    # Gate B (fetch/assemble): every retained article was converted or
+    # placeholdered; `assemble` raises CompletenessError on a mismatch.
+    return assemble(articles, expected_count=listed - excluded), failures
 
 
 def main(argv: Sequence[str] | None = None) -> int:

@@ -19,6 +19,7 @@ Portal contract (verified live 2026-10-02; paging verified 2026-10-03):
 Neither function re-sorts: callers rely on the API's order.
 """
 
+import re
 from typing import Any
 
 from .client import Client
@@ -29,6 +30,21 @@ from .config import ENDPOINT_ARTICLE, ENDPOINT_ARTICLE_LIST, LANG, PORTAL_ID, US
 #: guaranteed to be honored; a larger value would risk an unverified cap.
 #: Cost of the small page: ≤ 1 extra call for a topic with > 10 articles.
 PAGE_SIZE = 10
+
+_EXCLUDED_RE = re.compile(r"(?<![A-Za-z])(?:Historical|Rescinded)$")
+
+
+def is_excluded_article(name: str) -> bool:
+    """Return True if a portal article name is marked Historical or Rescinded.
+
+    The marker is a name suffix only — the portal carries no structural field
+    to filter on (verified live: all 785 entries are structurally identical).
+    See `algorithms/historical-rescinded-exclusion.md` §2.1. Match the whole
+    word `Historical` or `Rescinded` (case-sensitive, as the portal marks
+    them), preceded by a non-letter, at the very end of the name. A mid-name
+    occurrence (e.g. "…Historical Guidance on …") is NOT a marker and is kept.
+    """
+    return _EXCLUDED_RE.search(name) is not None
 
 
 def _paging_total(data: dict[str, Any], topic_id: str) -> tuple[int, int]:

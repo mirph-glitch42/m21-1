@@ -33,10 +33,14 @@ VA Knowva eBenefits self-service portal and renders it as a single Markdown file
 1. `session.py` — POSTs an anonymous login and keeps the `X-egain-session` token.
 2. `tree.py` — crawls the topic hierarchy level-by-level (Manual → Part → Subpart →
    Chapter), deduplicating by topic id, preserving portal (manual) order.
-3. `articles.py` — lists each chapter's articles (in portal order) and fetches content.
+3. `articles.py` — lists each topic's articles (in portal order); skips articles
+   whose names are marked **Historical** or **Rescinded** (never fetched) and
+   fetches content for the rest.
 4. `mdconv.py` — converts each article's rich HTML to clean GitHub-Flavored Markdown.
 5. `assemble.py` — stitches everything into one ordered document and verifies
-   completeness (article count matches the portal's own totals).
+   completeness with two gates: the listed article count matches the portal's
+   own root total (truncation backstop), and the assembled count matches
+   listed − excluded (see `algorithms/historical-rescinded-exclusion.md`).
 
 ## Setup
 

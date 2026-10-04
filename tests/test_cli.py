@@ -355,3 +355,105 @@ def test_default_out_under_output(
     assert rc == 0
     out = tmp_path / "output" / config.MANUAL_FILENAME
     assert out.read_text(encoding="utf-8") == EXPECTED_MD
+
+
+# Fixture portal for Historical/Rescinded skipping
+# (algorithms/historical-rescinded-exclusion.md): 4 listed articles, 2 of
+# them marked. Live marker shapes are used verbatim (incl. one irregular-
+# spacing variant).
+ARTICLES_T100_SKIP = [
+    {"id": 111, "name": "Part 1 Article A"},
+    {"id": 112, "name": "Part 1 Article B -  Historical"},
+    {"id": 113, "name": "Part 1 Article C - Rescinded"},
+]
+ARTICLES_T101_SKIP = [{"id": 222, "name": "Chapter Article"}]
+
+EXPECTED_MD_SKIP = """\
+# M21-1 Adjudication Procedures Manual
+
+## Table of Contents
+
+1. Part 1 Article A
+2. Chapter Article
+
+## Part 1 Article A
+
+> Part 1
+
+First body.
+
+## Chapter Article
+
+> Part 1 › Chapter 1
+
+Third body.
+"""
+
+
+def make_skip_tree(total: int) -> dict:
+    """Fixture tree for the skip tests: 4 listed articles across 2 topics."""
+    return {
+        "topicTree": [
+            _wrapper(
+                int(ROOT),
+                "M21-1 Adjudication Procedures Manual",
+                None,
+                0,
+                total,
+                [
+                    _wrapper(
+                        100,
+                        "Part 1",
+                        int(ROOT),
+                        3,
+                        3,
+                        [_wrapper(101, "Chapter 1", 100, 1, 1)],
+                    ),
+                ],
+            ),
+        ],
+        "callInfo": {},
+    }
+
+
+def test_crawl_manual_skips_historical_rescinded() -> None:
+    """Marked articles are never fetched and never appear in the output.
+
+    The two completeness gates still pass: listed (4) == root total (4);
+    assembled (2) == listed − excluded (2).
+    """
+    fake = FakeClient(
+        make_skip_tree(4),
+        articles_by_topic={"100": ARTICLES_T100_SKIP, "101": ARTICLES_T101_SKIP},
+    )
+    sleeps: list[float] = []
+    markdown, failures = cli.crawl_manual(fake, delay=1.0, sleep=sleeps.append)
+    assert failures == 0
+    assert markdown == EXPECTED_MD_SKIP
+    # Only the two retained articles were fetched — no content request for
+    # the marked ones (invariant I1).
+    content_calls = [p for p, _ in fake.calls if p.startswith("/ws/v11/ss/article/")]
+    assert content_calls == [
+        config.ENDPOINT_ARTICLE.format(article_id="111"),
+        config.ENDPOINT_ARTICLE.format(article_id="222"),
+    ]
+    # Politeness delay paces real fetches only: 2 fetches → exactly 1 delay.
+    assert sleeps == [1.0]
+
+
+def test_completeness_gate_a_survives_skipping() -> None:
+    """A truncated list must still fail, even with marked articles present.
+
+    Root claims 5 articles but only 4 are listed (1 of them marked). Gate A
+    compares LISTED against the root total, so skipping cannot mask
+    truncation (invariant I3). The old single gate (assembled == root −
+    excluded) would have passed here — that is why the gate was split.
+    """
+    fake = FakeClient(
+        make_skip_tree(5),
+        articles_by_topic={"100": ARTICLES_T100_SKIP, "101": ARTICLES_T101_SKIP},
+    )
+    with pytest.raises(CompletenessError) as excinfo:
+        cli.crawl_manual(fake)
+    assert excinfo.value.expected == 5
+    assert excinfo.value.actual == 4

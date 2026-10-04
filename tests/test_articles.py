@@ -9,7 +9,11 @@ exactly the defect that dropped 45 of 785 articles).
 """
 
 from m21_crawl import config
-from m21_crawl.articles import get_article_content, list_topic_articles
+from m21_crawl.articles import (
+    get_article_content,
+    is_excluded_article,
+    list_topic_articles,
+)
 
 
 def paging_info(count: int, max_range: int, range_start: int = 0) -> dict:
@@ -192,3 +196,49 @@ def test_get_article_content_missing_content_raises() -> None:
         pass
     else:
         raise AssertionError("expected ValueError")
+
+
+def test_is_excluded_article_markers() -> None:
+    """Every live marker shape (full 785-entry scan, 2026-10-03) is excluded.
+
+    See `algorithms/historical-rescinded-exclusion.md` §2.1: 290 ` - Historical`,
+    48 ` - Rescinded`, and 5 with irregular dash spacing (3 ` -  Historical`,
+    2 `K- Historical`) — all must match despite the spacing.
+    """
+    names = [
+        "M21-1, Part I, Chapter 1, Section A - Historical",
+        "M21-1, Part I, Chapter 2, Section E - Rescinded",
+        "M21-1, Part I, Chapter 4 -  Historical",  # two spaces (live)
+        # no space after the dash (live):
+        "M21-1, Part III, Subpart iv, Chapter 4, Section K- Historical",
+        "M21-1, Part III, Subpart iii, Chapter 1, Section E -  Historical",  # two spaces (live)
+        "Historical",  # the marker is the entire name
+        "Rescinded",
+    ]
+    for name in names:
+        assert is_excluded_article(name), name
+
+
+def test_is_excluded_article_retained_names() -> None:
+    """The marker only counts as a whole word at the END of the name.
+
+    Three live *current* articles contain 'Historical' mid-name — a 'contains'
+    rule would wrongly drop them. Case-sensitive: the portal's marking is
+    title-case; no live counterexample exists (pinned here).
+    """
+    names = [
+        # live current articles (the word is not at the end):
+        "M21-1, Part II, Subpart iii, Chapter 2, Section H - Historical "
+        "Guidance on Formal Applications and Informal Claims Received "
+        "Prior to March 24, 2015",
+        "M21-1, Part V, Subpart ii, Chapter 4, Section B - Historical "
+        "Guidance on the Assignment of Effective Dates",
+        "M21-1, Part X, Subpart ii, Chapter 6, Section H - Historical "
+        "Information on Estate Limitations",
+        # different word / case / plain names:
+        "M21-1, Part I, Chapter 1, Section A - Historically",
+        "M21-1, Part I, Chapter 1, Section A - historical",
+        "M21-1, Part I, Chapter 1, Section A",
+    ]
+    for name in names:
+        assert not is_excluded_article(name), name

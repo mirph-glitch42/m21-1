@@ -14,7 +14,9 @@ Guarantees (pinned by tests/test_assemble.py):
   - deterministic: same input, byte-identical output;
   - dedupe by article id, first occurrence wins (order preserved);
   - ``len(deduped) != expected_count`` raises ``CompletenessError``
-    (``expected_count`` comes from the root topic's ``articleTotalCount``);
+    (the caller — ``cli.crawl_manual`` — passes the expected count as
+    listed − excluded; see
+    ``algorithms/historical-rescinded-exclusion.md``);
   - an article carrying ``error`` renders the placeholder
     ``> [content unavailable: {error}]`` instead of its body;
   - blocks joined by ``\\n\\n``; exactly one trailing ``\\n``.
