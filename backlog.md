@@ -237,9 +237,11 @@ CI invokes `ruff` directly.
 
 **Verification:** `make PY=python3 doc-index-check` green; CI
 simulation (repo copy **without** `.venv`, plain `python3` on PATH)
-green; full `make gate` green locally.
+green; full `make gate` green locally; **CI run 37375552531** on
+`main` (commit `1fc4458`) — **success, all steps green**, including the
+previously failing `Algorithm doc index check`.
 
-**Acceptance:** CI run on `main` green end-to-end (all 7 steps).
+**Acceptance:** met.
 
 ## Standing constraints (apply to all items)
 
