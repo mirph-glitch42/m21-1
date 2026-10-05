@@ -1,5 +1,8 @@
 # Single canonical task runner — every gate stage has one entrypoint.
-PY ?= .venv/bin/python
+# Local dev uses the pinned venv; CI installs the locked deps into the
+# system interpreter (there is no .venv on the runner), so PY falls
+# back to the PATH python when the local venv is absent.
+PY ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 VENV ?= .venv
 
 setup: ## Create venv, install pinned deps, wire git hooks

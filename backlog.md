@@ -5,7 +5,7 @@ session can start without re-deriving context: problem (with measured
 evidence), blast radius, the process the governing skills require, open
 decisions, and acceptance criteria.
 
-Order = user priority. Status: **B1 done** this session; **B2, B3 open**.
+Order = user priority. Status: **B1, B5 done**; **B2, B3, B4 open**.
 
 ## B1. Replace eGain layout tables with standard Markdown layout — **DONE (2026-10-04)**
 
@@ -208,6 +208,38 @@ below drops from ≈9,851 to ~0 (or to a small, enumerated set of
 genuinely standalone labels); text and organization unchanged; existing
 TESTS cases updated to the coalesced output; `make gate` green; doc +
 tests + code in one commit.
+
+## B5. GitHub CI gate failure — **DONE (2026-10-05)**
+
+**Problem (user-reported 2026-10-05):** the `ci` workflow on `main`
+fails even though the local gate is fully green (format ✓, lint ✓,
+doc-index ✓, 126 tests ✓, gitleaks staged ✓) — i.e. a
+CI-environment-specific failure. User directive: **fix the CI gate
+before any more pushes.**
+
+**Root cause (confirmed):** `.github/workflows/ci.yml` is the only
+place the doc-index stage is invoked *through make* (`make
+doc-index-check`); the Makefile hard-wired `PY ?= .venv/bin/python`.
+CI does `pip install -r requirements.lock` into the system interpreter
+(Python 3.12, `ubuntu-latest`) — there is no `.venv` on the runner, so
+the recipe shelled out to a nonexistent binary. Every other CI stage
+invokes `ruff`/`pytest`/`gitleaks` directly, which is why they were
+unaffected.
+
+**Fix:** Makefile — `PY` now falls back to the PATH `python3` when
+`.venv/bin/python` is absent:
+`PY ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)`.
+Safe because `scripts/build_index.py` is stdlib-only (argparse, re,
+sys). Local behavior unchanged (venv present → venv python); CI uses
+the interpreter holding the locked deps. Note: `setup`, `format*`,
+`lint` still use `$(VENV)` — deliberately: `setup` is local-only and
+CI invokes `ruff` directly.
+
+**Verification:** `make PY=python3 doc-index-check` green; CI
+simulation (repo copy **without** `.venv`, plain `python3` on PATH)
+green; full `make gate` green locally.
+
+**Acceptance:** CI run on `main` green end-to-end (all 7 steps).
 
 ## Standing constraints (apply to all items)
 
