@@ -5,7 +5,7 @@ session can start without re-deriving context: problem (with measured
 evidence), blast radius, the process the governing skills require, open
 decisions, and acceptance criteria.
 
-Order = user priority. Status: **B1, B2, B3, B5 done**; **B4 open — direction signed off 2026-10-06 (inline coalescing), design finalized (D7), implementation pending**; **B6 open — new 2026-10-06, root cause and target population verified in raw HTML**.
+Order = user priority. Status: **B1, B2, B3, B5 done**; **B4 open — direction signed off 2026-10-06 (inline coalescing), design finalized (D7), implementation pending**; **B6 open — new 2026-10-06, root cause and target population verified in raw HTML**; **B7 open — new 2026-10-06, internal links in the generated TOC, design drafted**.
 
 ## B1. Replace eGain layout tables with standard Markdown layout — **DONE (2026-10-04)**
 
@@ -472,6 +472,60 @@ in dissolved frames surface as real GFM tables; the protected set
 multi-row tables) is byte-identical; the single-cell decision recorded
 with any kept tables enumerated; `make gate` green; doc + tests + code in
 one atomic commit; text and organization unchanged.
+
+## B7. TOC entries lack internal links — **open, new 2026-10-06**
+
+**User report (verbatim, 2026-10-06):** "Add internal links to the
+generated TOC at the beginning of the document."
+
+**Current state (verified at `58c939e`):** `assemble.py` L207 renders the
+TOC as a plain numbered list — `f"{i}. {a.name}"` — so all 442 entries are
+inert text in every renderer. The B3 anchor map already computes each
+article's final GitHub slug in document order (H1 title → TOC H2 → each
+article's H2 + emitted body headings, `Slugger` replica; `anchor_by_id` at
+~L223–227), but it is built *after* the document string is assembled and is
+used only by the `_internalize_links` pass — the TOC lines never see it.
+All 442 article names are unique (B1 verification), so every TOC entry has
+exactly one unambiguous target: its own `## {name}` H2.
+
+**Proposed change (finalize in the doc cycle):** hoist the
+`anchor_by_id` computation to *before* TOC rendering (it depends only on
+the deduped article list and the emitted bodies — no circularity: the TOC
+itself contributes no headings to the slug walk), and render TOC entries
+as `{i}. [{a.name}](#{anchor_by_id[a.id]})`. Numbering, order, and entry
+text stay byte-identical — only the link wrapping is added (goal 1: no
+text or organization change).
+
+**Interaction to verify in the implementation cycle:**
+`_internalize_links` runs over the final document *including* the TOC.
+Confirm idempotency on already-linked TOC entries (link text matches an
+article name; target already that article's own slug) — it must not
+double-rewrite, drop, or otherwise mutate them.
+
+**Algorithm doc:** `internal-link-resolution.md` (v0.3.0 → **v0.4.0**) —
+TOC links are in-document section links built from the same anchor map;
+extend that doc rather than create a parallel source of truth. Full
+algorithm-records-keeper cycle: doc first, RED tests (TOC cases in
+`tests/test_assemble.py` — note L66 currently asserts the plain, unlinked
+`toc == "1. Article 1\n2. Article 2"` and must move with the change),
+`make gate` green, one atomic commit (doc + tests + code + registry row).
+
+**Blast radius:** `src/m21_crawl/assemble.py` (TOC rendering ~L207–212 +
+anchor pass ~L217–228); `tests/test_assemble.py`;
+`algorithms/internal-link-resolution.md` + `algorithms/INDEX.md` registry
+row.
+
+**Ordering:** after B6 — B7 is independent of B4/B6 (it does not touch
+`mdconv`), but stays last by arrival order (user directive "Proceed in
+order on Backlog").
+
+**Acceptance criteria:** every TOC entry is a Markdown link whose `#`
+target resolves to that article's own `## ` H2 (B3 document-order slugger
+dedup context included); TOC numbering/order/text unchanged;
+`_internalize_links` idempotent on the TOC; `make gate` green; doc +
+tests + code + registry in one atomic commit; on the regenerated manual
+all 442 TOC links verified against a document-order anchor census (0 dead
+TOC links).
 
 ## Standing constraints (apply to all items)
 
