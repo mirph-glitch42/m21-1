@@ -5,7 +5,7 @@ session can start without re-deriving context: problem (with measured
 evidence), blast radius, the process the governing skills require, open
 decisions, and acceptance criteria.
 
-Order = user priority. Status: **B1, B3, B5 done**; **B2 code done — manual verification pending**; **B4 open**.
+Order = user priority. Status: **B1, B3, B5 done**; **B2 code + verification done (2026-10-06) — closure pending user decision (112 source-dead links)**; **B4 open (needs sign-off)**.
 
 ## B1. Replace eGain layout tables with standard Markdown layout — **DONE (2026-10-04)**
 
@@ -68,9 +68,43 @@ itself was user-approved.
 commit. **Remaining B1-adjacent residue = the 270 nested-in-cell data
 tables**, which is the same surface B2/B3 touch.
 
-## B2. Dead intra-article anchors (`#1a`, `#RM`, …) — **code DONE 2026-10-05 (commit `540581e`); manual verification pending network**
+## B2. Dead intra-article anchors (`#1a`, `#RM`, …) — **code DONE (`540581e`); verification DONE 2026-10-06 — closure pending user decision**
 
 **Completion note (2026-10-05):** Full algorithm-records-keeper cycle completed — doc bumped to v0.4.0 (D6 named-anchor preservation + per-article `art_{id}_` namespaces), 8 new/rewritten TESTS cases (case 27 + cases 31–36 + 4 namespaced-group tests), `mdconv.py` v0.4.0 (544 L, 136 tests green). `make gate` green. Committed atomically as `540581e`. **Remaining:** eGain network was down (connection refused) at completion time, so the manual could not be regenerated and the dead-fragment census (acceptance criterion: 0 dead intra-article fragments) is **pending network recovery**. Re-run `make crawl` + the census script (`scratchpads/9u/analyze_dead.py`, adapted for `art_{id}_frag` markers) once eGain is reachable.
+
+**Census result (2026-10-06):** eGain was reachable again; `make crawl`
+regenerated the manual (14,105,274 bytes, 0 failed articles, exit 0). Full
+link census of the regenerated manual: **23,091** internal `#` links over
+**9,897** unique fragments; **0 dead bare fragments** (all resolve to
+document-order heading slugs). Namespaced `art_{id}_frag` links
+cross-referenced against live eGain source HTML (106 articles fetched):
+**110 dead fragments / 112 links — all Category D, i.e. the anchor does not
+exist in the article's source HTML at all** (portal-context references:
+`#top`×87, `#Top`×5, `#January`, `#Overview`, and 16 short numeric codes such
+as `#3d`). **Zero anchors dropped by `mdconv` (Category B: 0)** and **zero
+lost to the D6 live-link limitation (Category C: 0)** — the converter is
+lossless on named anchors. These 112 links were already dangling pre-B2 (bare
+`#top` etc. were dead then too); B2 only namespaced them.
+
+**Census false-positive correction:** a first-pass check counting only
+`<a id="…">` markers reported 168 dead `art_*` fragments / 214 links. That
+overcounts: **GitHub officially supports `<a name="…">` as a `#` target**
+(GitHub docs, "Basic writing and formatting syntax" → Custom anchors; see
+also GitHub discussion #50962). Counting both `id` and `name` markers, **58
+of those fragments are live on GitHub** (emitted name-only). True dead set =
+the 110 fragments / 112 Category-D links above.
+
+**Open decision (BLOCKS closing B2):** the written acceptance — "0 dead
+intra-article fragments" — is strictly unmet by the 112 source-dead links,
+and no converter change can make a target exist that isn't in the source:
+1. **Amend B2 acceptance** to "0 dead fragments *whose anchor exists in
+   source*" (all such now live) and record the ~112 portal-anchor links as a
+   known source-data limitation. *(Recommended.)*
+2. **Re-target policy** (needs sign-off + full doc→tests→code cycle): rewrite
+   unresolvable `#frag` links to a live target.
+3. **Portability hardening** (optional, separate cycle): also emit `id=` when
+   the source anchor is name-only, for renderers that honor only `id`
+   (GitHub works either way).
 
 **Problem (measured 2026-10-04 on the B1-regenerated manual):** eGain's
 HTML carries named anchor positions (`<a name="1a">`, `id="RM"`, …)
