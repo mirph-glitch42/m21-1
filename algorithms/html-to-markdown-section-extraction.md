@@ -4,12 +4,12 @@
 id	start_line	end_line
 INDEX_BLOCK	3	13
 METADATA	15	36
-THEORY	37	213
-PSEUDOCODE	214	438
-WALKTHROUGH	439	521
-IMPLEMENTATION	522	624
-TESTS	625	689
-REFERENCES	690	705
+THEORY	37	246
+PSEUDOCODE	247	527
+WALKTHROUGH	528	620
+IMPLEMENTATION	621	730
+TESTS	731	809
+REFERENCES	810	825
 <!-- INDEX:END -->
 
 <!-- SECTION:METADATA -->
@@ -19,14 +19,14 @@ REFERENCES	690	705
 |---|---|
 | Name | Rich HTML → Markdown block converter for eGain article content |
 | Slug | html-to-markdown-section-extraction |
-| Version | 0.3.0 |
+| Version | 0.4.0 |
 | Status | implemented |
 | Author | Bionic agent (on behalf of murphyjj) |
 | Created | 2026-10-02 |
-| Last modified | 2026-10-04 |
-| Status history | 0.1.0 (2026-10-02): initial draft; 0.2.0 (2026-10-03): implemented in src/m21_crawl/mdconv.py; 0.3.0 (2026-10-04): layout-frame dissolution (D5) — tables whose rows all lead with a heading dissolve into real headings + block content; TESTS case 13 rewritten, cases 26–30 added |
+| Last modified | 2026-10-05 |
+| Status history | 0.1.0 (2026-10-02): initial draft; 0.2.0 (2026-10-03): implemented in src/m21_crawl/mdconv.py; 0.3.0 (2026-10-04): layout-frame dissolution (D5) — tables whose rows all lead with a heading dissolve into real headings + block content; TESTS case 13 rewritten, cases 26–30 added; 0.4.0 (2026-10-05): named-anchor preservation with per-article namespaces (D6) — an ``<a>`` that carries a non-empty ``id``/``name`` and no usable ``href`` is emitted as a raw-HTML marker element at its source position (hoisted to its own line before a heading), in-article ``#fragment`` links are rewritten to the matching ``art_{id}_`` namespace so the assembled manual keeps unique ids, and a layout label cell's non-heading content is no longer silently dropped; TESTS case 27 rewritten, cases 31–36 added |
 | Languages | Python 3.12 (implementation); pseudocode is language-agnostic |
-| Implementation location | src/m21_crawl/mdconv.py — HtmlConversionError L56–63; _parse L65–68; convert L70–96; block context L98–165; inline context L167–243; tables L245–393 (layout frames D5: L269–331); lists L395–423; normalization and URLs L425–466 (v0.3.0, 2026-10-04) |
+| Implementation location | src/m21_crawl/mdconv.py — HtmlConversionError L62–69; _parse L71–74; convert L76–106; block context L108–182; inline context L184–265; tables L267–426 (layout frames D5: L288–361); lists L428–456; normalization, named anchors (D6), and URLs L458–544 (v0.4.0, 2026-10-05) |
 | Time complexity | O(C) — C = characters of input HTML (single pass over the parsed tree) |
 | Space complexity | O(C) — parsed tree + output string |
 | Determinism | deterministic (no timestamps, no randomness, fixed BASE_URL constant) |
@@ -200,6 +200,39 @@ The implementation therefore deviates as follows (all pinned by tests):
   guarantees no text is ever dropped. The classification is a pure structural
   read of the tree, so totality and determinism are preserved (TESTS case 13,
   cases 26–30).
+- **D6 — Named anchors are preserved, namespaced per article.** eGain marks
+  in-document jump targets with ``<a>`` elements that carry an ``id`` and/or
+  ``name`` and **no usable ``href``** — most often wrapping a section mark's
+  trailing punctuation (TESTS case 27: ``<a id="1a" name="1a">.</a>`` inside
+  the label heading) or standing alone between blocks (``<a name="top"></a>``).
+  The old rendering dropped the marker while keeping the ``#1a``/``#top`` links
+  that point at it, leaving ~13,134 links dangling in the assembled manual
+  (backlog B2). The implementation now recognizes a *named anchor* — an ``<a>``
+  whose ``id`` and/or ``name`` is non-empty and whose ``href`` rewrites to
+  ``None`` — and emits it as a **raw-HTML marker element**
+  ``<a id="…" name="…"></a>`` carrying whichever identifier(s) are present
+  (both, when both are). The marker is **namespaced** with the article prefix
+  ``art_{article_id}_`` (empty when no ``article_id`` is supplied, e.g. unit
+  tests): bare preservation would duplicate ids such as ``1a`` across the
+  ~400 articles and ``#1a`` would silently resolve to the *first* article's
+  section — worse than dead. Fragment-only ``href``s (``#top``, ``#1a`` — but
+  never the ``#`` null link) are rewritten to the same namespace, so every
+  in-article link targets its own article's anchor. Emission context: inside a
+  heading or a layout label the marker is **hoisted** to its own block line
+  immediately before the heading (inline raw HTML inside an ATX heading is the
+  least renderer-portable position, so the heading's *text* — including the
+  wrapped punctuation — renders verbatim and the marker sits above it); in
+  paragraph / list / cell inline context the marker is emitted in place,
+  immediately before the anchor's own text; a named anchor that is itself a
+  top-level block emits the marker as its own block followed by its inner
+  blocks. An ``<a>`` **with** a usable ``href`` is a link: the link rendering
+  wins and any ``id``/``name`` is dropped (documented limitation, 5.2). The
+  layout-frame label cell additionally renders any non-heading content after
+  the heading (D5 rendered the heading only), so an anchor sibling of the
+  label heading is preserved instead of silently dropped (goal 1: never drop
+  text; TESTS case 36). The classification is a pure attribute + structural
+  read of the tree, so totality and determinism are preserved (TESTS case 27,
+  cases 31–36).
 
 ### 2.7 Error model (summary)
 
@@ -227,33 +260,38 @@ function convert(html, base_url, article_id="") -> str:
         soup <- parse_html(html)            # lenient tree parse (lxml)
     except Exception as cause:
         raise HtmlConversionError(article_id, cause)
-    blocks <- render_block_list(soup.contents, base_url)
+    ns <- "art_" + article_id + "_" if article_id != "" else ""   # D6
+    blocks <- render_block_list(soup.contents, base_url, ns)
     blocks <- [b for b in blocks if b != ""]
     if blocks is empty:
         return ""
     return join(blocks, "\n\n") + "\n"
 
 # --- block context ---------------------------------------------------------
-function render_block_list(children, base_url) -> list[str]:
+function render_block_list(children, base_url, ns) -> list[str]:
     blocks <- []
     for child in children:
         if child is text:
             t <- normalize_text(child)
             if t != "": blocks.append(t)                # rule E11
         else if child.name in {h1..h6}:
+            for m in collect_named_anchors(child, base_url, ns):  # D6: hoist to own lines
+                blocks.append(m)
             level <- int(child.name[1])                 # 1..6; clamp to 1..6
-            blocks.append(("#" * level) + " " + render_inline_children(child, base_url))
+            t <- render_inline_children(child, base_url, ns, anchor_mode="text")
+            if t != "":
+                blocks.append(("#" * level) + " " + t)
         else if child.name == "p":
-            t <- render_inline_children(child, base_url)
+            t <- render_inline_children(child, base_url, ns)
             if t != "": blocks.append(t)
         else if child.name in {ul, ol}:
-            blocks.append(render_list(child, base_url))
+            blocks.append(render_list(child, base_url, ns))
         else if child.name == "table":
-            blocks.append(render_table(child, base_url))
+            blocks.append(render_table(child, base_url, ns))
         else if child.name == "hr":
             blocks.append("---")
         else if child.name == "blockquote":
-            inner <- render_block_list(child.children, base_url)
+            inner <- render_block_list(child.children, base_url, ns)
             if inner is non-empty:
                 body <- join(inner, "\n\n")
                 blocks.append(prefix_every_line(body, "> "))
@@ -262,26 +300,30 @@ function render_block_list(children, base_url) -> list[str]:
             fence <- "```" if code does not contain "```" else "````"
             blocks.append(fence + "\n" + code + "\n" + fence)
         else if child.name in {a}:
-            if has_blockish_descendant(child) or render_inline_children(child, base_url) == "":
-                blocks.extend(render_block_list(child.children, base_url))  # link dropped
+            m <- anchor_marker(child, base_url, ns)     # D6: None unless a named anchor
+            if m is not None:
+                blocks.append(m)                        # marker as its own block line
+                blocks.extend(render_block_list(child.children, base_url, ns))
+            else if has_blockish_descendant(child) or render_inline_children(child, base_url, ns) == "":
+                blocks.extend(render_block_list(child.children, base_url, ns))  # link dropped
             else:
-                url <- rewrite_url(attr(child,"href"), base_url)
+                url <- rewrite_url(attr(child,"href"), base_url, ns)
                 if url is not None:
-                    blocks.append("[" + render_inline_children(child, base_url) + "](" + url + ")")
+                    blocks.append("[" + render_inline_children(child, base_url, ns) + "](" + url + ")")
                 else:
-                    blocks.append(render_inline_children(child, base_url))
+                    blocks.append(render_inline_children(child, base_url, ns))
         else if child.name in UNWRAP_BLOCK:
-            blocks.extend(render_block_list(child.children, base_url))      # container
+            blocks.extend(render_block_list(child.children, base_url, ns))      # container
         else if child is a tag (unknown or inline tag in block position):
-            t <- render_inline_children(child, base_url)
+            t <- render_inline_children(child, base_url, ns)
             if t != "": blocks.append(t)
     return blocks
 
 # --- inline context --------------------------------------------------------
-function render_inline_children(el, base_url) -> str:
+function render_inline_children(el, base_url, ns, anchor_mode="inline") -> str:
     out <- ""
     for child in el.children:
-        piece <- render_inline_piece(child, base_url)
+        piece <- render_inline_piece(child, base_url, ns, anchor_mode)
         out <- join_inline(out, piece)      # rule E8
     return out
 
@@ -292,45 +334,49 @@ function join_inline(left, right) -> str:
         return left + " " + right
     return left + right
 
-function render_inline_piece(child, base_url) -> str:
+function render_inline_piece(child, base_url, ns, anchor_mode="inline") -> str:
     if child is text: return normalize_text(child)
     name <- child.name
-    if name in {b, strong}:      return wrap(render_inline_children(child, base_url), "**")
-    if name in {i, em}:          return wrap(render_inline_children(child, base_url), "*")
-    if name in {s, strike, del}: return wrap(render_inline_children(child, base_url), "~~")
+    if name in {b, strong}:      return wrap(render_inline_children(child, base_url, ns, anchor_mode), "**")
+    if name in {i, em}:          return wrap(render_inline_children(child, base_url, ns, anchor_mode), "*")
+    if name in {s, strike, del}: return wrap(render_inline_children(child, base_url, ns, anchor_mode), "~~")
     if name == "code":           return "`" + text_content(child) + "`" if text_content(child) != "" else ""
     if name == "a":
-        inner <- render_inline_children(child, base_url)
-        url   <- rewrite_url(attr(child, "href"), base_url)
-        if url is not None:
+        inner <- render_inline_children(child, base_url, ns, anchor_mode)
+        url   <- rewrite_url(attr(child, "href"), base_url, ns)
+        if url is not None:                       # a link: its id/name are dropped (D6)
             if inner == "": inner <- url          # E7: link with no text uses its URL
             return "[" + inner + "](" + url + ")"
-        return inner                              # no usable href: plain text
+        m <- anchor_marker(child, base_url, ns)   # D6: None unless a named anchor
+        if m is not None:
+            if anchor_mode == "text": return inner    # marker hoisted by the caller
+            return m + inner                          # inline: marker then anchor text
+        return inner                              # no usable href, no id/name: plain text
     if name == "br": return " "                   # E9
     if name == "img":
         src <- attr(child, "src"); if src is None: return ""
-        return "![ " ... -> "!" + "[" + attr(child,"alt") + "](" + rewrite_url(src, base_url) + ")"
+        return "![ " ... -> "!" + "[" + attr(child,"alt") + "](" + rewrite_url(src, base_url, ns) + ")"
     if name in {ul, ol}:                                # list in inline position (cell)
-        items <- [normalize_text(render_inline_piece(li, base_url))
+        items <- [normalize_text(render_inline_piece(li, base_url, ns, anchor_mode))
                   for li in all li descendants in document order]
         return join([i for i in items if i != ""], "; ")
-    if name == "table": return render_table_inline(child, base_url)
+    if name == "table": return render_table_inline(child, base_url, ns)
     if name in {h1..h6, p, div, span, font, u, center, small, big, sup, sub, blockquote}:
-        return render_inline_children(child, base_url)   # unwrap; heading level lost in cells
+        return render_inline_children(child, base_url, ns, anchor_mode)   # unwrap; heading level lost in cells
     if name == "hr": return " — "                         # hr in inline position
     if name == "pre": return text_content(child)
-    return render_inline_children(child, base_url)        # unknown: unwrap (totality)
+    return render_inline_children(child, base_url, ns, anchor_mode)        # unknown: unwrap (totality)
 
 function wrap(inner, marker) -> str:
     return "" if inner == "" else marker + inner + marker    # E10: never empty **
 
 # --- tables ----------------------------------------------------------------
-function render_table(el, base_url) -> str:
+function render_table(el, base_url, ns) -> str:
     if is_layout_frame(el):
-        return render_layout_frame(el, base_url)      # D5: dissolve the frame
+        return render_layout_frame(el, base_url, ns)      # D5: dissolve the frame
     rows <- []
     for tr in all tr descendants in document order:
-        cells <- [render_inline_children(c, base_url) for c in tr's direct td/th]
+        cells <- [render_inline_children(c, base_url, ns) for c in tr's direct td/th]
         if cells is non-empty: rows.append(cells)
     if rows is empty: return ""
     width <- max(len(r) for r in rows)
@@ -364,34 +410,42 @@ function is_layout_frame(table) -> bool:
             return false
     return true
 
-function render_layout_frame(table, base_url) -> str:
+function render_layout_frame(table, base_url, ns) -> str:
     # D5: dissolve — each row yields its label heading at the heading's
     # native level, then the remaining cells' children in BLOCK context
     # (nested data tables become real GFM tables; user goals 2/3).
+    # D6: the label heading's named anchors are hoisted to their own lines
+    # first, and the label cell's non-heading children are rendered in block
+    # context after the heading (D5 used to drop them silently).
     blocks <- []
     for tr in the table's own tr rows (nearest-table rule):
         cells <- tr's direct td/th cells
         if cells is empty: continue
         heading <- layout_heading(cells[0])
-        t <- render_inline_children(heading, base_url)
+        for m in collect_named_anchors(heading, base_url, ns):    # D6: hoist
+            blocks.append(m)
+        t <- render_inline_children(heading, base_url, ns, anchor_mode="text")
         if t != "":
             blocks.append(("#" * int(heading.name[1])) + " " + t)
+        for sib in cells[0]'s children, excluding the heading:    # D6: keep
+            blocks.extend([b for b in render_block_list([sib], base_url, ns)
+                           if b != ""])
         for cell in cells[1:]:
-            blocks.extend([b for b in render_block_list(cell.children, base_url)
+            blocks.extend([b for b in render_block_list(cell.children, base_url, ns)
                            if b != ""])
     return join(blocks, "\n\n")
 
-function render_table_inline(el, base_url) -> str:
+function render_table_inline(el, base_url, ns) -> str:
     # Nested table (inside a cell): one escaped-pipe row per <tr>,
     # rows joined by " <br> " (GitHub renders <br> inside cells).
     parts <- []
     for tr in all tr descendants in document order:
-        cells <- [c.replace("|", "\\|") for c in (render_inline_children(td, base_url)
+        cells <- [c.replace("|", "\\|") for c in (render_inline_children(td, base_url, ns)
                   for td in tr's direct td/th)]
         parts.append(join(cells, " \\| "))
     return join(parts, " <br> ")
 
-function render_list(el, base_url) -> str:
+function render_list(el, base_url, ns) -> str:
     ordered <- el.name == "ol"
     lines <- []
     i <- 1
@@ -400,11 +454,11 @@ function render_list(el, base_url) -> str:
         inline_parts <- []; sublists <- []
         for c in li.children:
             if c is a tag and c.name in {ul, ol}: sublists.append(c)
-            else: inline_parts.append(render_inline_piece(c, base_url))
+            else: inline_parts.append(render_inline_piece(c, base_url, ns))
         text <- join_inline_sequence(inline_parts)
         if text != "": lines.append(marker + text)
         for sl in sublists:                                   # E15: 4-space indent
-            for line in render_list(sl, base_url).split("\n"):
+            for line in render_list(sl, base_url, ns).split("\n"):
                 lines.append("    " + line)
         i <- i + 1
     return join(lines, "\n")
@@ -416,9 +470,44 @@ function normalize_text(s) -> str:
     s <- regex_replace(s, "[ \t\r\n\f\v]+", " ")
     return s.strip()
 
-function rewrite_url(href, base_url) -> str | None:
+# --- named anchors (D6) ----------------------------------------------------
+function escape_attr(v) -> str:
+    return v.replace('"', "&quot;")
+
+function anchor_marker(a, base_url, ns) -> str | None:
+    # D6: an <a> is a *named anchor* iff it has a non-empty id and/or name
+    # AND rewrite_url(href, ...) is None (no usable link target). Emitted as
+    # a self-closing marker element carrying its namespaced id/name; a link
+    # (usable href) wins and any id/name on it is dropped.
+    if rewrite_url(attr(a, "href"), base_url, ns) is not None: return None
+    idv    <- attr(a, "id")
+    namev  <- attr(a, "name")
+    if (idv is None or idv == "") and (namev is None or namev == ""):
+        return None
+    out <- "<a"
+    if idv   is not None and idv   != "":
+        out <- out + " id=\"" + escape_attr(ns + idv) + "\""
+    if namev is not None and namev != "":
+        out <- out + " name=\"" + escape_attr(ns + namev) + "\""
+    return out + "></a>"
+
+function collect_named_anchors(el, base_url, ns) -> list[str]:
+    # D6: document-order DFS; the marker for each named anchor in el's
+    # subtree. Used to hoist heading/label anchors to their own lines (raw
+    # HTML inline in an ATX heading is the least renderer-portable spot).
+    out <- []
+    for node in el's descendants in document order:
+        if node is a tag and node.name == "a":
+            m <- anchor_marker(node, base_url, ns)
+            if m is not None: out.append(m)
+    return out
+
+function rewrite_url(href, base_url, ns) -> str | None:
     h <- trim(href); if h == "": return None
     if h starts with "javascript:" (case-insensitive): return None    # E6
+    if h starts with "#":                                  # D6: in-article fragment
+        if h == "#" or ns == "": return h                    # null link or no namespace
+        return "#" + ns + h[1:]                              # namespace the fragment
     if h starts with "http://" or "https://":
         absolute <- h
     else if h starts with "//":
@@ -458,15 +547,25 @@ string or a recursive call on a strictly smaller subtree.
 7. Links get a URL rewrite: relative paths become absolute; `javascript:` is
    dropped (plain text); VA article URLs lose their query string so the manual
    contains stable, canonical links.
-8. Tables are classified first: a *layout frame* — every row's first cell
+8. Named anchors — an `<a>` that carries an `id` or `name` but no usable link
+   target — are preserved as self-closing marker elements (D6). Inside a
+   heading or a table label the markers are hoisted onto their own line
+   immediately before the heading (raw HTML inline in an ATX heading is the
+   least renderer-portable spot); inside a paragraph or list item the marker
+   sits inline right before the anchor text; a top-level anchor emits the
+   marker on its own line followed by its block children. Every id/name is
+   namespaced with the article id (`art_<id>_`) so anchors never collide
+   across articles, and fragment-only links (`#1a`) are rewritten into the
+   same namespace; a bare `#` (null link) is left untouched.
+9. Tables are classified first: a *layout frame* — every row's first cell
    leads with a heading (eGain's `label | spacer | content` grid) — is
    dissolved into real headings at their native levels, with each remaining
    cell rendered in block context so nested data tables surface as real GFM
    tables (D5). Any other table is built row by row: the first row is the
    header, ragged rows are padded, pipes in cell text are escaped. A table
    *inside such a table's cell* is rendered as escaped rows joined by `<br>`.
-9. Lists number or dash their items; nested lists indent by four spaces.
-10. All finished blocks are joined with a blank line and one trailing newline.
+10. Lists number or dash their items; nested lists indent by four spaces.
+11. All finished blocks are joined with a blank line and one trailing newline.
 
 ### 4.2 Worked example
 
@@ -548,6 +647,13 @@ so the function stays pure and testable.
 | `<b>a</b><i>b</i>` (no space in source) | `**a** *b*` — one space inserted (E8) | `**a****b**` parses ambiguously |
 | `<a>` without `href`, or `javascript:` | plain text, link dropped (E6) | dead links are worse than text |
 | `<a href="..."></a>` (empty text) | `[url](url)` (E7) | keeps the reference visible |
+| `<a id="1a" name="1a"></a>` inside a heading | marker hoisted to its own line before the heading (D6; TESTS 27) | raw HTML inline in an ATX heading is the least renderer-portable spot |
+| `<a id="rm"></a>` wrapping text in a paragraph | inline marker immediately before the anchor text (D6; TESTS 32) | keeps the anchor target adjacent to its label |
+| `<a name="top"></a>` as a top-level block | marker on its own line, then block children (D6; TESTS 31) | block-level anchor keeps its children intact |
+| `<a id="x" name="y"></a>` (id and name differ) | both attrs emitted, each namespaced (D6; TESTS 35) | preserve whatever the source declares |
+| `<a id="x" href="https://…"></a>` (usable link) | link rendered, `id` dropped (D6; TESTS 33) | a live link wins over a named anchor (documented limitation) |
+| `href="#"` (null link) | left as `#` (D6; TESTS 34) | bare null link, no fragment to rewrite |
+| Label cell with non-heading content beside the heading | heading, then the sibling rendered in block context (D6; TESTS 36) | D5 used to drop anchor siblings silently |
 | Table with a single row | that row is the header; no body | GFM requires a header row |
 | Ragged table row | padded with empty cells to the widest row (E12) | GFM rows must be uniform |
 | Pipe in cell text | escaped `\|` (E13) | unescaped pipes break the table |
@@ -658,10 +764,24 @@ shown as `""`).
 | 24 | nesting depth probe | 50 nested `<div>` around `<p>deep</p>` | `deep\n` | 2.5 depth policy |
 | 25 | empty emphasis dropped | `<p>a<strong></strong>b</p>` | `ab\n` | E10 |
 | 26 | layout frame, spacer column | `<table><tr><td><h2>Overview</h2></td><td></td><td><p>Body text</p></td></tr></table>` | `## Overview\n\nBody text\n` | D5 dissolution; the empty spacer cell contributes nothing |
-| 27 | section-mark label with named anchor | `<table><tr><td><h3>I.i.1.A.1.a<a id="1a" name="1a">.</a>&nbsp;Description of PL 106-475</h3></td><td></td><td><p>Body text</p></td></tr></table>` | `### I.i.1.A.1.a. Description of PL 106-475\n\nBody text\n` | the anchor's `.` text + `&nbsp;` yield the canonical `mark. Title` spacing |
+| 27 | section-mark label with named anchor | `<table><tr><td><h3>I.i.1.A.1.a<a id="1a" name="1a">.</a>&nbsp;Description of PL 106-475</h3></td><td></td><td><p>Body text</p></td></tr></table>` | `<a id="1a" name="1a"></a>\n\n### I.i.1.A.1.a. Description of PL 106-475\n\nBody text\n` | D6: the anchor marker is hoisted to its own line before the heading; the anchor's `.` text + `&nbsp;` still yield the canonical `mark. Title` spacing |
 | 28 | heading in a non-leading cell → GFM table | `<table><tr><th>K</th><th>Head</th></tr><tr><td><h3>Deep</h3></td><td>x</td></tr></table>` | `\| K \| Head \|\n\| --- \| --- \|\n\| Deep \| x \|\n` | the frame rule needs EVERY row to lead with a heading; otherwise GFM (level lost in cell) |
 | 29 | one non-layout row → GFM fallback | `<table><tr><td><h2>Head</h2></td><td>x</td></tr><tr><td>plain</td><td>y</td></tr></table>` | `\| Head \| x \|\n\| --- \| --- \|\n\| plain \| y \|\n` | all-rows condition; a single text-led row kills the frame |
 | 30 | nested layout frame dissolves recursively | `<table><tr><td><h2>Outer</h2></td><td></td><td><table><tr><td><h3>Inner</h3></td><td></td><td><p>Deep</p></td></tr></table></td></tr></table>` | `## Outer\n\n### Inner\n\nDeep\n` | block-context content cells recurse through `render_table` (D5) |
+| 31 | top-level named anchor, standalone | `<p>Before</p><a name="top"></a><p>After</p>` | `Before\n\n<a name="top"></a>\n\nAfter\n` | D6 block-level anchor: marker on its own line |
+| 32 | anchor wrapping text in a paragraph | `<p><a id="rm">the RM</a></p>` | `<a id="rm"></a>the RM\n` | D6 inline marker sits immediately before the anchor's own text (no space) |
+| 33 | anchor with a usable link | `<p><a id="x" href="https://example.com/y">go</a></p>` | `[go](https://example.com/y)\n` | D6: a live link wins; `id` dropped (documented limitation) |
+| 34 | null link `href="#"` | `<p><a href="#">top</a></p>` | `[top](#)\n` | D6: bare `#` is left untouched (not namespaced) |
+| 35 | id and name differ | `<p><a id="x" name="y">label</a></p>` | `<a id="x" name="y"></a>label\n` | D6: both attrs are emitted |
+| 36 | label cell anchor sibling of heading | `<table><tr><td><h3>Section</h3><a name="top"></a></td><td></td><td><p>Body</p></td></tr></table>` | `### Section\n\n<a name="top"></a>\n\nBody\n` | D6: the label cell's non-heading anchor sibling is preserved (D5 dropped it) |
+
+**Namespaced (article_id) group.** The cases above use `article_id=""` (unit
+tests), so markers carry bare ids. A separate group calls
+`convert(html, base_url=BASE_URL, article_id="123")` and asserts the
+`art_123_` prefix appears both on emitted markers (`<a id="art_123_1a" ...>`)
+and on rewritten fragment links (`](#art_123_1a)`), while `href="#"` stays
+`#`. This is what makes the ~13,134 dead `#fragment` links resolvable in the
+assembled manual (B2 acceptance: 0 dead intra-article fragments).
 
 ### 6.1 Property tests (preferred)
 

@@ -1,7 +1,8 @@
 """mdconv: rich HTML -> GFM converter (TDD per html-to-markdown-section-extraction.md).
 
-All 30 TESTS cases are transcribed byte-exact from doc section 6 (G11
-synthetic inputs shaped like live CMS output). Property tests P1-P4 follow
+All 36 TESTS cases are transcribed byte-exact from doc section 6 (G11
+synthetic inputs shaped like live CMS output), plus the namespaced
+(article_id) group of doc 6 (D6 named anchors). Property tests P1-P4 follow
 doc 6.1 with the fixed seed 20261002.
 """
 
@@ -16,7 +17,7 @@ from m21_crawl.mdconv import HtmlConversionError, convert
 
 BASE_URL = "https://www.knowva.ebenefits.va.gov"
 
-# (name, input, expected) — doc section 6, cases 1-30, byte-exact expected.
+# (name, input, expected) — doc section 6, cases 1-36, byte-exact expected.
 CASES: list[tuple[str, str, str]] = [
     (
         "case01 minimal paragraph",
@@ -165,7 +166,7 @@ CASES: list[tuple[str, str, str]] = [
         '<table><tr><td><h3>I.i.1.A.1.a<a id="1a" name="1a">.</a>'
         "&nbsp;Description of PL 106-475</h3></td>"
         "<td></td><td><p>Body text</p></td></tr></table>",
-        "### I.i.1.A.1.a. Description of PL 106-475\n\nBody text\n",
+        '<a id="1a" name="1a"></a>\n\n### I.i.1.A.1.a. Description of PL 106-475\n\nBody text\n',
     ),
     (
         "case28 heading in non-leading cell falls back to GFM table",
@@ -183,6 +184,37 @@ CASES: list[tuple[str, str, str]] = [
         "<td><table><tr><td><h3>Inner</h3></td><td></td><td><p>Deep</p></td></tr></table></td></tr></table>",
         "## Outer\n\n### Inner\n\nDeep\n",
     ),
+    (
+        "case31 top-level named anchor, standalone",
+        '<p>Before</p><a name="top"></a><p>After</p>',
+        'Before\n\n<a name="top"></a>\n\nAfter\n',
+    ),
+    (
+        "case32 anchor wrapping text in a paragraph",
+        '<p><a id="rm">the RM</a></p>',
+        '<a id="rm"></a>the RM\n',
+    ),
+    (
+        "case33 anchor with a usable link",
+        '<p><a id="x" href="https://example.com/y">go</a></p>',
+        "[go](https://example.com/y)\n",
+    ),
+    (
+        "case34 null link href=#",
+        '<p><a href="#">top</a></p>',
+        "[top](#)\n",
+    ),
+    (
+        "case35 id and name differ",
+        '<p><a id="x" name="y">label</a></p>',
+        '<a id="x" name="y"></a>label\n',
+    ),
+    (
+        "case36 label cell anchor sibling of heading",
+        '<table><tr><td><h3>Section</h3><a name="top"></a></td>'
+        "<td></td><td><p>Body</p></td></tr></table>",
+        '### Section\n\n<a name="top"></a>\n\nBody\n',
+    ),
 ]
 
 
@@ -193,6 +225,40 @@ CASES: list[tuple[str, str, str]] = [
 )
 def test_doc_cases_byte_exact(name: str, html: str, expected: str) -> None:
     assert convert(html, base_url=BASE_URL) == expected
+
+
+# --- doc 6, namespaced (article_id) group (D6) --------------------------------
+
+
+def test_namespaced_marker_in_heading() -> None:
+    html = (
+        '<table><tr><td><h3>Sec<a id="1a" name="1a">.</a> Title</h3></td>'
+        "<td></td><td><p>Body</p></td></tr></table>"
+    )
+    assert (
+        convert(html, base_url=BASE_URL, article_id="123")
+        == '<a id="art_123_1a" name="art_123_1a"></a>\n\n### Sec. Title\n\nBody\n'
+    )
+
+
+def test_namespaced_inline_marker() -> None:
+    assert (
+        convert('<p><a id="rm">the RM</a></p>', base_url=BASE_URL, article_id="123")
+        == '<a id="art_123_rm"></a>the RM\n'
+    )
+
+
+def test_namespaced_fragment_link() -> None:
+    assert (
+        convert('<p><a href="#1a">see</a></p>', base_url=BASE_URL, article_id="123")
+        == "[see](#art_123_1a)\n"
+    )
+
+
+def test_null_link_stays_hash() -> None:
+    assert (
+        convert('<p><a href="#">top</a></p>', base_url=BASE_URL, article_id="123") == "[top](#)\n"
+    )
 
 
 def test_none_input_returns_empty() -> None:
