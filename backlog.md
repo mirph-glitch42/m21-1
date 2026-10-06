@@ -5,7 +5,7 @@ session can start without re-deriving context: problem (with measured
 evidence), blast radius, the process the governing skills require, open
 decisions, and acceptance criteria.
 
-Order = user priority. Status: **B1, B5 done**; **B2, B3, B4 open**.
+Order = user priority. Status: **B1, B2 (code), B5 done**; **B3, B4 open**.
 
 ## B1. Replace eGain layout tables with standard Markdown layout — **DONE (2026-10-04)**
 
@@ -68,7 +68,9 @@ itself was user-approved.
 commit. **Remaining B1-adjacent residue = the 270 nested-in-cell data
 tables**, which is the same surface B2/B3 touch.
 
-## B2. Dead intra-article anchors (`#1a`, `#RM`, …) — **open, re-measured post-B1**
+## B2. Dead intra-article anchors (`#1a`, `#RM`, …) — **code DONE 2026-10-05 (commit `540581e`); manual verification pending network**
+
+**Completion note (2026-10-05):** Full algorithm-records-keeper cycle completed — doc bumped to v0.4.0 (D6 named-anchor preservation + per-article `art_{id}_` namespaces), 8 new/rewritten TESTS cases (case 27 + cases 31–36 + 4 namespaced-group tests), `mdconv.py` v0.4.0 (544 L, 136 tests green). `make gate` green. Committed atomically as `540581e`. **Remaining:** eGain network was down (connection refused) at completion time, so the manual could not be regenerated and the dead-fragment census (acceptance criterion: 0 dead intra-article fragments) is **pending network recovery**. Re-run `make crawl` + the census script (`scratchpads/9u/analyze_dead.py`, adapted for `art_{id}_frag` markers) once eGain is reachable.
 
 **Problem (measured 2026-10-04 on the B1-regenerated manual):** eGain's
 HTML carries named anchor positions (`<a name="1a">`, `id="RM"`, …)
