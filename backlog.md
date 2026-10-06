@@ -5,7 +5,7 @@ session can start without re-deriving context: problem (with measured
 evidence), blast radius, the process the governing skills require, open
 decisions, and acceptance criteria.
 
-Order = user priority. Status: **B1, B2 (code), B5 done**; **B3, B4 open**.
+Order = user priority. Status: **B1, B3, B5 done**; **B2 code done — manual verification pending**; **B4 open**.
 
 ## B1. Replace eGain layout tables with standard Markdown layout — **DONE (2026-10-04)**
 
@@ -102,7 +102,39 @@ not an article-heading slug resolves to a recorded anchor position (or
 is rewritten to a live target); 0 dead intra-article fragments in the
 regenerated manual; text and organization unchanged.
 
-## B3. Slug-dedup robustness (anchor collisions) — **open, article slugs verified clean post-B1**
+## B3. Slug-dedup robustness (anchor collisions) — **DONE (2026-10-06)**
+
+**Completion note (2026-10-06):** Direction = user-approved Option (a) — a
+renderer-equivalent walk (github-slugger occurrence replica), not Option (b)
+invariant pinning. Full algorithm-records-keeper cycle:
+`algorithms/internal-link-resolution.md` → **v0.3.0** (506 L; C4 semantics
+rewritten, Invariant B, §2.6 `Slugger`, pseudocode incl. the emitted-body
+rule, test cases 6/9–12); registry row → 0.3.0 *implemented*. Implementation
+`src/m21_crawl/assemble.py` (229 L): `Slugger` (L90–108; reuses the unchanged
+`heading_anchor` base slug), `_body_heading_texts` (L111–135; fence-aware
+body-heading extraction), `_emitted_body` (L165–177; error articles' bodies
+are not emitted, so their headings are not counted), `assemble` final pass
+(L218–229; H1 title → TOC H2 → each article's H2 + emitted body headings, in
+portal order). Tests `tests/test_assemble.py` (393 L): 7 new test functions
+(`test_duplicate_names_get_distinct_anchors`,
+`test_slugger_dedup_sequence`,
+`test_article_name_collides_with_earlier_body_heading`,
+`test_fenced_code_heading_not_counted`, `test_article_named_table_of_contents`,
+`test_error_article_body_headings_not_counted`,
+`test_property_article_anchors_match_document_order`), 1 replaced
+(`test_duplicate_names_share_first_anchor` — superseded by the C4 semantic),
+1 rewritten slugger-aware (`test_all_resolved_anchors_exist_as_headings`);
+full suite 136 → **142 passing**. `make gate` green; atomic commit
+`201ccdc`; **CI on `201ccdce` green** (gate + SonarCloud).
+
+**C4 semantic change (consequence of Option a, recorded in the doc):**
+duplicate article names now map to their own heading's distinct `-N` slug
+(2nd "General" → `general-1`), not both to the first. Test-covered.
+
+**Acceptance status:** anchors are now assigned in document order with
+occurrence-based dedup by construction, so any heading set (including the
+~10k body headings B1 added) resolves correctly; the slugger-aware
+anchor-existence test enforces it in the suite.
 
 **Status today (verified 2026-10-04 against the npm `github-slugger`
 reference over all live headings, and re-verified post-B1):**
