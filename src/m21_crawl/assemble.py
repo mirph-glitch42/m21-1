@@ -11,8 +11,10 @@ Turns the crawled, per-article Markdown into the final deliverable:
   4. internal link resolution (final pass):
      ``algorithms/internal-link-resolution.md`` — cross-article hyperlinks
      (eGain article URLs) whose target id is in the manual become in-document
-     anchors of that article's ``## {name}`` heading (``heading_anchor``);
-     unknown ids, images, and external links stay verbatim.
+     anchors of that article's *own* ``## {name}`` heading; anchors are
+     GitHub document-order slugs (``Slugger``: a duplicate heading gets
+     ``-1``, ``-2``, …, so each id resolves to its own heading); unknown
+     ids, images, and external links stay verbatim.
 
 Guarantees (pinned by tests/test_assemble.py):
 
@@ -39,6 +41,11 @@ from .config import MANUAL_TITLE
 # the shape — algorithms/html-to-markdown-section-extraction.md ``_rewrite_url``).
 # Group 2 is the article id: the canonical identity used for resolution.
 _ARTICLE_LINK = re.compile(r"\]\((https?://[^/\s)]+/system/ws/v\d+/ss/article/(\d+))\)")
+
+# Heading / fence line shapes for body-heading extraction (B3 dedup context;
+# same shapes as the test oracle in tests/test_assemble.py).
+_BODY_HEADING = re.compile(r"^#{1,6}\s+(.+?)\s*$")
+_FENCE = re.compile(r"^\s{0,3}(`{3,}|~{3,})")
 
 
 class CompletenessError(RuntimeError):
@@ -80,6 +87,54 @@ def heading_anchor(heading: str) -> str:
     return kept.replace(" ", "-")
 
 
+class Slugger:
+    """GitHub document-order slug dedup (github-slugger ``occurrences``).
+
+    The first heading to claim a base slug keeps it; later duplicates get
+    ``-1``, ``-2``, … — exactly the order GitHub assigns anchors in the
+    rendered document (internal-link-resolution.md 2.6, B3). The base slug
+    is ``heading_anchor`` (unchanged, 2.5); only the dedup is added.
+    """
+
+    def __init__(self) -> None:
+        self._seen: dict[str, int] = {}
+
+    def slug(self, text: str) -> str:
+        base = heading_anchor(text)
+        if base in self._seen:
+            self._seen[base] += 1
+            return f"{base}-{self._seen[base]}"
+        self._seen[base] = 0
+        return base
+
+
+def _body_heading_texts(body_md: str) -> list[str]:
+    """Heading texts in ``body_md``, document order, fenced code skipped.
+
+    ``#``-markers stripped; a line is a heading only when not inside a
+    fenced code block (opened and closed with the same fence char, up to
+    3 leading spaces). Defensive: the live manual has 0 fences today, but
+    ``mdconv`` can emit ``` fences for ``<pre>`` (doc 5.2).
+    """
+    out: list[str] = []
+    fence_char: str | None = None
+    for line in body_md.splitlines():
+        fence = _FENCE.match(line)
+        if fence:
+            ch = fence.group(1)[0]
+            if fence_char is None:
+                fence_char = ch
+            elif ch == fence_char:
+                fence_char = None
+            continue
+        if fence_char is not None:
+            continue
+        m = _BODY_HEADING.match(line)
+        if m:
+            out.append(m.group(1))
+    return out
+
+
 def _internalize_links(document: str, anchor_by_id: dict[str, str]) -> str:
     """Rewrite known cross-article links to in-document anchors (doc C1–C7).
 
@@ -107,16 +162,26 @@ def _dedupe_first_wins(articles: list[Article]) -> list[Article]:
     return out
 
 
-def _article_block(article: Article) -> str:
-    parts = [f"## {article.name}"]
-    if article.breadcrumb != "":
-        parts.append(f"> {article.breadcrumb}")
+def _emitted_body(article: Article) -> str:
+    """The article body as it appears in the document (placeholder or body).
+
+    Single source of truth for what gets emitted — used by ``_article_block``
+    (rendering) and the final pass's slug walk (dedup context), so the two
+    never disagree (doc pseudocode: "the body as EMITTED").
+    """
     body = (
         f"> [content unavailable: {article.error}]"
         if article.error is not None
         else article.body_md
     )
-    body = body.rstrip("\n")
+    return body.rstrip("\n")
+
+
+def _article_block(article: Article) -> str:
+    parts = [f"## {article.name}"]
+    if article.breadcrumb != "":
+        parts.append(f"> {article.breadcrumb}")
+    body = _emitted_body(article)
     if body != "":
         parts.append(body)
     return "\n\n".join(parts)
@@ -148,7 +213,17 @@ def assemble(
     parts.extend(_article_block(a) for a in deduped)
     document = "\n\n".join(parts) + "\n"
     # Final pass (after the gates): resolve cross-article hyperlinks to the
-    # headings this same list produced. Ids are unique post-dedupe; duplicate
-    # names share the first heading's slug (first-occurrence semantics, C4).
-    anchor_by_id = {a.id: heading_anchor(a.name) for a in deduped}
+    # headings this same list produced, in GitHub document order (B3, C4):
+    # the H1 title and the TOC H2 first, then each article's H2 and its
+    # emitted body's headings in order. An article whose name collides with
+    # an earlier heading gets (and its links resolve to) its own deduped
+    # slug — e.g. the 2nd "General" → "general-1".
+    slugger = Slugger()
+    slugger.slug(title)
+    slugger.slug("Table of Contents")
+    anchor_by_id: dict[str, str] = {}
+    for a in deduped:
+        anchor_by_id[a.id] = slugger.slug(a.name)
+        for bh in _body_heading_texts(_emitted_body(a)):
+            slugger.slug(bh)
     return _internalize_links(document, anchor_by_id)

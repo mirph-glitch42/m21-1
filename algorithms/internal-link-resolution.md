@@ -4,12 +4,12 @@
 id	start_line	end_line
 INDEX_BLOCK	3	13
 METADATA	15	36
-THEORY	37	184
-PSEUDOCODE	185	246
-WALKTHROUGH	247	289
-IMPLEMENTATION	290	363
-TESTS	364	393
-REFERENCES	394	408
+THEORY	37	230
+PSEUDOCODE	231	325
+WALKTHROUGH	326	368
+IMPLEMENTATION	369	456
+TESTS	457	489
+REFERENCES	490	506
 <!-- INDEX:END -->
 
 <!-- SECTION:METADATA -->
@@ -19,15 +19,15 @@ REFERENCES	394	408
 |---|---|
 | Name | Internal link resolution — rewrite cross-article hyperlinks into in-document section anchors |
 | Slug | internal-link-resolution |
-| Version | 0.2.0 |
+| Version | 0.3.0 |
 | Status | implemented |
 | Author | Bionic agent (on behalf of murphyjj) |
 | Created | 2026-10-03 |
-| Last modified | 2026-10-04 |
-| Status history | 0.1.0 (2026-10-03): initial draft — the assembled manual's ~14.4k cross-article hyperlinks (eGain article URLs) should become internal `#anchor` links to the target article's `## ` heading; links whose target id is absent from the manual stay as portal URLs · 0.2.0 (2026-10-04): implemented in `src/m21_crawl/assemble.py` (`_ARTICLE_LINK`, `heading_anchor`, `_internalize_links`, final pass in `assemble`) + 7 new tests in `tests/test_assemble.py`; slug worked-examples corrected to the renderer's triple-hyphen form |
+| Last modified | 2026-10-06 |
+| Status history | 0.1.0 (2026-10-03): initial draft — the assembled manual's ~14.4k cross-article hyperlinks (eGain article URLs) should become internal `#anchor` links to the target article's `## ` heading; links whose target id is absent from the manual stay as portal URLs · 0.2.0 (2026-10-04): implemented in `src/m21_crawl/assemble.py` (`_ARTICLE_LINK`, `heading_anchor`, `_internalize_links`, final pass in `assemble`) + 7 new tests in `tests/test_assemble.py`; slug worked-examples corrected to the renderer's triple-hyphen form · 0.3.0 (2026-10-06): B3 — anchors are now assigned in *document order* via a github-slugger occurrence replica (`Slugger`), with body-heading context (`_body_heading_texts`); C4 rewritten — duplicate article names map to their own heading's distinct `-N` slug, and an article name colliding with an earlier body heading is correctly suffixed |
 | Languages | Python 3.12 (implementation); pseudocode is language-agnostic |
-| Implementation location | src/m21_crawl/assemble.py — `_ARTICLE_LINK` L41; `heading_anchor` L74–82; `_internalize_links` L85–98; final pass in `assemble` L155–156 (v0.2.0, 2026-10-04) |
-| Time complexity | O(D) over the assembled document size D (single regex pass) + O(N) map build (see THEORY 2.4) |
+| Implementation location | src/m21_crawl/assemble.py — `_ARTICLE_LINK` L43; `_BODY_HEADING`/`_FENCE` L47–48; `heading_anchor` L79–87; `Slugger` L90–108; `_body_heading_texts` L111–135; `_internalize_links` L138–151; `_emitted_body` L165–177; final pass in `assemble` L218–229 (v0.3.0, 2026-10-06) |
+| Time complexity | O(D + (N + H)·L) time: single regex rewrite pass O(D) + a document-order slug build that scans N article names and H body headings at O((N + H)·L) (see THEORY 2.4) |
 | Space complexity | O(N + D) working space (id→anchor map of N entries; the rewritten copy of D bytes) |
 | Determinism | deterministic (pure string transform; map built in portal order) |
 | Dependencies | `m21_crawl.assemble` (deduped article list + document string) |
@@ -84,9 +84,15 @@ heading. Everything else is byte-identical.
    canonical article identity.
 3. **Anchor = heading slug of the target's `## {name}` heading**, computed
    with the GitHub/GFM slug rules (2.5).
-4. **First-occurrence semantics.** If two articles shared a name (live data
-   shows none), both ids map to the slug of the first `## ` heading with
-   that text — matching how a reader's in-page anchor jump resolves.
+4. **Document-order dedup (B3).** Anchors are assigned in the order the
+   headings appear in the final document (H1 title, `## Table of Contents`,
+   then each article's `## {name}` heading followed by its body headings).
+   The first heading to claim a base slug keeps it; a later heading with
+   the same base slug gets `-1`, `-2`, … (a github-slugger occurrence
+   replica). Hence two articles sharing a name map to *distinct* anchors
+   (the 2nd resolves to its own heading's `name-1`), and an article name
+   that collides with an earlier body heading is suffixed so the link still
+   lands on the article's own heading (2.6).
 5. **Pure & deterministic.** Same input → byte-identical output; no
    timestamps, no randomness, no I/O.
 6. **No link created or destroyed.** Only the *destination* of existing
@@ -135,13 +141,16 @@ image URLs (`/img/…`), bare text, code spans, TOC lines, breadcrumbs, the
 through verbatim (the substitution function returns the original substring
 for every non-match, and `re.sub` copies non-matching spans as-is).
 
-**Invariant B (anchor existence).** The id→anchor map is built from the
-*same* deduped list (same order, same names) that emits the `## {name}`
-headings. Hence every rewritten anchor is the slug of a heading that
-exists in the document. With unique names (verified live) each heading
-slug is unique in the document; with duplicate names the anchor resolves
-to the first such heading — exactly a reader's in-page anchor semantics —
-so the link still lands on an article with that name.
+**Invariant B (anchor existence + uniqueness).** The id→anchor map is
+built by walking the deduped list in the *same* order that emits the
+headings, feeding each article's `## {name}` heading (and the body
+headings that follow it) to the document-order `Slugger`. When the walk
+reaches an article, the Slugger has already consumed the title, the TOC,
+and every H2 + body heading of all earlier articles — exactly the context
+GitHub sees when it slugs that heading. Hence every rewritten anchor is
+precisely the slug GitHub assigns to that article's *own* heading: it
+exists in the document and is unambiguous. With duplicate names each
+article resolves to its own heading's distinct `-N` slug (C4, 2.6).
 
 **Invariant C (identity of the rest).** The rewrite is a function of the
 matched substring alone (id lookup is exact string equality). Link text is
@@ -178,7 +187,44 @@ Worked: `M21-1, Part II, Subpart iii, Chapter 2, Section H - X` →
 `m21-1-part-ii-subpart-iii-chapter-2-section-h---x` (note the *triple*
 hyphen from ` - `: spaces become hyphens and the existing hyphen stays).
 
-### 2.6 Deviations
+### 2.6 Document-order dedup (the Slugger, B3)
+
+`heading_anchor` gives a heading's *base* slug. But GitHub assigns the
+visible anchor in **document order**: the first heading to claim a base
+slug keeps it, and every later heading that slugs to the same base gets a
+`-1`, `-2`, … suffix (github-slugger's `occurrences` logic). Because the
+assembled manual carries thousands of body headings (the promoted frame
+labels such as `I.i.1.A.1.a.`) plus one H2 per article, a base slug is
+often claimed *before* an article's H2 reaches it — so the article's own
+heading receives the suffix, and a link hard-wired to the unsuffixed base
+slug is dead.
+
+`Slugger` reproduces exactly that occurrence counting on top of the
+*unchanged* `heading_anchor` base slug:
+
+1. `slug(text)` → `base = heading_anchor(text)`. Emphasis markers such as
+   `**` are dropped because they are not alnum/space/hyphen — matching
+   GitHub, which slugs the *rendered* text (so `**Reorganization Matrix**`
+   and `Reorganization Matrix` share a base slug);
+2. if `base` has not been seen → return `base` and record it as seen (0);
+3. if `base` was already seen `k` times → return `base-k` and record it as
+   seen `k+1` times (1st → `base`, 2nd → `base-1`, 3rd → `base-2`, …).
+
+The walk that feeds the Slugger is the final document's heading order: the
+H1 title, the `## Table of Contents` heading, then for each article its
+`## {name}` H2 followed by its body headings in order (fenced code blocks
+skipped — 5.2). By the time the walk reaches an article, the Slugger has
+already consumed the title, the TOC, and every H2 + body heading of all
+*earlier* articles — precisely the context GitHub sees when it slugs that
+article's heading. The article's own anchor is the Slugger's return value
+for its H2.
+
+**Why the base slug is unchanged.** `heading_anchor` already agrees with
+GitHub on the base form (verified: 0 mismatches across all 442 article
+headings). B3 only layers the occurrence dedup on top; it does not change
+how a single heading is slugged.
+
+### 2.7 Deviations
 
 none — documented before implementation.
 
@@ -206,12 +252,45 @@ function heading_anchor(heading) -> str
         # else: punctuation/symbols dropped (commas, periods, quotes, …)
     return replace_all(keep, ' ', '-')          # single spaces -> hyphens
 
-function internalize(document: str, articles: list) -> str
-    # articles: deduped, in document order; each has .id (str) and .name (str)
-    anchor_by_id := {}                          # insertion-ordered
+function Slugger()                              # github-slugger occurrence replica
+    seen := {}                                  # base slug -> count of prior uses
+    function slug(text) -> str:
+        base := heading_anchor(text)            # base form UNCHANGED (2.5)
+        if base in seen:
+            seen[base] := seen[base] + 1
+            return base + '-' + seen[base]      # 2nd -> base-1, 3rd -> base-2, …
+        seen[base] := 0
+        return base                             # 1st -> base
+
+function body_heading_texts(body_md) -> list    # headings in doc order, fences skipped
+    texts := []
+    in_fence := false
+    for line in split(body_md, '\n'):
+        if line matches FENCE:                  # ^\s{0,3}(`{3,}|~{3,})
+            toggle in_fence (same fence char);  # a fence line is never a heading
+            continue
+        if in_fence:
+            continue
+        if line matches '^(#{1,6})\s+(.+?)\s*$':
+            texts.append(captured heading text) # '## ' marker stripped
+    return texts
+
+function internalize(document: str, articles: list, title: str) -> str
+    # articles: deduped, in document order; each has .id (str), .name (str),
+    #           .body_md (str), .error (str or null). title: the H1 text
+    #           (first heading in the doc). The dedup context is the body as
+    #           EMITTED: the placeholder when .error is set (it carries no
+    #           headings), else .body_md — never headings that are absent
+    #           from the document.
+    slugger := Slugger()
+    slugger.slug(title)                         # H1 — first heading in the doc
+    slugger.slug('Table of Contents')           # H2 TOC (always present)
+    anchor_by_id := {}                          # article id -> its own H2 slug
     for a in articles:
-        if a.id not in anchor_by_id:
-            anchor_by_id[a.id] := heading_anchor(a.name)   # first wins (C4)
+        anchor_by_id[a.id] := slugger.slug(a.name)      # this article's H2
+        emitted := a.placeholder if a.error else a.body_md
+        for bh in body_heading_texts(emitted):
+            slugger.slug(bh)                    # body headings = dedup context
     pattern := regex(LINK_DEST)                 # capture URL + trailing id
     function repl(match):
         target_id := match.group(id)
@@ -224,7 +303,7 @@ function internalize(document: str, articles: list) -> str
 function assemble(articles, expected_count, title) -> str
     … existing: dedupe_first_wins, CompletenessError gate, TOC, blocks …
     document := join(blocks, "\n\n") + "\n"
-    return internalize(document, deduped)
+    return internalize(document, deduped, title)
 ```
 
 **Ambiguity policy.** The token is unambiguous by construction (fixed
@@ -292,10 +371,20 @@ still point at the portal.
 
 ### 5.1 Data structures
 
+- `Slugger` — a github-slugger occurrence replica. Internal state:
+  `_seen: dict[str, int]` mapping each base slug to how many times it has
+  been claimed. `slug(text)` returns `base` on first use and `base-k` on
+  the (k+1)-th (2nd → `base-1`, 3rd → `base-2`, …). It reuses
+  `heading_anchor` for the base slug, so the single-heading base form is
+  unchanged (2.5).
 - `anchor_by_id: dict[str, str]` — keys: deduped article ids (strings,
-  portal ids are numeric strings); values: slugs. Insertion order =
-  portal order (Python dicts preserve it) — only relevant for the
-  first-wins duplicate-name rule.
+  portal ids are numeric strings); values: the slug the document-order
+  `Slugger` assigns to that article's *own* `## {name}` heading. Built by
+  one left-to-right document-order walk (pseudocode).
+- `_body_heading_texts(body_md) -> list[str]` — the body's heading texts
+  in document order, `#`-markers stripped, fenced code blocks skipped
+  (defensive; the live manual has 0 fences today, but `mdconv` can emit
+  ``` fences for `<pre>`).
 - The pattern (compiled once at module level):
 
   ```
@@ -314,7 +403,9 @@ still point at the portal.
 | Link to an id not in the manual | URL unchanged | still resolves on the portal (C7) |
 | Image `![alt](https://…/img/…)` | unchanged | not the article-URL shape (A) |
 | External link (`ecfr.gov`, …) | unchanged | not the article-URL shape (A) |
-| Two articles sharing a name | both ids → first heading's slug | reader anchor semantics (C4) |
+| Two articles sharing a name | each id → its own heading's distinct slug (1st → `base`, 2nd → `base-1`) | document-order dedup (C4, B3) |
+| Article name collides with an earlier body heading (earlier `### General`) | the article's own H2 is suffixed (`general-1`); its links use it | the body heading already claimed the base slug in document order (2.6) |
+| Fenced code block containing a `#` line | the `#` line is NOT counted as a heading | fence-aware extraction (`_body_heading_texts`) |
 | Article URL with query string | unchanged (pattern requires digits then `)`) | mdconv strips queries; anything left is not canonical (A) |
 | Uppercase name, commas, ` - ` | slug per 2.5 (triple hyphen preserved) | must match the renderer, not our taste |
 | Unicode in names (e.g. `’`) | non-alnum dropped, letters kept | Unicode-aware slug (2.5) |
@@ -357,9 +448,11 @@ still point at the portal.
 Python: `re.sub(pattern, repl_fn, document)` with `repl_fn` returning the
 replacement string; `str.lower()` and `str.isalnum()` are Unicode-aware —
 rely on both rather than hand-rolled ASCII tables. Compile the pattern at
-module level. Keep `internalize` private to the module; expose only
-`heading_anchor` (public, tested directly) beside the existing
-`assemble` / `Article` / `CompletenessError`.
+module level. `Slugger` is a small class holding `_seen: dict[str, int]`;
+`_body_heading_texts` is a pure line scan (flat fence/heading patterns, no
+backtracking). Keep `internalize` and `_body_heading_texts` private to the
+module; expose `heading_anchor` and `Slugger` (both public, tested
+directly) beside the existing `assemble` / `Article` / `CompletenessError`.
 
 <!-- SECTION:TESTS -->
 ## 6. Test cases and sample data
@@ -373,10 +466,13 @@ All sample data is synthetic (G11); ids are 11-digit fake portal ids.
 | 3 | degenerate: unknown id + image kept | body links `[old](…/article/999)` and `![d](https://…/img/cpkm/x.png)` | both unchanged; no `#` anchor introduced | unknown targets stay portal-resolvable (C7); images never rewritten (A) |
 | 4 | boundary: slug of a real name shape | name `M21-1, Part II, Subpart iii - X` | `m21-1-part-ii-subpart-iii---x` (triple hyphen from ` - `) | anchor must equal the renderer's, byte for byte (2.5) |
 | 5 | self-link | article `("…11111", "General")` linking to `…11111` | `[t](#general)` | self-navigation is valid (5.2) |
-| 6 | duplicate names | two ids, both named `General` | both ids resolve to `#general` (first heading) | defined first-wins semantics (C4) |
+| 6 | duplicate names | two ids, both named `General` | 1st id → `#general`; 2nd id → `#general-1` (its own heading) | document-order dedup; each id → its own heading (C4, B3) |
 | 7 | determinism | run #1's input twice | byte-identical outputs | G10 / C5 |
 | 8 | gate ordering preserved | 3 articles, `expected_count=2` | `CompletenessError` raised with `.expected==2, .actual==3`, before any rewriting | completeness contract untouched (existing pin) |
-| 9 | I2 anchor-existence property | 3 articles with real name shapes, links to all three | every `](#…)` from a candidate matches the slug of a `^## ` heading in the output | links land where they claim to (I2) |
+| 9 | I2 anchor-existence property | 3 articles with real name shapes, links to all three | every `](#…)` from a candidate matches the `Slugger`'s document-order slug for some heading in the output | links land where they claim to (I2) |
+| 10 | Slugger dedup sequence (direct) | `Slugger().slug` on `A`, `A`, `A`, `B` | `a`, `a-1`, `a-2`, `b` | github-slugger occurrence logic, byte-exact (2.6) |
+| 11 | article name vs earlier body heading | article 1 named `X` with body `### General`; article 2 named `General` | article 2's own H2 → `#general-1`; a link to it uses `#general-1` | the body heading already claimed `general` in document order (2.6) |
+| 12 | 0-mismatch property | any article list with duplicate names + body-heading collisions | every emitted `](#…)` article anchor equals the `Slugger`'s document-order slug for that article's H2 | links land on the article's own heading, never a dead anchor (B3) |
 
 ### 6.1 Property tests
 
@@ -396,7 +492,9 @@ already takes ~3 min, so this pass is negligible by design).
 
 - GitHub `slugger` — the reference implementation of GitHub's anchor
   slug rules (lowercase, keep alphanumerics/spaces/hyphens, spaces →
-  hyphens): <https://github.com/github/slugger>.
+  hyphens) **and its `occurrences` dedup** (1st → `base`, 2nd → `base-1`,
+  3rd → `base-2`, …), which `Slugger` (B3) replicates on top of the
+  unchanged base slug: <https://github.com/github/slugger>.
 - Sibling documents:
   [html-to-markdown-section-extraction](html-to-markdown-section-extraction.md)
   (the only producer of the link tokens this algorithm rewrites; its

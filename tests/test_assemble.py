@@ -17,8 +17,10 @@ Contract (pinned by these byte-exact tests):
   - deterministic: same input, byte-identical output;
   - cross-article hyperlinks (eGain article URLs) whose target id is in the
     manual are rewritten to in-document anchors of that article's ``## ``
-    heading; unknown ids, images, and external links stay verbatim
-    (algorithms/internal-link-resolution.md).
+    heading; unknown ids, images, and external links stay verbatim;
+    anchors use GitHub's document-order slug dedup (a duplicate heading
+    gets ``-1``, ``-2``, …), so each id resolves to its own heading
+    (algorithms/internal-link-resolution.md, B3).
 """
 
 import re
@@ -163,6 +165,62 @@ def test_custom_title() -> None:
 
 # --- internal link resolution (algorithms/internal-link-resolution.md) ------
 
+_TITLE = "M21-1 Adjudication Procedures Manual"
+
+
+def _oracle_slug(text: str, seen: dict[str, int]) -> str:
+    base = heading_anchor(text)
+    if base in seen:
+        seen[base] += 1
+        return f"{base}-{seen[base]}"
+    seen[base] = 0
+    return base
+
+
+def _oracle_headings(body: str) -> list[str]:
+    """Heading texts in ``body`` (document order), fenced code skipped."""
+    out: list[str] = []
+    fence_char: str | None = None
+    for line in body.splitlines():
+        fence = re.match(r"^\s{0,3}(`{3,}|~{3,})", line)
+        if fence:
+            ch = fence.group(1)[0]
+            if fence_char is None:
+                fence_char = ch
+            elif ch == fence_char:
+                fence_char = None
+            continue
+        if fence_char is not None:
+            continue
+        h = re.match(r"^#{1,6}\s+(.+?)\s*$", line)
+        if h:
+            out.append(h.group(1))
+    return out
+
+
+def _oracle(articles: list[Article], title: str = _TITLE) -> tuple[dict[str, str], set[str]]:
+    """Independent document-order slug oracle (doc cases 9 and 12).
+
+    Walks the emitted document's headings in order — H1 title, H2 TOC, then
+    each article's H2 name and its *emitted* body's headings (fence-aware) —
+    and records (a) the slug each article id's own H2 receives and (b) the
+    set of every heading's slug.
+    """
+    seen: dict[str, int] = {}
+
+    def slug(text: str) -> str:
+        return _oracle_slug(text, seen)
+
+    all_anchors: set[str] = {slug(title), slug("Table of Contents")}
+    anchor_by_id: dict[str, str] = {}
+    for a in articles:
+        a_anchor = slug(a.name)  # this article's own H2
+        anchor_by_id[a.id] = a_anchor
+        all_anchors.add(a_anchor)
+        body = f"> [content unavailable: {a.error}]" if a.error is not None else a.body_md
+        all_anchors.update(slug(h) for h in _oracle_headings(body))
+    return anchor_by_id, all_anchors
+
 
 def test_cross_article_link_resolves_to_anchor() -> None:
     articles = [
@@ -206,17 +264,113 @@ def test_self_link_resolves() -> None:
     assert "[self](#general)" in out
 
 
-def test_duplicate_names_share_first_anchor() -> None:
+def test_duplicate_names_get_distinct_anchors() -> None:
     articles = [
         Article(
             id="1",
             name="General",
-            body_md=f"[to 2]({_LINK_BASE}2)\n",
+            body_md=f"[to self]({_LINK_BASE}1) [to 2]({_LINK_BASE}2)\n",
         ),
         Article(id="2", name="General", body_md="Second general.\n"),
     ]
     out = assemble(articles, expected_count=2)
-    assert "[to 2](#general)" in out
+    assert "[to self](#general)" in out
+    assert "[to 2](#general-1)" in out
+    assert f"[to 2]({_LINK_BASE}2)" not in out
+
+
+def test_slugger_dedup_sequence() -> None:
+    from m21_crawl.assemble import Slugger
+
+    s = Slugger()
+    assert s.slug("A") == "a"
+    assert s.slug("A") == "a-1"
+    assert s.slug("A") == "a-2"
+    assert s.slug("B") == "b"
+
+
+def test_article_name_collides_with_earlier_body_heading() -> None:
+    articles = [
+        Article(
+            id="1",
+            name="X",
+            body_md=f"### General\n\n[go to 2]({_LINK_BASE}2)\n",
+        ),
+        Article(id="2", name="General", body_md="Second general.\n"),
+    ]
+    out = assemble(articles, expected_count=2)
+    # the earlier "### General" claimed the base slug in document order, so
+    # article 2's own H2 "General" must resolve to its deduped slug
+    assert "[go to 2](#general-1)" in out
+    assert f"[go to 2]({_LINK_BASE}2)" not in out
+
+
+def test_fenced_code_heading_not_counted() -> None:
+    articles = [
+        Article(
+            id="1",
+            name="X",
+            body_md=f"Example:\n\n```\n# not a heading\n```\n\n[go to 2]({_LINK_BASE}2)\n",
+        ),
+        Article(id="2", name="General", body_md="Second general.\n"),
+    ]
+    out = assemble(articles, expected_count=2)
+    # the fenced "# not a heading" is not a real heading, so the base slug
+    # is still free for article 2's H2
+    assert "[go to 2](#general)" in out
+    assert "[go to 2](#general-1)" not in out
+
+
+def test_article_named_table_of_contents() -> None:
+    article = Article(
+        id="1",
+        name="Table of Contents",
+        body_md=f"[self]({_LINK_BASE}1)\n",
+    )
+    out = assemble([article], expected_count=1)
+    # the TOC H2 always exists, so the article's H2 must be suffixed
+    assert "[self](#table-of-contents-1)" in out
+    assert f"[self]({_LINK_BASE}1)" not in out
+
+
+def test_error_article_body_headings_not_counted() -> None:
+    articles = [
+        Article(id="1", name="Broken", body_md="### General\n", error="lxml failed"),
+        Article(id="2", name="General", body_md=f"[go to 2]({_LINK_BASE}2)\n"),
+    ]
+    out = assemble(articles, expected_count=2)
+    # article 1's body is not emitted (placeholder), so "### General" never
+    # claimed a slug and article 2's H2 keeps the base slug
+    assert "[go to 2](#general)" in out
+    assert "[go to 2](#general-1)" not in out
+
+
+def test_property_article_anchors_match_document_order() -> None:
+    """Case 12: every article link target equals the oracle's document-order
+    slug for that article's own H2 (0-mismatch property)."""
+    articles = [
+        Article(
+            id="1",
+            name="General",
+            body_md=f"### Rules\n\n[self]({_LINK_BASE}1)\n",
+        ),
+        Article(
+            id="2",
+            name="General",
+            body_md=f"### Rules\n\n[self]({_LINK_BASE}2)\n",
+        ),
+        Article(
+            id="3",
+            name="Rules",
+            body_md=f"### General\n\n[self]({_LINK_BASE}3)\n",
+        ),
+    ]
+    out = assemble(articles, expected_count=3)
+    anchor_by_id, _ = _oracle(articles)
+    assert anchor_by_id == {"1": "general", "2": "general-1", "3": "rules-2"}
+    for a in articles:
+        assert f"[self](#{anchor_by_id[a.id]})" in out
+        assert f"[self]({_LINK_BASE}{a.id})" not in out
 
 
 def test_all_resolved_anchors_exist_as_headings() -> None:
@@ -234,8 +388,6 @@ def test_all_resolved_anchors_exist_as_headings() -> None:
         for i, name in enumerate(names, start=1)
     ]
     out = assemble(articles, expected_count=3)
-    headings = {
-        heading_anchor(line[3:].strip()) for line in out.splitlines() if line.startswith("## ")
-    }
+    _, all_anchors = _oracle(articles)
     anchors = set(re.findall(r"\]\(#([^)]+)\)", out))
-    assert anchors <= headings
+    assert anchors <= all_anchors
