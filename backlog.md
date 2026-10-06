@@ -5,7 +5,7 @@ session can start without re-deriving context: problem (with measured
 evidence), blast radius, the process the governing skills require, open
 decisions, and acceptance criteria.
 
-Order = user priority. Status: **B1, B3, B5 done**; **B2 code + verification done (2026-10-06) — closure pending user decision (112 source-dead links)**; **B4 open (needs sign-off)**.
+Order = user priority. Status: **B1, B2, B3, B5 done**; **B4 open — direction signed off 2026-10-06 (inline coalescing), implementation pending**.
 
 ## B1. Replace eGain layout tables with standard Markdown layout — **DONE (2026-10-04)**
 
@@ -68,7 +68,7 @@ itself was user-approved.
 commit. **Remaining B1-adjacent residue = the 270 nested-in-cell data
 tables**, which is the same surface B2/B3 touch.
 
-## B2. Dead intra-article anchors (`#1a`, `#RM`, …) — **code DONE (`540581e`); verification DONE 2026-10-06 — closure pending user decision**
+## B2. Dead intra-article anchors (`#1a`, `#RM`, …) — **DONE (2026-10-06)**
 
 **Completion note (2026-10-05):** Full algorithm-records-keeper cycle completed — doc bumped to v0.4.0 (D6 named-anchor preservation + per-article `art_{id}_` namespaces), 8 new/rewritten TESTS cases (case 27 + cases 31–36 + 4 namespaced-group tests), `mdconv.py` v0.4.0 (544 L, 136 tests green). `make gate` green. Committed atomically as `540581e`. **Remaining:** eGain network was down (connection refused) at completion time, so the manual could not be regenerated and the dead-fragment census (acceptance criterion: 0 dead intra-article fragments) is **pending network recovery**. Re-run `make crawl` + the census script (`scratchpads/9u/analyze_dead.py`, adapted for `art_{id}_frag` markers) once eGain is reachable.
 
@@ -94,7 +94,7 @@ also GitHub discussion #50962). Counting both `id` and `name` markers, **58
 of those fragments are live on GitHub** (emitted name-only). True dead set =
 the 110 fragments / 112 Category-D links above.
 
-**Open decision (BLOCKS closing B2):** the written acceptance — "0 dead
+**Decision (resolved 2026-10-06):** the written acceptance — "0 dead
 intra-article fragments" — is strictly unmet by the 112 source-dead links,
 and no converter change can make a target exist that isn't in the source:
 1. **Amend B2 acceptance** to "0 dead fragments *whose anchor exists in
@@ -105,6 +105,11 @@ and no converter change can make a target exist that isn't in the source:
 3. **Portability hardening** (optional, separate cycle): also emit `id=` when
    the source anchor is name-only, for renderers that honor only `id`
    (GitHub works either way).
+
+**Closure (2026-10-06):** user approved **option 1** — the acceptance
+ criterion is amended as below, and the ~112 portal-anchor links (dead in
+ source, pre-existing pre-B2) are recorded as a known source-data
+ limitation. B2 is **CLOSED**. Options 2/3 remain available as future work.
 
 **Problem (measured 2026-10-04 on the B1-regenerated manual):** eGain's
 HTML carries named anchor positions (`<a name="1a">`, `id="RM"`, …)
@@ -131,10 +136,15 @@ That is a full doc → tests → implementation cycle under the algorithm
 records keeper — not a tweak — and it is out of scope for the hyperlink
 task.
 
-**Acceptance criteria (when done):** every `](#frag)` whose fragment is
-not an article-heading slug resolves to a recorded anchor position (or
-is rewritten to a live target); 0 dead intra-article fragments in the
-regenerated manual; text and organization unchanged.
+**Acceptance criteria (amended 2026-10-06, option 1):** every `](#frag)`
+whose fragment is not an article-heading slug **and whose anchor exists in
+the article's source** resolves to a recorded anchor position — measured:
+**0 such dead fragments** (23,091 links / 9,897 fragments; converter is
+lossless on named anchors per the A/B/C/D census above). The 112
+portal-anchor links (`#top`/`#Top`×92, `#January`, `#Overview`, 16 numeric
+codes) whose targets exist nowhere in the source are a **known source-data
+limitation** (dead in the source pre-B2; no converter change can make a
+target exist that isn't in the source). Text and organization unchanged.
 
 ## B3. Slug-dedup robustness (anchor collisions) — **DONE (2026-10-06)**
 
