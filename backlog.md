@@ -5,7 +5,7 @@ session can start without re-deriving context: problem (with measured
 evidence), blast radius, the process the governing skills require, open
 decisions, and acceptance criteria.
 
-Order = user priority. Status: **B1, B2, B3, B5 done**; **B4 open — direction signed off 2026-10-06 (inline coalescing), implementation pending**.
+Order = user priority. Status: **B1, B2, B3, B5 done**; **B4 open — direction signed off 2026-10-06 (inline coalescing), design finalized (D7), implementation pending**; **B6 open — new 2026-10-06, root cause and target population verified in raw HTML**.
 
 ## B1. Replace eGain layout tables with standard Markdown layout — **DONE (2026-10-04)**
 
@@ -215,7 +215,7 @@ split observed in B2 (lowercase month targets resolve, capitalized ones
 don't) is evidence the eGain anchor scheme is its own thing, independent
 of heading slugs — B2 and B3 are related but distinct work.
 
-## B4. Inline emphasis split into standalone paragraphs (goal-1 bug) — **open, root cause confirmed**
+## B4. Inline emphasis split into standalone paragraphs (goal-1 bug) — **open, direction signed off 2026-10-06, design finalized (D7)**
 
 **Symptom (user-reported 2026-10-04, with screenshots):** emphasized or
 bold inline text inside a sentence renders as its *own paragraph* with a
@@ -242,6 +242,26 @@ runs**. Other samples: `…an / *not* / intended…`, `…claims proc / *must*
 / take…`, `…for the / *Example* / : The example…`, `**References** / :
 For more information…`.
 
+**Additional evidence (verified 2026-10-06 in raw source HTML, article
+554400000180507):** the `5. IMOs` section shows the same fragmentation
+with a *link* mid-run. Source, verbatim (all inline inside `div > span >
+span` in real HTML):
+
+    An <strong><em>independent medical opinion </em></strong>(IMO), as
+    discussed in <a href="http://www.ecfr.gov/…">38 CFR 3.328</a>, is
+
+currently renders as **five** standalone blocks: `An` / `***independent
+medical opinion***` / `(IMO), as discussed in` / `[38 CFR 3.328](…)` /
+`, is`. Same shape: `*Note* / : / As discussed in / [link] / , VA Central
+Office…` (source: `<div><i>Note</i>: As discussed in <a>…</a>, …</div>`).
+User report 2026-10-06 (screenshot): "There are areas where new lines are
+randomly inserted in the middle of words" — same root cause (inline
+pieces promoted to blocks), folded into B4, not a new item.
+
+**User rule (verbatim, 2026-10-06):** "Looking at the source, they stay
+inline. Rule of thumb — if they would be in-line with real HTML, then they
+will be inline here as well."
+
 **Root cause (reproduced + confirmed 2026-10-04):** `_render_block_list`
 treats **every child** of an unwrapped container (`_UNWRAP_BLOCK` =
 `div`/`span`/`font`/`center`) — and every top-level fragment child — as
@@ -262,30 +282,49 @@ sitting directly in a `div`/`span`/top-level is fragmented.
 every block path that unwraps containers — including
 `_render_layout_frame` (B1) and `blockquote` rendering (both call
 `_render_block_list`). A fix therefore interacts with B1's output and
-must re-verify it. Existing TESTS cases that currently encode the
-fragmented output must be rewritten *first*.
+must re-verify it. **Test impact (verified 2026-10-06):** no existing
+TESTS case encodes the fragmented output — all 36 doc cases + namespaced
+group + P1–P4 were read; cases 31/36 traced through the finalized design
+→ byte-identical output. No rewrites needed — additions only.
 
 **Required process (governing skills):** full algorithm-records-keeper
 cycle — doc-first (new rule, e.g. "inline-run coalescing in block
 context" + a TESTS row), RED tests, then code, `make gate` green, one
 atomic commit. Not a tweak.
 
-**Fix direction (proposed, needs sign-off):** in block context,
-**coalesce consecutive inline children** (bare text nodes + inline tags
-`em`/`strong`/`span`/`a`/`b`/`i`/`u`/`code`/`sup`/`sub`/`s`/…) into a
-single inline-rendered paragraph; let only block-level children
-(`p`/`h1`–`h6`/`ul`/`ol`/`table`/`blockquote`/`pre`/`hr`) delimit
-blocks. Open sub-question: whether a lone emphasis that is itself a
-complete label (e.g. a standalone `**References**`) should stay
-standalone or join its neighbours — needs a precise rule + any enumerated
-exceptions.
+**Fix direction — signed off 2026-10-06 (user rule of thumb above);
+design finalized in-session as rule **D7 (inline-run coalescing in block
+context)**:**
 
-**Acceptance criteria:** the L2714 example renders as one sentence; the
-count of emphasis/bold blocks sandwiched between non-empty text above and
-below drops from ≈9,851 to ~0 (or to a small, enumerated set of
-genuinely standalone labels); text and organization unchanged; existing
-TESTS cases updated to the coalesced output; `make gate` green; doc +
-tests + code in one commit.
+1. **Block delimiters:** `h1`–`h6`, `p`, `ul`, `ol`, `table`,
+   `blockquote`, `pre`, `hr` only. Everything else in block context is
+   inline-level and joins the current inline run.
+2. **Containers** (`div`/`span`/`font`/`center`, i.e. `_UNWRAP_BLOCK`):
+   if they contain **no block-level descendant** → flatten their children
+   into the current inline run; if they contain a block-level tag → flush
+   the run, then recurse (current behavior).
+3. **Links:** a named anchor (id/name, no usable href) is **inline-level**
+   — joins the run and renders `marker + inner`; a run that degenerates to
+   an isolated anchor yields a marker-only line, which reproduces shipped
+   case 31/36 output exactly. A plain link (usable href, no blockish
+   descendant) joins the run as `[text](url)`. A link with blockish
+   descendants → flush + unwrap (drop URL), current behavior.
+4. **Flush:** join the run's pieces with `_join_inline` (E8 spacing),
+   strip, append only if non-empty.
+
+The original open sub-question — *resolved by the rule itself*: a lone
+emphasis that is a complete label (e.g. standalone `**References**`) joins
+its neighbours whenever the source keeps it inline; the user rule leaves
+no exception for it.
+
+**Acceptance criteria:** the L2714 example and the IMOs `An …
+independent medical opinion … (IMO), as discussed in 38 CFR 3.328, is`
+sentence each render as one line; the count of emphasis/bold blocks
+sandwiched between non-empty text above and below drops from ≈9,851 to
+~0 (or to a small, enumerated set of genuinely standalone labels); text
+and organization unchanged; existing TESTS cases verified unaffected
+(2026-10-06: none encode the fragmentation — additions only); `make
+gate` green; doc + tests + code in one commit.
 
 ## B5. GitHub CI gate failure — **DONE (2026-10-05)**
 
@@ -320,6 +359,119 @@ green; full `make gate` green locally; **CI run 37375552531** on
 previously failing `Algorithm doc index check`.
 
 **Acceptance:** met.
+
+## B6. Layout frames with non-heading label cells escape D5 — **open, new 2026-10-06**
+
+**User report (verbatim, 2026-10-06, with screenshot of the `5. IMOs`
+section):** "There appear to be some layout tables that were not removed.
+we need a way of catching there edge cases and removing them." Screenshot:
+the IMOs `Introduction` and `Change Date` rows render as GFM tables
+(`| Introduction |  | This topic contains… |`, `| Change Date |  |
+August 22, 2024 |`).
+
+**Root cause (verified in raw HTML, 2026-10-06):** D5
+(`_is_layout_frame` + `_layout_heading`) dissolves only tables whose
+**every** row's first cell *leads with a heading* (`h1`–`h6`). eGain
+emits the same `label | spacer | content` frame with the label cell in
+two variants — `<h3>Introduction</h3>` (D5 dissolves; e.g. the A&A
+section of article 554400000180507 renders `### Introduction` at output
+L36529) **or plain text** `<div><span style="font-size: 14px"><span
+style="font-family: arial, helvetica, sans-serif">Change Date</span>
+</span></div>` (no heading element → `_layout_heading` returns `None` →
+GFM fallback). The plain-text-label frames are the leak; single-row
+frames then render as **header-only GFM tables** (the one row becomes
+the header row, zero body rows).
+
+**Verified population (assembled manual, 2026-10-06; line-based census,
+authoritative — an earlier table-based census had a Python scoping bug
+and is void):** 2,202 GFM tables total; **111 header-only tables**
+(header + separator, no body rows): **68** are 3-cell
+`label | spacer | content` frames, **1** is a 4-cell variant
+(`(empty) | In This Section | spacer | content`, L232582), **1** is
+5-cell, **33** are single-cell letter/notice wrappers (incl. one empty
+table, L241486), **8** are 2-cell (letterheads `Department of Veterans
+Affairs | Memorandum of Changes` and memo rows — **genuine content,
+protected**). **Zero** multi-row tables match the all-rows-empty-middle-
+cell pattern (checked every multi-row 3+-col table) — no genuine data
+table is at risk. Label-cell variants observed in the leak set:
+
+- meta labels, plain or bold in source: `Introduction`, `Change Date`,
+  `**Introduction**`, `**Change Date**` (L5225, L8071/8076, L37151/37156,
+  L209690, L214884, L218390/218470);
+- **section marks as plain text with named anchors**: `II.i.2.B.4.b<a
+  id="art_554400000174859_4b" name=…>.</a> …` (L9922, L9927, L19431),
+  `I.ii.1.C.2.a<a id="art_554400000181484_2a"…>` (L6642), `II.i.2.C.6.h…`
+  (L10886) — per the user's 2026-10-05 direction these marks must get
+  **proper heading status** on dissolution, anchors hoisted (D6);
+- content cells of several of these hold **nested genuine data tables**
+  currently flattened into `<br>`-joined inline text (goal-3 residue);
+  dissolving the frame in block context would surface them as real GFM
+  tables (goal 3);
+- protected set (must keep GFM rendering): the 2-cell letterheads/memos
+  (L243770–L243823 cluster), the 4 genuine 3-col×1-row tables (rating
+  codes `7101/Hypertension/10`, dental Class/Eligibility/Level), the
+  577-row citation crosswalk, and all other multi-row tables.
+
+**Source shape (verbatim, article 554400000180507):**
+
+    <table border="0" cellpadding="0" cellspacing="0">
+      <tr>
+        <td style="width: 115px; vertical-align: top">
+          <div><span style="font-size: 14px"><span
+          style="font-family: arial , helvetica , sans-serif">
+          Change Date</span></span></div>
+        </td>
+        <td style="height: 8px; width: 15px"></td>
+        <td style="width: 516px">
+          <div><span …>August 22, 2024</span></div>
+        </td>
+      </tr>
+    </table>
+
+Fixed pixel widths (115px / 15px / 516px) and the empty spacer cell —
+styles are cosmetic; the structural signature is `label | empty spacer |
+content`.
+
+**Proposed discriminator (candidates — finalize in the B6 doc cycle; it
+must not misfire on genuine data tables):** a table is a frame iff
+**every** row has ≥3 cells, the **second** cell carries no visible
+content (spacer), and the first cell's leading content is inline-level
+only (heading or plain text/link/anchor/span — no block-level
+descendant). Render on dissolution: label → **heading** when it starts
+with a section mark (`I.ii.1.C.2.a.` style — user direction 2026-10-05),
+named anchors hoisted first (D6) — level `h3`, matching the h3-label
+variant of the same frame family (plain-text labels carry no native
+level; confirm in the doc cycle); otherwise a plain text line (bold kept
+when the source is bold — never fabricated). Content cells render in
+**block** context (B1 behavior). Any row failing the test → the whole
+table keeps the GFM fallback (D5 conservative principle; text never
+dropped). The 33 single-cell tables are a separate sub-rule (a single
+cell cannot carry tabular meaning; dissolve to content blocks — decide
+in the doc cycle; enumerate anything kept). The discriminator MUST be
+verified against the full 111-table population post-fix (residual
+enumeration).
+
+**Blast radius:** `_layout_heading` (~L280), `_is_layout_frame` (~L300),
+`_render_layout_frame` (~L320), `_render_table` branch (~L248) in
+`src/m21_crawl/mdconv.py`; interacts with B4 (dissolved frame content
+flows through `_render_block_list`). Full algorithm-records-keeper
+cycle: doc-first (D5 refinement or a new D8 rule), RED tests, `make
+gate` green, one atomic commit.
+
+**Ordering:** after B4 — B4 changes `_render_block_list`, which B6's
+dissolved content uses; user directive "Proceed in order on Backlog".
+
+**Acceptance criteria:** the 68 3-cell + 4/5-cell frame leaks dissolve
+to label + content blocks (0 leaked 3+-cell header-only tables remain, or
+a small enumerated set with reason); IMOs `Introduction`/`Change Date`
+and the A&A equivalents render as label line/heading + content, no GFM
+table; section-mark labels become real headings with live namespaced
+anchors (`#art_554400000174859_4b` etc. resolve); nested genuine tables
+in dissolved frames surface as real GFM tables; the protected set
+(letterheads, memos, rating/dental tables, 577-row crosswalk, all
+multi-row tables) is byte-identical; the single-cell decision recorded
+with any kept tables enumerated; `make gate` green; doc + tests + code in
+one atomic commit; text and organization unchanged.
 
 ## Standing constraints (apply to all items)
 
