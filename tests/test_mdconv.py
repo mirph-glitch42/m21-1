@@ -107,9 +107,9 @@ CASES: list[tuple[str, str, str]] = [
         "line one line two\n",
     ),
     (
-        "case17 horizontal rule",
+        "case17 horizontal rule (D9: dropped)",
         "<hr>",
-        "---\n",
+        "",
     ),
     (
         "case18 blockquote",
@@ -332,6 +332,17 @@ CASES: list[tuple[str, str, str]] = [
         "case56 T1 Change Date heading (B11)",
         "<table><tr><td><h3>Change Date</h3></td><td></td><td>August 22, 2024</td></tr></table>",
         "> **Change Date**\n> August 22, 2024\n",
+    ),
+    (
+        "case57 hr-flanked frame renders without rules (D9/B13)",
+        "<div><hr/></div><table><tr><td><h3>Change Date</h3></td>"
+        "<td>&nbsp;</td><td>February 14, 2025</td></tr></table><div><hr/></div>",
+        "> **Change Date**\n> February 14, 2025\n",
+    ),
+    (
+        "case58 hr between paragraphs (D9)",
+        "<p>A</p><hr><p>B</p>",
+        "A\n\nB\n",
     ),
 ]
 

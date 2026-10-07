@@ -4,12 +4,12 @@
 id	start_line	end_line
 INDEX_BLOCK	3	13
 METADATA	15	36
-THEORY	37	340
-PSEUDOCODE	341	713
-WALKTHROUGH	714	826
-IMPLEMENTATION	827	951
-TESTS	952	1052
-REFERENCES	1053	1068
+THEORY	37	355
+PSEUDOCODE	356	729
+WALKTHROUGH	730	842
+IMPLEMENTATION	843	968
+TESTS	969	1071
+REFERENCES	1072	1087
 <!-- INDEX:END -->
 
 <!-- SECTION:METADATA -->
@@ -19,14 +19,14 @@ REFERENCES	1053	1068
 |---|---|
 | Name | Rich HTML → Markdown block converter for eGain article content |
 | Slug | html-to-markdown-section-extraction |
-| Version | 0.6.0 |
+| Version | 0.7.0 |
 | Status | implemented |
 | Author | Bionic agent (on behalf of murphyjj) |
 | Created | 2026-10-02 |
 | Last modified | 2026-10-07 |
-| Status history | 0.1.0 (2026-10-02): initial draft; 0.2.0 (2026-10-03): implemented in src/m21_crawl/mdconv.py; 0.3.0 (2026-10-04): layout-frame dissolution (D5) — tables whose rows all lead with a heading dissolve into real headings + block content; TESTS case 13 rewritten, cases 26–30 added; 0.4.0 (2026-10-05): named-anchor preservation with per-article namespaces (D6) — an ``<a>`` that carries a non-empty ``id``/``name`` and no usable ``href`` is emitted as a raw-HTML marker element at its source position (hoisted to its own line before a heading), in-article ``#fragment`` links are rewritten to the matching ``art_{id}_`` namespace so the assembled manual keeps unique ids, and a layout label cell's non-heading content is no longer silently dropped; TESTS case 27 rewritten, cases 31–36 added; 0.5.0 (2026-10-06): inline-run coalescing in block context (D7) — text, inline tags, named anchors, and plain links sitting in a `div`/`span`/`font`/`center` container or at the fragment top level no longer fragment into standalone paragraphs: they join a current inline run that is flushed (joined per E8, stripped, appended if non-empty) at the next block element (`h1`–`h6`, `p`, `ul`, `ol`, `table`, `blockquote`, `pre`, `hr`) or at the end of the list, while a container holding a block element keeps the old flush-and-recurse split; TESTS cases 37–43 added; 0.6.0 (2026-10-07): generalized layout-frame dissolution (D8) — the frame test now classifies each row (T1 heading label, T2 plain-text label: after stripping empty spacers exactly two visible inline-only cells remain and the label's plain text is a section mark or a meta label in {Introduction, Change Date, In This Section, Overview}, T3 all-empty row rendering nothing) so eGain's plain-text label variants (section marks with named anchors, bold/meta labels, spacer-first order) dissolve to real headings with anchors hoisted (D6) instead of leaking as header-only GFM tables (backlog B6); a label that normalizes exactly to `Change Date` renders as the GFM quote block `> **Change Date**` + `> {date}` in both the T1 and T2 paths (user-approved readability deviation, backlog B11); TESTS cases 44–56 added |
+| Status history | 0.1.0 (2026-10-02): initial draft; 0.2.0 (2026-10-03): implemented in src/m21_crawl/mdconv.py; 0.3.0 (2026-10-04): layout-frame dissolution (D5) — tables whose rows all lead with a heading dissolve into real headings + block content; TESTS case 13 rewritten, cases 26–30 added; 0.4.0 (2026-10-05): named-anchor preservation with per-article namespaces (D6) — an ``<a>`` that carries a non-empty ``id``/``name`` and no usable ``href`` is emitted as a raw-HTML marker element at its source position (hoisted to its own line before a heading), in-article ``#fragment`` links are rewritten to the matching ``art_{id}_`` namespace so the assembled manual keeps unique ids, and a layout label cell's non-heading content is no longer silently dropped; TESTS case 27 rewritten, cases 31–36 added; 0.5.0 (2026-10-06): inline-run coalescing in block context (D7) — text, inline tags, named anchors, and plain links sitting in a `div`/`span`/`font`/`center` container or at the fragment top level no longer fragment into standalone paragraphs: they join a current inline run that is flushed (joined per E8, stripped, appended if non-empty) at the next block element (`h1`–`h6`, `p`, `ul`, `ol`, `table`, `blockquote`, `pre`, `hr`) or at the end of the list, while a container holding a block element keeps the old flush-and-recurse split; TESTS cases 37–43 added; 0.6.0 (2026-10-07): generalized layout-frame dissolution (D8) — the frame test now classifies each row (T1 heading label, T2 plain-text label: after stripping empty spacers exactly two visible inline-only cells remain and the label's plain text is a section mark or a meta label in {Introduction, Change Date, In This Section, Overview}, T3 all-empty row rendering nothing) so eGain's plain-text label variants (section marks with named anchors, bold/meta labels, spacer-first order) dissolve to real headings with anchors hoisted (D6) instead of leaking as header-only GFM tables (backlog B6); a label that normalizes exactly to `Change Date` renders as the GFM quote block `> **Change Date**` + `> {date}` in both the T1 and T2 paths (user-approved readability deviation, backlog B11); TESTS cases 44–56 added; 0.7.0 (2026-10-07): decorative block-level `<hr>` renders nothing (D9) — eGain wraps every layout-frame row in a pure-`<hr>` wrapper div for decoration, and emitting `---` per rule doubled every frame's rules (backlog B13: 12,673 standalone `---` blocks and 13 visible double-rule pairs in the post-B6 manual); a block-level `<hr>` now renders nothing while still acting as a block delimiter/flush point, and the inline cell fallback ` — ` is unchanged; TESTS case 17 rewritten, cases 57–58 added |
 | Languages | Python 3.12 (implementation); pseudocode is language-agnostic |
-| Implementation location | src/m21_crawl/mdconv.py — constants L46–73 (D8 frame row kinds L70–73: _SECTION_MARK, _META_LABELS, _CHANGE_DATE, _VISIBLE_BLOCK); HtmlConversionError L76–83; _parse L85–88; convert L90–120; block context L122–224 (inline-run coalescing D7: _render_block_list L122; _contains_block_el L213); inline context L226–307; tables L309–541 (frame classification D8: _layout_heading L330, _cell_visible L349, _plain_label L362, _frame_row_kind L367, _is_layout_frame L392; dissolution D8+B11: _change_date_blocks L405, _render_layout_frame L417; nested/cell helpers L478–531); lists L543–571; normalization, named anchors (D6), and URLs L573–659 (v0.6.0, 2026-10-07) |
+| Implementation location | src/m21_crawl/mdconv.py — constants L49–76 (D8 frame row kinds L73–76: _SECTION_MARK, _META_LABELS, _CHANGE_DATE, _VISIBLE_BLOCK); HtmlConversionError L79–86; _parse L88–91; convert L93–123; block context L125–227 (inline-run coalescing D7: _render_block_list L125; _contains_block_el L216; D9 hr drop L171–172); inline context L229–310; tables L312–546 (frame classification D8: _layout_heading L333, _cell_visible L352, _plain_label L363, _frame_row_kind L368, _is_layout_frame L393; dissolution D8+B11: _change_date_blocks L406, _render_layout_frame L418; nested/cell helpers L481–534); lists L548–576; normalization, named anchors (D6), and URLs L578–664 (v0.7.0, 2026-10-07) |
 | Time complexity | O(C) — C = characters of input HTML (single pass over the parsed tree) |
 | Space complexity | O(C) — parsed tree + output string |
 | Determinism | deterministic (no timestamps, no randomness, fixed BASE_URL constant) |
@@ -325,6 +325,21 @@ The implementation therefore deviates as follows (all pinned by tests):
   content sections, not metadata, and the user request names only Change
   Date (TESTS cases 46 and 56).
 
+- **D9 — Decorative block-level `<hr>` renders nothing.** eGain wraps every
+  layout-frame row in a pure-`<hr>` wrapper div (`<div style="margin-left:
+  85pt"><div><hr/></div></div>`) as a decorative section rule — one before
+  and one after each frame. Rendering each one as `---` left every dissolved
+  frame/heading flanked by a double rule (12,673 standalone `---` blocks and
+  13 visible double-rule pairs in the post-B6 manual; backlog B13). A
+  block-level `<hr>` therefore renders **nothing** — the same
+  layout-decoration class as the layout tables dissolved by D5/D8 — while
+  **staying in the BLOCK set** so it still flushes the accumulated inline run
+  (paragraph separation around a rule is preserved). TEXT and ORGANIZATION
+  unchanged: no text is dropped, block order is preserved, headings carry
+  the section structure. The inline-position fallback (`<hr>` inside a cell
+  → ` — `, 5.2) is unchanged — no corpus evidence of `<hr>` inside a table
+  cell (TESTS case 17 rewritten; cases 57–58).
+
 ### 2.7 Error model (summary)
 
 | Situation | Behavior |
@@ -342,7 +357,7 @@ The implementation therefore deviates as follows (all pinned by tests):
 ## 3. Pseudocode
 
 ```
-BLOCK := {h1..h6, p, ul, ol, table, blockquote, pre, hr}    # D7: block delimiters
+BLOCK := {h1..h6, p, ul, ol, table, blockquote, pre, hr}    # D7: block delimiters (hr renders nothing — D9)
 UNWRAP_BLOCK := {div, span, font, center}                   # containers
 
 function convert(html, base_url, article_id="") -> str:
@@ -399,7 +414,8 @@ function render_block_list(children, base_url, ns) -> list[str]:
             else if child.name == "table":
                 blocks.append(render_table(child, base_url, ns))
             else if child.name == "hr":
-                blocks.append("---")
+                pass                    # D9: eGain decorative rule — flush already ran,
+                                        # nothing is emitted (B13)
             else if child.name == "blockquote":
                 inner <- render_block_list(child.children, base_url, ns)
                 if inner is non-empty:
@@ -883,6 +899,7 @@ so the function stays pure and testable.
 | Heading elsewhere in a table cell | plain inline text, level lost (documented) | GFM cells cannot hold headings |
 | List inside a cell | items joined `"; "` | compact, unambiguous |
 | `<hr>` in a cell | ` — ` | visible separator, no block break |
+| Block-level `<hr>` (outside a cell) | renders nothing (D9; TESTS 57) — still a block delimiter | eGain decorates every layout-frame row with a pure-hr wrapper div; emitting `---` doubled every rule (B13) |
 | `<pre>` whose code contains ` ``` ` | fence of four backticks | fence must exceed content |
 | Unknown element anywhere | unwrap (render children) | totality — never crashes on new CMS markup |
 | 50 levels of `<div>` nesting | converts fine (TESTS case 24) | depth policy (2.5) |
@@ -975,7 +992,7 @@ shown as `""`).
 | 14 | javascript: link dropped | `<a href="javascript:void(0)">click</a>` | `click\n` | E6 |
 | 15 | image with alt | `<p><img src="/img/x.png" alt="Figure 1"></p>` | `![Figure 1](https://www.knowva.ebenefits.va.gov/img/x.png)\n` | E5/E4 image rule |
 | 16 | br becomes space | `<p>line one<br>line two</p>` | `line one line two\n` | E9 |
-| 17 | horizontal rule | `<hr>` | `---\n` | hr block |
+| 17 | horizontal rule | `<hr>` | `""` | D9: eGain's decorative hr renders nothing (B13) |
 | 18 | blockquote | `<blockquote><p>note</p></blockquote>` | `> note\n` | quote prefix |
 | 19 | list inside a cell | `<table><tr><th>K</th></tr><tr><td><ul><li>a</li><li>b</li></ul></td></tr></table>` | `| K |\n| --- |\n| a; b |\n` | list-in-inline rule |
 | 20 | inline code | `<p><code>x = 1</code></p>` | `` `x = 1`\n `` | code wrap |
@@ -1015,6 +1032,8 @@ shown as `""`).
 | 54 | T3 all-empty table | `<table><tr><td></td></tr></table>` | `""` | D8 T3: a spacer-only frame renders nothing; the caller drops the empty block |
 | 55 | three-cell rating row stays GFM | `<table><tr><td>7101</td><td>Hypertension</td><td>10</td></tr></table>` | `\| 7101 \| Hypertension \| 10 \|\n\| --- \| --- \| --- \|\n` | D8 protection: three visible cells fail the exactly-two rule |
 | 56 | T1 `Change Date` heading (B11) | `<table><tr><td><h3>Change Date</h3></td><td></td><td>August 22, 2024</td></tr></table>` | `> **Change Date**\n> August 22, 2024\n` | B11 carves out the T1 path too (a heading-labeled `Change Date` frame) |
+| 57 | hr-flanked frame renders without rules | `<div><hr/></div><table><tr><td><h3>Change Date</h3></td><td>&nbsp;</td><td>February 14, 2025</td></tr></table><div><hr/></div>` | `> **Change Date**\n> February 14, 2025\n` | D9 (B13): the decorative hr wrappers render nothing; the frame dissolves normally |
+| 58 | hr between paragraphs | `<p>A</p><hr><p>B</p>` | `A\n\nB\n` | D9: the hr is dropped but still flushes the run — both paragraphs kept, no rule |
 
 **Namespaced (article_id) group.** The cases above use `article_id=""` (unit
 tests), so markers carry bare ids. A separate group calls

@@ -5,7 +5,7 @@ session can start without re-deriving context: problem (with measured
 evidence), blast radius, the process the governing skills require, open
 decisions, and acceptance criteria.
 
-Order = user priority. Status: **B1, B2, B3, B4, B5 done**; **B6 open — new 2026-10-06, root cause verified in raw HTML; additional leak shapes recorded 2026-10-07 (2-cell frames, spacer-first order, image + nested-table bodies)**; **B7 open — new 2026-10-06, internal links in the generated TOC, design drafted**; **B8 open — new 2026-10-07, dead internal links incl. "To Top" (119 case-sensitive / 28 case-insensitive dead of 23,095)**; **B9 open — new 2026-10-07, raw spaces in link destinations (51 links + 9 images) break Markdown**; **B10 open — new 2026-10-07, broken image links (36 legacy-host `vaww.vrm.km.va.gov` URLs; live/dead census partial — local DNS outage, re-verify when network recovers)**; **B11 open — new 2026-10-07, Change Date frames → quote block (user-approved readability deviation; ~1,260 frames across 6 variants)**.
+Order = user priority. Status: **B1, B2, B3, B4, B5 done**; **B6 open — new 2026-10-06, root cause verified in raw HTML; additional leak shapes recorded 2026-10-07 (2-cell frames, spacer-first order, image + nested-table bodies)**; **B7 open — new 2026-10-06, internal links in the generated TOC, design drafted**; **B8 open — new 2026-10-07, dead internal links incl. "To Top" (119 case-sensitive / 28 case-insensitive dead of 23,095)**; **B9 open — new 2026-10-07, raw spaces in link destinations (51 links + 9 images) break Markdown**; **B10 open — new 2026-10-07, broken image links (36 legacy-host `vaww.vrm.km.va.gov` URLs; live/dead census partial — local DNS outage, re-verify when network recovers)**; **B11 open — new 2026-10-07, Change Date frames → quote block (user-approved readability deviation; ~1,260 frames across 6 variants)**; **B12 open — new 2026-10-07, CI gate for `algorithms/INDEX.md` staleness**; **B13 open — new 2026-10-07, sloppy double horizontal rules (root cause verified 2026-10-07: eGain's decorative `<hr>` wrappers around every layout frame; fix = drop block-level `<hr>`) **.
 
 ## B1. Replace eGain layout tables with standard Markdown layout — **DONE (2026-10-04)**
 
@@ -834,6 +834,55 @@ offending row) when a row's Version/Status/File disagrees with METADATA, or
 a doc is missing its row, or a row is orphaned; passes on the current
 (fixed) registry; wired into `make gate` and CI; the stale `0.5.0` row is
 fixed as part of landing this.
+
+## B13. Sloppy double horizontal rules around dissolved frames — **open, new 2026-10-07**
+
+**User request (verbatim, 2026-10-07):** "For Backlog: Sloppy looking
+double horizontal rules." + screenshot (a heading/label flanked by two
+`---` rules, e.g. `## 2. PMC Reporting Requirements` / rule / Change Date
+quote block / rule) + "identify why we are getting this behavior and fix
+it."
+
+**Root cause (verified 2026-10-07 in raw eGain HTML):** eGain wraps
+*every* layout frame row in decorative `<hr>` elements — one rule before
+and one after — each as a pure-hr wrapper div, e.g.
+`<div style="margin-left: 85pt"><div><hr/></div></div>`. `mdconv` renders
+every block-level `<hr>` as a `---` line, so each dissolved frame/heading
+is flanked by two rules: the "double horizontal rule." Measured evidence:
+
+- article `554400000181484`: **29 `<hr>`, all in pure-hr wrapper divs,
+  0 inside tables** (19 inside one top-level div interleaved as
+  hr-frame-hr-frame…, the rest as standalone wrapper divs);
+- five more articles sampled (`554400000174866` 43, `554400000173823` 15,
+  `554400000175208` 15, `554400000173307` 21, `554400000071171` 52 hrs):
+  **100% pure-hr wrappers, 0 inside tables, 0 mixed wrappers**;
+- the B6-regenerated manual contains **12,673 standalone `---` blocks** and
+  **13 visible double-rule pairs** (rule / heading-or-label / rule).
+
+These `<hr>` elements are pure layout decoration — the same class as the
+layout tables B1/B6 dissolve — not text or organization. In the eGain UI
+they are thin design rules around label rows; in GFM they render as heavy
+`---` rules stacked around headings, which reads as sloppy.
+
+**Fix (D9):** in `mdconv` block context, a block-level `<hr>` renders
+*nothing* (dropped as layout decoration). `<hr>` stays in the `_BLOCK`
+set so it still flushes the accumulated inline run — paragraph separation
+around a rule is preserved, only the rule itself is dropped. The
+inline-position fallback (`" — "`) is unchanged (no corpus evidence of
+`<hr>` inside table cells). TEXT and ORGANIZATION unchanged: no text is
+dropped, block order is preserved; headings (from frame dissolution)
+carry the section structure.
+
+**Process:** algorithm doc `html-to-markdown-section-extraction.md` gains
+the D9 rule + TESTS case(s) (hr-flanked frame → no `---`; hr between two
+paragraphs → both paragraphs kept, no rule), TDD RED→GREEN, `make gate`
+green, atomic commit.
+
+**Acceptance criteria:** after `make crawl`, the manual contains **0
+standalone `---` blocks** and **0 double-rule pairs**; the 12,673 → 0
+reduction is entirely decorative rules (spot-check that no paragraph text
+changed); new tests RED on pre-fix code and GREEN post-fix; `make gate`
+green.
 
 ## Standing constraints (apply to all items)
 

@@ -1,6 +1,6 @@
 """mdconv: deterministic rich-HTML -> GFM block converter for eGain article content.
 
-Implements ``algorithms/html-to-markdown-section-extraction.md`` (v0.6.0):
+Implements ``algorithms/html-to-markdown-section-extraction.md`` (v0.7.0):
 
 - total, deterministic two-context (block/inline) tree walk over a lenient
   lxml parse (BeautifulSoup is the parser of record: fragments stay flat);
@@ -21,6 +21,9 @@ Implements ``algorithms/html-to-markdown-section-extraction.md`` (v0.6.0):
   B6), or an all-empty row (T3, renders nothing); a label that normalizes
   exactly to ``Change Date`` renders as the GFM quote block
   ``> **Change Date**`` + ``> {date}`` (B11, both the T1 and T2 paths);
+- a decorative block-level ``<hr>`` (eGain wraps every layout-frame row in
+  pure-``<hr>`` wrapper divs) renders nothing — the same layout-decoration
+  class as the dissolved tables — but still delimits blocks (D9, B13);
 - named anchors — an ``<a>`` with an ``id``/``name`` but no usable link
   target — are preserved as self-closing ``<a id=...></a>`` markers,
   namespaced per article (``art_<id>_``) and hoisted to their own line
@@ -166,7 +169,7 @@ def _render_block_list(children, base_url: str, ns: str) -> list[str]:
                 if b != "":
                     blocks.append(b)
             elif name == "hr":
-                blocks.append("---")
+                pass  # D9 (B13): decorative eGain rule — flush already ran; render nothing
             elif name == "blockquote":
                 inner = [x for x in _render_block_list(child.children, base_url, ns) if x != ""]
                 if inner:
