@@ -5,7 +5,7 @@ session can start without re-deriving context: problem (with measured
 evidence), blast radius, the process the governing skills require, open
 decisions, and acceptance criteria.
 
-Order = user priority. Status: **B1, B2, B3, B5 done**; **B4 open — direction signed off 2026-10-06 (inline coalescing), design finalized (D7), implementation pending**; **B6 open — new 2026-10-06, root cause and target population verified in raw HTML**; **B7 open — new 2026-10-06, internal links in the generated TOC, design drafted**.
+Order = user priority. Status: **B1, B2, B3, B4, B5 done**; **B6 open — new 2026-10-06, root cause verified in raw HTML; additional leak shapes recorded 2026-10-07 (2-cell frames, spacer-first order, image + nested-table bodies)**; **B7 open — new 2026-10-06, internal links in the generated TOC, design drafted**; **B8 open — new 2026-10-07, dead internal links incl. "To Top" (119 case-sensitive / 28 case-insensitive dead of 23,095)**; **B9 open — new 2026-10-07, raw spaces in link destinations (51 links + 9 images) break Markdown**; **B10 open — new 2026-10-07, broken image links (36 legacy-host `vaww.vrm.km.va.gov` URLs; live/dead census partial — local DNS outage, re-verify when network recovers)**.
 
 ## B1. Replace eGain layout tables with standard Markdown layout — **DONE (2026-10-04)**
 
@@ -215,7 +215,7 @@ split observed in B2 (lowercase month targets resolve, capitalized ones
 don't) is evidence the eGain anchor scheme is its own thing, independent
 of heading slugs — B2 and B3 are related but distinct work.
 
-## B4. Inline emphasis split into standalone paragraphs (goal-1 bug) — **open, direction signed off 2026-10-06, design finalized (D7)**
+## B4. Inline emphasis split into standalone paragraphs (goal-1 bug) — **DONE (2026-10-07)**
 
 **Symptom (user-reported 2026-10-04, with screenshots):** emphasized or
 bold inline text inside a sentence renders as its *own paragraph* with a
@@ -326,6 +326,28 @@ and organization unchanged; existing TESTS cases verified unaffected
 (2026-10-06: none encode the fragmentation — additions only); `make
 gate` green; doc + tests + code in one commit.
 
+**Closeout (2026-10-07):** implemented as rule **D7** in
+`algorithms/html-to-markdown-section-extraction.md` (v0.4.0 →
+**v0.5.0**, registry row updated), tests 37–43 added, `make gate`
+green, commit **`16e5795`** `feat(mdconv): coalesce inline runs in
+block context (B4/D7)` — doc + tests + code + registry in one atomic
+commit; pushed to `main` 2026-10-07; **CI run 37570984268 (run #10),
+`head_sha` `16e579556f8ac53461001c9e53d2f2f20316ddde`, conclusion
+success** (<https://github.com/mirph-glitch42/m21-1/actions/runs/37570984268>).
+`make crawl` re-ran clean (0 failed articles; output 14,104,764 bytes).
+Acceptance verified on the regenerated manual:
+- fragmentation ≈9,851 → **24** standalone emphasis-only lines — all 24
+  are legitimate whole-paragraph italics (letter templates), i.e. the
+  "small, enumerated set of genuinely standalone labels" the acceptance
+  allows; one is `*T* *his letter…*` where the **source** splits the
+  word — faithful, do not "fix";
+- IMOs sentence now renders as one clean paragraph: `An ***independent
+  medical opinion***(IMO), as discussed in [38 CFR 3.328](http://www.
+  ecfr.gov/…), is`, then the proper nested list — exactly the
+  acceptance example;
+- the 2026-10-06 "new lines randomly inserted in the middle of words"
+  report (folded into B4 above) is the same population — resolved by D7.
+
 ## B5. GitHub CI gate failure — **DONE (2026-10-05)**
 
 **Problem (user-reported 2026-10-05):** the `ci` workflow on `main`
@@ -412,6 +434,34 @@ table is at risk. Label-cell variants observed in the leak set:
   codes `7101/Hypertension/10`, dental Class/Eligibility/Level), the
   577-row citation crosswalk, and all other multi-row tables.
 
+**Additional evidence (user-reported 2026-10-07, 3 screenshots — "more
+examples of missed format frames"):** the 111-table census and the
+proposed discriminator above (≥3 cells, second cell spacer) **miss two
+more leak shapes**:
+
+- **2-cell `label | content` frames with plain-text section-mark
+  labels:** `II.i.2.B.4.b. Determining the Date a Form Becomes
+  Outdated` and `II.i.2.B.4.c. Example of Outdated Form Determination`
+  — the adjacent sibling `II.i.2.B.4.d.` in the same article renders as
+  a proper heading, i.e. the same frame family with mixed rendering;
+- **image body that must survive dissolution:** `B.4.c`'s content cell
+  holds the VA Form 21-526EZ image;
+- **nested genuine table in the content cell:** `II.i.2.C.6.h. Rating
+  Review of Undeliverable Third-Party Development Mail – No EP
+  Pending` — a 2-cell frame whose body carries a genuine If/Then table
+  currently flattened to literal-pipe inline text (`If … | Then …`);
+  the sibling `C.6.i` in the same article renders correctly (heading +
+  real table) — again mixed within one section;
+- **spacer-first column order:** the eFolders `Introduction` frame
+  (`II.ii.2.A.1`) is `spacer | label | content`, vs IMOs' `label |
+  spacer | content` — the discriminator must strip empty spacers
+  position-independently;
+- **census impact:** the discriminator must then require exactly one
+  label cell (inline-only leading content) + one content cell per row;
+  the 8 protected 2-cell letterheads/memos are disambiguated by the
+  label-cell test, not by cell count; re-census the full population
+  post-fix.
+
 **Source shape (verbatim, article 554400000180507):**
 
     <table border="0" cellpadding="0" cellspacing="0">
@@ -473,6 +523,15 @@ multi-row tables) is byte-identical; the single-cell decision recorded
 with any kept tables enumerated; `make gate` green; doc + tests + code in
 one atomic commit; text and organization unchanged.
 
+**Extended 2026-10-07 (additional evidence above):** the 2-cell
+section-mark frames (`B.4.b`/`B.4.c`/`C.6.h`) dissolve to heading +
+content; the `B.4.c` image survives; the `C.6.h` nested If/Then table
+surfaces as a real GFM table; the spacer-first `Introduction` frame
+(eFolders) resolves; post-fix re-census with the generalized
+position-independent discriminator shows 0 leaked header-only tables in
+the 2-cell / spacer-first shapes (or a small enumerated residual with
+reason).
+
 ## B7. TOC entries lack internal links — **open, new 2026-10-06**
 
 **User report (verbatim, 2026-10-06):** "Add internal links to the
@@ -526,6 +585,137 @@ dedup context included); TOC numbering/order/text unchanged;
 tests + code + registry in one atomic commit; on the regenerated manual
 all 442 TOC links verified against a document-order anchor census (0 dead
 TOC links).
+
+## B8. Dead internal links, incl. "To Top" — **open, new 2026-10-07**
+
+**User report (verbatim, 2026-10-07):** "Some of the 'To Top' links
+work (goes to the top of the article that it follows), but a lot of
+them do not do anything."
+
+**Census (assembled manual, 2026-10-07):** 23,095 internal `#` links.
+
+- **dead, case-sensitive: 119** — of which **91 are case-variant false
+  positives** (`#…_Top` vs the defined `…_top` anchors): they work on
+  GitHub (case-insensitive anchor resolution) but fail case-sensitive
+  local renderers — the likely source of the user's "a lot do nothing";
+- **dead, case-insensitive: 28** — genuinely absent targets (e.g.
+  `art_554400000176625_top`, `art_554400000173815_1e`,
+  `art_554400000181468_Overview`) — source-side broken refs;
+- 418 `[To Top]` links; 323 distinct `art_…_top` anchors across 434
+  articles; 2 malformed `#art_554400000175201_to top` / `…_175222_to
+  top` fragments (also B9).
+
+**Root cause:** source-side broken refs plus case/space variants. B3's
+`anchor_by_id` map already knows every defined anchor's canonical
+spelling, so a canonicalize pass can fix all 91 in every renderer.
+
+**Proposed fix (decide in the doc cycle):** stage 1 **canonicalize**
+every internal fragment to the defined anchor's canonical spelling via
+the B3 `anchor_by_id` map; stage 2 **remap** the 28 unresolved to the
+target article's first emitted anchor (its `## ` H2 slug or first named
+anchor); anything still unresolvable stays as-is and is enumerated.
+Doc: `algorithms/internal-link-resolution.md` — coordinate with B7 so
+both fold into one v0.4.0 revision of the assembly algorithm.
+
+**Blast radius:** `src/m21_crawl/assemble.py` (`_internalize_links`
+~L138, `anchor_by_id` ~L223–227), `tests/test_assemble.py`.
+
+**Ordering:** after B7 (shared doc revision; both touch
+`_internalize_links`).
+
+**Acceptance criteria:** 0 case-variant internal links; the 28
+case-insensitive-dead links remapped to a live anchor or enumerated
+with reason; all 418 `To Top` links land on a live anchor in both
+GitHub and a case-sensitive local renderer; post-fix re-census: 0 dead
+internal links.
+
+## B9. Raw spaces in link destinations — **open, new 2026-10-07**
+
+**User report (verbatim, 2026-10-07):** "There appear to be links that
+are malformed? Not entirely sure what I am looking at, but the table
+looks wrong." — the "Topic Name" table in that screenshot is itself a
+B6 leaked frame; the links-in-destination problem below is the
+distinct B9 defect.
+
+**Census (assembled manual, 2026-10-07):** 51 link destinations with
+raw spaces:
+
+- 9 internal space-anchors whose targets **exist** (only the Markdown
+  is broken), e.g. `#art_554400000095621_M21-1 Guidance`;
+- 2 `#…_to top` malformed fragments (also B8 stage 2);
+- ~40 external URLs (vbaw.vba.va.gov `.docx`/`.pdf`/`.xlsx`, sharepoint
+  links);
+- plus 9 knowva `/img/` image URLs with spaces (`M21-1 structure.png`,
+  `IV.iii.3.F.2.g_Step 2.PNG`).
+
+Raw spaces break Markdown link parsing in most renderers (the link ends
+at the first space).
+
+**Proposed fix (decide in the doc cycle):** percent-encode spaces at
+emit time in `_rewrite_url` (`src/m21_crawl/mdconv.py` ~L546–576 — the
+single choke point for both links and images). Internal anchors:
+`#art_…_M21-1%20Guidance` still resolves to the
+`name="art_…_M21-1 Guidance"` attribute (fragment percent-encoding is
+decoded by the renderer). External URLs: encode spaces only (leave
+other characters as-is).
+
+**Ordering:** after B8 — canonicalize first, then encode, so the B9
+pass operates on already-canonical fragments.
+
+**Blast radius:** `_rewrite_url` in `mdconv.py`; `tests/test_mdconv.py`;
+no text changes (URLs are not text).
+
+**Acceptance criteria:** 0 raw-space link/image destinations in the
+regenerated manual; the 9 space-anchors resolve in both GitHub and a
+case-sensitive local renderer; a sample of external space-URLs opens
+correctly.
+
+## B10. Broken image links (legacy host) — **open, new 2026-10-07**
+
+**User report (verbatim, 2026-10-07):** "large number of broken image
+links. need to verify that the links are working in online manual, and
+make sure they work in Markdown." Earlier (2026-10-07): "wrong image."
+
+**Census (assembled manual, 2026-10-07; 106 images):**
+
+- 48 knowva `/img/` URLs — **live** (GET 200, PNG content-type); 9 of
+  them have spaces → B9;
+- 22 knowva `/system/ws/v11/media/image/5544/<uuid>` URLs — **live**;
+- **36 `vaww.vrm.km.va.gov/img/` URLs — legacy host; these are the
+  broken placeholders** visible in the user's `II.i.2.A.5.d`
+  mail-table screenshot.
+
+**Live/dead verification status: INCONCLUSIVE.** Direct GET of the 36
+legacy URLs failed at DNS resolution, and the DoH control
+(`cloudflare-dns.com`) also failed → local DNS outage (known flaky
+network), **not** evidence the host is dead. The verdict must be
+re-taken once the network recovers.
+
+**Required verification (when network recovers):**
+
+1. DoH (HTTPS) DNS lookup for `vaww.vrm.km.va.gov`;
+2. GET each of the 36 distinct URLs with a browser-like UA — **GET, not
+   HEAD** (HEAD gets 403 from the WAF even for live images);
+3. for any dead URL, find the knowva equivalent and **content-verify
+   before remapping** — a remap to the wrong image is worse than a
+   broken one (the "wrong image" report);
+4. otherwise leave the dead URLs as-is and enumerate the dead set.
+
+**Proposed fix (decide in the doc cycle):** remap table gated on
+verification, applied in `_rewrite_url` or an assemble post-pass.
+
+**Ordering:** after B9 (B9 fixes the encodable subset first; B10
+operates on verified-dead URLs only).
+
+**Blast radius:** `_rewrite_url` in `mdconv.py` (remap table) or an
+`assemble.py` post-pass; `tests/`; the verification script + results
+recorded in the doc cycle.
+
+**Acceptance criteria:** the 36 legacy-host URLs have a verified
+live/dead verdict recorded; live ones render (content-verified); dead
+ones remapped to a content-verified knowva equivalent or left as-is
+with the dead set enumerated; 0 images render as broken placeholders
+on known-live hosts.
 
 ## Standing constraints (apply to all items)
 
