@@ -5,7 +5,7 @@ session can start without re-deriving context: problem (with measured
 evidence), blast radius, the process the governing skills require, open
 decisions, and acceptance criteria.
 
-Order = user priority. Status: **B1, B2, B3, B4, B5 done**; **B6 open — new 2026-10-06, root cause verified in raw HTML; additional leak shapes recorded 2026-10-07 (2-cell frames, spacer-first order, image + nested-table bodies)**; **B7 open — new 2026-10-06, internal links in the generated TOC, design drafted**; **B8 open — new 2026-10-07, dead internal links incl. "To Top" (119 case-sensitive / 28 case-insensitive dead of 23,095)**; **B9 open — new 2026-10-07, raw spaces in link destinations (51 links + 9 images) break Markdown**; **B10 open — new 2026-10-07, broken image links (36 legacy-host `vaww.vrm.km.va.gov` URLs; live/dead census partial — local DNS outage, re-verify when network recovers)**; **B11 open — new 2026-10-07, Change Date frames → quote block (user-approved readability deviation; ~1,260 frames across 6 variants)**; **B12 open — new 2026-10-07, CI gate for `algorithms/INDEX.md` staleness**; **B13 open — new 2026-10-07, sloppy double horizontal rules (root cause verified 2026-10-07: eGain's decorative `<hr>` wrappers around every layout frame; fix = drop block-level `<hr>`) **.
+Order = user priority. Status: **B1, B2, B3, B4, B5, B6, B11, B13 done (B6/B11 in `f48faf9`; B13 in `817a8f3`)**; **B7 open — new 2026-10-06, internal links in the generated TOC, design drafted**; **B8 open — new 2026-10-07, dead internal links incl. "To Top" (119 case-sensitive / 28 case-insensitive dead of 23,095)**; **B9 open — new 2026-10-07, raw spaces in link destinations (51 links + 9 images) break Markdown**; **B10 open — new 2026-10-07, broken image links (36 legacy-host `vaww.vrm.km.va.gov` URLs; live/dead census partial — local DNS outage, re-verify when network recovers)**; **B12 open — new 2026-10-07, CI gate for `algorithms/INDEX.md` staleness**; **B14 open — new 2026-10-07, 14 residual leaked layout frames (enumerated in the B6 closeout; unverified hypothesis: block-level children in the label cell defeat the discriminator) **.
 
 ## B1. Replace eGain layout tables with standard Markdown layout — **DONE (2026-10-04)**
 
@@ -382,7 +382,7 @@ previously failing `Algorithm doc index check`.
 
 **Acceptance:** met.
 
-## B6. Layout frames with non-heading label cells escape D5 — **open, new 2026-10-06**
+## B6. Layout frames with non-heading label cells escape D5 — **DONE (2026-10-07)**
 
 **User report (verbatim, 2026-10-06, with screenshot of the `5. IMOs`
 section):** "There appear to be some layout tables that were not removed.
@@ -531,6 +531,44 @@ surfaces as a real GFM table; the spacer-first `Introduction` frame
 position-independent discriminator shows 0 leaked header-only tables in
 the 2-cell / spacer-first shapes (or a small enumerated residual with
 reason).
+
+**Closeout (2026-10-07, post-B13 re-crawl — fresh output 14,042,184 B,
+0 failed articles; code in `f48faf9`; doc `html-to-markdown-section-
+extraction.md` v0.6.0, D8 generalization + B11 meta-label carve-out):**
+
+- **Census (fresh output):** 2,138 GFM tables (was 2,192 pre-B6);
+  **54 header-only tables** (was 111) = **14 leaked layout frames**
+  (enumerated below) + **40 protected genuine single-row content tables**
+  (VA Form/letterhead/memo text, rating rows `43. Bilateral…` / `K-1`,
+  `Notes`/`References` rows, the 12-table Memorandum of Changes cluster
+  L143118–L143171). 14 + 40 = 54; no other header-only tables exist.
+- **The 14 residual leaked frames** (still `label | spacer | content`
+  header-only GFM tables; line numbers in the post-B13 output, article id
+  from the anchor): L6561 `II.i.2.B.4.b` and L6564 `II.i.2.B.4.c`
+  (art 554400000174859); L7153 `II.i.2.C.6.h` (art 554400000174860);
+  L11081 `Introduction`; L12315 `II.iii.3.A.3.e` (art 554400000174881);
+  L28943 `V.ii.4.A.3.d`, L28955 `V.ii.4.A.3.f`, L28958 `V.ii.4.A.3.g`
+  (art 554400000180492); L34698 `V.iii.5.3.g` (art 554400000014520);
+  L72659 `**VIII.iv.2.A.3.c**` (art 554400000177470, bold label);
+  L116105 `**In This Section**`; L117318 `XI.ii.3.C.4.e` (art
+  554400000174206); L118914 `****XI.iii.1.A.1.a. Definition: Burial****`
+  (art 554400000174200, bold-wrapped label); L134486 `| In This Section
+  |` (spacer-first order).
+- **Hypothesis (UNVERIFIED):** the label cell carries a block-level
+  child, so `_frame_row_kind` returns `None` and the whole table keeps
+  the GFM fallback (D5 conservative principle). Debug path: fetch the
+  owning article's raw HTML (fetch recipe: `build_client` +
+  `get_article_content`, article `554400000174859` for L6561/L6564),
+  parse with BeautifulSoup/lxml, run `_frame_row_kind` per row with
+  prints; compare a failing label cell against the resolved sibling
+  (e.g. `II.i.2.B.4.d` in the same article renders as a heading).
+- **Acceptance status:** all other criteria met — the 111 → 54
+  header-only reduction is the dissolved frame population (68 3-cell +
+  4/5-cell + 2-cell section-mark + spacer-first + meta-label shapes);
+  protected set byte-identical; the remaining 14 are the "small
+  enumerated residual with reason" the acceptance criteria allow —
+  tracked as **B14**. `make gate` green; GitHub CI green; text and
+  organization unchanged.
 
 ## B7. TOC entries lack internal links — **open, new 2026-10-06**
 
@@ -717,7 +755,7 @@ ones remapped to a content-verified knowva equivalent or left as-is
 with the dead set enumerated; 0 images render as broken placeholders
 on known-live hosts.
 
-## B11. Change Date frames → quote block (readability deviation) — **open, new 2026-10-07**
+## B11. Change Date frames → quote block (readability deviation) — **DONE (2026-10-07)**
 
 **User request (verbatim, 2026-10-07):** "Deviation for readability:
 Change Date markers and the date should be in a quote block."
@@ -791,6 +829,20 @@ date, words verbatim); no other frame affected (Introduction /
 In This Section / Overview remain headings); `make gate` green; doc +
 tests + code in one atomic commit.
 
+**Closeout (2026-10-07, post-B13 re-crawl — acceptance verified on the
+fresh output, 14,042,184 B, 0 failed articles):**
+
+- **0** `#`–`###### Change Date` headings of any level (was 1,239 across
+  h2/h3/h5);
+- **0** `| Change Date |` table rows (was 21 leaked-frame rows);
+- **1,260** `> **Change Date**` quote lines — the full population now
+  renders as the quote block (bold marker + verbatim date).
+
+Code + doc + tests landed in `f48faf9` (doc v0.6.0: D8 meta-label T2
+path + D5 T1 carve-out; TESTS case 46 expectation rewritten + T1 case);
+`make gate` green; GitHub CI green; text verbatim, organization as the
+approved deviation.
+
 ## B12. CI gate for `algorithms/INDEX.md` staleness — **open, new 2026-10-07**
 
 **User request (verbatim, 2026-10-07):** "Add CI check for Index.md staleness."
@@ -835,7 +887,7 @@ a doc is missing its row, or a row is orphaned; passes on the current
 (fixed) registry; wired into `make gate` and CI; the stale `0.5.0` row is
 fixed as part of landing this.
 
-## B13. Sloppy double horizontal rules around dissolved frames — **open, new 2026-10-07**
+## B13. Sloppy double horizontal rules around dissolved frames — **DONE (2026-10-07)**
 
 **User request (verbatim, 2026-10-07):** "For Backlog: Sloppy looking
 double horizontal rules." + screenshot (a heading/label flanked by two
@@ -883,6 +935,86 @@ standalone `---` blocks** and **0 double-rule pairs**; the 12,673 → 0
 reduction is entirely decorative rules (spot-check that no paragraph text
 changed); new tests RED on pre-fix code and GREEN post-fix; `make gate`
 green.
+
+**Closeout (2026-10-07, commit `817a8f3`):** D9 implemented — a
+block-level `<hr>` in `_render_block_list` renders nothing (`pass`
+branch; `<hr>` stays in `_BLOCK` so it still flushes the accumulated
+inline run; the inline-cell `" — "` fallback is unchanged). Doc
+`html-to-markdown-section-extraction.md` at v0.7.0 (D9 rule, pseudocode,
+§5.2 edge-case row, TESTS case 17 rewritten + cases 57/58); the
+`algorithms/INDEX.md` registry row bumped 0.6.0 → 0.7.0 (the exact
+staleness class B12 will gate — it slipped through because no gate
+checks the registry yet). TDD RED→GREEN: 70 mdconv tests pass (165
+total suite); `make gate` green (format, lint, 5 inline indexes, tests,
+secrets); GitHub CI green on `817a8f3`.
+
+**Verification census (fresh `make crawl`, 14,042,184 B, 0 failed
+articles):** standalone `---` blocks **12,673 → 0**; double-rule pairs
+**13 → 0** (method: full-line regex `(-{3,}|\*{3,}|_{3,})` for hr
+lines; pair = two hr lines ≤4 lines apart; GFM separator rows like
+`| --- |` are not standalone hr lines). Every dropped rule was a
+decorative eGain `<hr>` wrapper — no paragraph text changed.
+
+## B14. 14 residual leaked layout frames (missed format frames) — **open, new 2026-10-07**
+
+**User request (verbatim, 2026-10-06, B6 origin):** "There appear to be
+some layout tables that were not removed. we need a way of catching there
+edge cases and removing them." — and 2026-10-07: "For backlog: more
+examples of missed format frames." (three screenshots).
+
+**State (2026-10-07, post-B13 re-census):** 14 layout frames still
+render as header-only GFM tables. The exact enumeration (line numbers in
+the post-B13 output, article ids, label variants), the UNVERIFIED
+hypothesis (block-level children in the label cell → `_frame_row_kind`
+returns `None` → whole-table GFM fallback), and the debug path are
+recorded in the B6 closeout above. The 14 carry section-mark labels
+(`II.i.2.B.4.b.` … `XI.iii.1.A.1.a.`), two `Introduction` /
+`In This Section` meta-labels (one bold, one spacer-first), and
+bold-wrapped label variants — the same frame family as B6's dissolved
+population, with mixed rendering within single articles (sibling
+sections in the same article render as proper headings).
+
+**User re-confirmed (2026-10-07, 2 more screenshots — "more frames"):**
+these leaked frames are visible in the live render — `II.i.2.C.6.h`
+(its content cell's nested If/Then table flattened to literal-pipe inline
+text) and `II.i.2.B.4.b` / `II.i.2.B.4.c` (the `B.4.c` content cell
+carries the VA Form 21-526EZ image) — while their siblings
+(`II.i.2.C.6.i`, `II.i.2.B.4.d`) render as proper headings in the same
+articles. All three are already in the 14 above; no new frames added.
+
+**Work items (in order):**
+
+1. Verify the hypothesis frame-by-frame: fetch each owning article's raw
+   HTML (fetch recipe in the B6 closeout), parse, and trace
+   `_frame_row_kind` row-by-row — confirm exactly what makes the label
+   cell fail the inline-only test. Do not guess: the discriminator
+   change must match the observed source shape.
+2. Doc cycle first (algorithm-records-keeper): refine D8 in
+   `html-to-markdown-section-extraction.md` — the label cell's leading
+   content must be inline-only; whatever cosmetic wrappers are present
+   in the source are unwrapped before the test, never dropped (text
+   never lost).
+3. Rendering: section-mark labels get **proper heading status** with
+   hoisted namespaced anchors (D6); `Introduction` / `In This Section`
+   render as label lines per B6's meta-label rule; content cells render
+   in block context (B1 behavior) so any nested genuine tables/images
+   surface as real GFM tables/images.
+4. TDD RED→GREEN: cases that reproduce each failing shape from the raw
+   HTML before the fix; `make gate` green; GitHub CI green; one atomic
+   commit (doc + code + tests + this backlog entry).
+5. Re-census after the fix: expect **40 header-only tables, all
+   protected** (the B6 closeout list), **0 leaked frames**; the 40
+   protected byte-identical.
+
+**Blast radius:** `_frame_row_kind`, `_is_layout_frame`,
+`_render_layout_frame` in `src/m21_crawl/mdconv.py`; the algorithm doc
+(D8); `tests/test_mdconv.py`.
+
+**Acceptance criteria:** all 14 enumerated frames dissolve (heading or
+label line + content blocks, words verbatim, anchors live where the
+source has them); 0 leaked header-only tables remain (40 protected,
+enumerated, byte-identical); `make gate` + GitHub CI green; text and
+organization unchanged.
 
 ## Standing constraints (apply to all items)
 
