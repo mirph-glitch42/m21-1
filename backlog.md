@@ -5,7 +5,7 @@ session can start without re-deriving context: problem (with measured
 evidence), blast radius, the process the governing skills require, open
 decisions, and acceptance criteria.
 
-Order = user priority. Status: **B1, B2, B3, B4, B5 done**; **B6 open — new 2026-10-06, root cause verified in raw HTML; additional leak shapes recorded 2026-10-07 (2-cell frames, spacer-first order, image + nested-table bodies)**; **B7 open — new 2026-10-06, internal links in the generated TOC, design drafted**; **B8 open — new 2026-10-07, dead internal links incl. "To Top" (119 case-sensitive / 28 case-insensitive dead of 23,095)**; **B9 open — new 2026-10-07, raw spaces in link destinations (51 links + 9 images) break Markdown**; **B10 open — new 2026-10-07, broken image links (36 legacy-host `vaww.vrm.km.va.gov` URLs; live/dead census partial — local DNS outage, re-verify when network recovers)**.
+Order = user priority. Status: **B1, B2, B3, B4, B5 done**; **B6 open — new 2026-10-06, root cause verified in raw HTML; additional leak shapes recorded 2026-10-07 (2-cell frames, spacer-first order, image + nested-table bodies)**; **B7 open — new 2026-10-06, internal links in the generated TOC, design drafted**; **B8 open — new 2026-10-07, dead internal links incl. "To Top" (119 case-sensitive / 28 case-insensitive dead of 23,095)**; **B9 open — new 2026-10-07, raw spaces in link destinations (51 links + 9 images) break Markdown**; **B10 open — new 2026-10-07, broken image links (36 legacy-host `vaww.vrm.km.va.gov` URLs; live/dead census partial — local DNS outage, re-verify when network recovers)**; **B11 open — new 2026-10-07, Change Date frames → quote block (user-approved readability deviation; ~1,260 frames across 6 variants)**.
 
 ## B1. Replace eGain layout tables with standard Markdown layout — **DONE (2026-10-04)**
 
@@ -716,6 +716,80 @@ live/dead verdict recorded; live ones render (content-verified); dead
 ones remapped to a content-verified knowva equivalent or left as-is
 with the dead set enumerated; 0 images render as broken placeholders
 on known-live hosts.
+
+## B11. Change Date frames → quote block (readability deviation) — **open, new 2026-10-07**
+
+**User request (verbatim, 2026-10-07):** "Deviation for readability:
+Change Date markers and the date should be in a quote block."
+
+This is an **explicitly user-approved deviation** from goal 1 (text and
+organization unchanged): the *words* of the Change Date frame remain
+verbatim, but the *layout* changes — the "Change Date" marker and the
+date move into a GFM quote block. Side benefit: ~1,239 spurious
+"Change Date" headings (h2/h3/h5) leave the heading hierarchy/TOC.
+
+**Population (assembled manual, 2026-10-07; pre-B6 output, 14,104,764 B):**
+
+| Variant | Count | Origin |
+| --- | --- | --- |
+| `### Change Date` + date paragraph | 1,230 | D5-dissolved frame (source label is `<h3>`) |
+| `##### Change Date` + date paragraph | 8 | D5-dissolved frame (source label is `<h5>`) |
+| `## Change Date` + date paragraph | 1 | D5-dissolved frame (source label is `<h2>`), L142293 |
+| `| Change Date |  | date |` | 12 | B6 plain-label leak (e.g. L3846) |
+| `| **Change Date** |  | date |` | 9 | B6 bold plain-label leak (e.g. L37661) |
+| 1 pathological `Change Date****` line | 1 | nested-bold label (D8 sub-rule case) |
+
+Total ≈ **1,260** frames. In every observed case the content cell is a
+single plain-text date (`Month D, YYYY`); no nested tables/images
+observed in Change Date frames (re-verify in the B6 census).
+
+**Requested rendering (quote block; both variants converge):**
+
+    > **Change Date**
+    > March 13, 2024
+
+Recommended: bold marker line (preserves the visual weight the
+heading/bold variants carried and matches the bold source variant;
+part of the readability deviation) + date as the second quote line.
+Alternative (less recommended): unbolded `> Change Date`. Decide in
+the doc cycle.
+
+**Design (decide in the B6 doc cycle — this item rides the B6 cycle to
+avoid rework):**
+
+- Detection: the label cell's normalized plain text is exactly
+  `Change Date` (case-sensitive).
+- **D8 T2 path (new, B6):** a `Change Date` meta-label frame renders as
+  the quote block above instead of `### Change Date` + content block.
+  Named-anchor hoisting (D6) is kept — emitted before the quote block.
+- **D5 T1 path (existing, 1,239 frames):** when the label heading's
+  normalized text is exactly `Change Date`, emit the same quote block
+  instead of a heading (anchor hoisting kept). Recorded in the doc
+cycle as a D5 carve-out.
+- Edge case: if the content cell is not a single plain-text paragraph
+  (nested table/image/multiple blocks — none observed), the marker
+  quote line stands alone (`> **Change Date**`) and the content
+  renders in block context after it — never drop text.
+- Other meta labels (`Introduction`, `In This Section`, `Overview`)
+  are **not** quote-blocked — they introduce content sections, not
+  metadata; the user request names only Change Date.
+
+**Ordering:** implemented within the B6 cycle (B6 dissolves the leaked
+plain-label frames; B11 dictates their Change Date rendering + the D5
+carve-out for the already-dissolved heading variants). B11 closes
+when B6's closeout verifies the quote-block population below.
+
+**Blast radius:** `_render_layout_frame` (T1 branch + T2 meta-label
+branch) in `src/m21_crawl/mdconv.py`; algorithm doc (D8 sub-rule + D5
+carve-out); `tests/test_mdconv.py` (case 46 expectation becomes the
+quote block; add a T1 `Change Date` case).
+
+**Acceptance criteria:** in the regenerated manual, **0**
+`##/###/##### Change Date` headings and **0** `| Change Date |` table
+rows; all ~1,260 Change Date frames render as quote blocks (marker +
+date, words verbatim); no other frame affected (Introduction /
+In This Section / Overview remain headings); `make gate` green; doc +
+tests + code in one atomic commit.
 
 ## Standing constraints (apply to all items)
 
