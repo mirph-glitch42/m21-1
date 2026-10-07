@@ -1,6 +1,6 @@
 """mdconv: deterministic rich-HTML -> GFM block converter for eGain article content.
 
-Implements ``algorithms/html-to-markdown-section-extraction.md`` (v0.4.0):
+Implements ``algorithms/html-to-markdown-section-extraction.md`` (v0.5.0):
 
 - total, deterministic two-context (block/inline) tree walk over a lenient
   lxml parse (BeautifulSoup is the parser of record: fragments stay flat);
@@ -22,6 +22,10 @@ Implements ``algorithms/html-to-markdown-section-extraction.md`` (v0.4.0):
   before headings; fragment-only hrefs (``#frag``) are rewritten into the
   same namespace while a bare ``#`` is left untouched (D6, ``_anchor_marker``
   / ``_collect_named_anchors``);
+- inline-level content (text, emphasis, links, named anchors, and inline-only
+  containers) accumulates into one paragraph run that is flushed at
+  block-element boundaries; only containers holding a real block element
+  split the run (D7, ``_contains_block_el``);
 - ``javascript:`` hrefs are dropped (E6); empty-text links use their URL
   (E7); eGain article URLs are canonicalized (query string dropped);
 - output = blocks joined by ``"\\n\\n"`` + exactly one trailing ``"\\n"``.
@@ -43,7 +47,7 @@ _MARKER = set("*_`~")
 _HEADING = frozenset({"h1", "h2", "h3", "h4", "h5", "h6"})
 _UNWRAP_BLOCK = frozenset({"div", "span", "font", "center"})
 _LIST = frozenset({"ul", "ol"})
-_BLOCKISH = _HEADING | {"p", "ul", "ol", "table", "blockquote", "pre", "hr", "div"}
+_BLOCK = _HEADING | {"p", "ul", "ol", "table", "blockquote", "pre", "hr"}  # D7: no div
 _INLINE_UNWRAP = _HEADING | {
     "p",
     "div",
@@ -106,76 +110,104 @@ def convert(html: str | None, *, base_url: str, article_id: str = "") -> str:
 
 
 def _render_block_list(children, base_url: str, ns: str) -> list[str]:
+    # D7: only _BLOCK elements start a new block; everything else is
+    # inline-level and accumulates in ``run``. The run is flushed -- pieces
+    # joined one by one (E8), stripped, appended if non-empty -- at each
+    # block element and at the end of the list.
     blocks: list[str] = []
+    run: list[str] = []
+
+    def flush() -> None:
+        t = ""
+        for piece in run:
+            t = _join_inline(t, piece)
+        t = t.strip()
+        run.clear()
+        if t != "":
+            blocks.append(t)
+
     for child in children:
         if isinstance(child, NavigableString):
-            t = _normalize_text(str(child)).strip()
-            if t != "":  # rule E11: whitespace-only text vanishes in block context
-                blocks.append(t)
+            t = _normalize_text(str(child))
+            if t.strip() != "":
+                run.append(t)  # D7: unstripped; boundary whitespace survives the join
             continue
         if not isinstance(child, Tag):
             continue
         name = child.name or ""
-        if name in _HEADING:
-            for m in _collect_named_anchors(child, base_url, ns):  # D6: hoist to own lines
-                blocks.append(m)
-            t = _render_inline_children(child, base_url, ns, anchor_mode="text").strip()
-            if t != "":
-                blocks.append("#" * int(name[1]) + " " + t)
-        elif name == "p":
-            t = _render_inline_children(child, base_url, ns).strip()
-            if t != "":
-                blocks.append(t)
-        elif name in _LIST:
-            b = _render_list(child, base_url, ns)
-            if b != "":
-                blocks.append(b)
-        elif name == "table":
-            b = _render_table(child, base_url, ns)
-            if b != "":
-                blocks.append(b)
-        elif name == "hr":
-            blocks.append("---")
-        elif name == "blockquote":
-            inner = [x for x in _render_block_list(child.children, base_url, ns) if x != ""]
-            if inner:
-                body = "\n\n".join(inner)
-                blocks.append("\n".join("> " + line for line in body.split("\n")))
-        elif name == "pre":
-            code = child.get_text()  # newlines/indentation preserved verbatim
-            fence = "````" if "```" in code else "```"
-            blocks.append(f"{fence}\n{code}\n{fence}")
-        elif name == "a":
-            _append_block_link(child, base_url, ns, blocks)
+        if name in _BLOCK:
+            flush()
+            if name in _HEADING:
+                for m in _collect_named_anchors(child, base_url, ns):  # D6: hoist to own lines
+                    blocks.append(m)
+                t = _render_inline_children(child, base_url, ns, anchor_mode="text").strip()
+                if t != "":
+                    blocks.append("#" * int(name[1]) + " " + t)
+            elif name == "p":
+                t = _render_inline_children(child, base_url, ns).strip()
+                if t != "":
+                    blocks.append(t)
+            elif name in _LIST:
+                b = _render_list(child, base_url, ns)
+                if b != "":
+                    blocks.append(b)
+            elif name == "table":
+                b = _render_table(child, base_url, ns)
+                if b != "":
+                    blocks.append(b)
+            elif name == "hr":
+                blocks.append("---")
+            elif name == "blockquote":
+                inner = [x for x in _render_block_list(child.children, base_url, ns) if x != ""]
+                if inner:
+                    body = "\n\n".join(inner)
+                    blocks.append("\n".join("> " + line for line in body.split("\n")))
+            elif name == "pre":
+                code = child.get_text()  # newlines/indentation preserved verbatim
+                fence = "````" if "```" in code else "```"
+                blocks.append(f"{fence}\n{code}\n{fence}")
         elif name in _UNWRAP_BLOCK:
-            blocks.extend(_render_block_list(child.children, base_url, ns))  # container
+            if _contains_block_el(child):  # D7: real block structure inside
+                flush()
+                blocks.extend(_render_block_list(child.children, base_url, ns))
+            else:  # D7: inline-only container flattens into the run
+                for c in child.children:
+                    run.append(_render_inline_piece(c, base_url, ns))
+        elif name == "a":
+            m = _anchor_marker(child, base_url, ns)  # D6: None unless a named anchor
+            if m is not None and _contains_block_el(child):  # D6: block-level anchor
+                flush()
+                blocks.append(m)  # marker as its own block line
+                blocks.extend(_render_block_list(child.children, base_url, ns))
+            elif m is not None:  # D7: inline-level anchor joins the run
+                run.append(m + _render_inline_children(child, base_url, ns))
+            elif _contains_block_el(child):  # link holding blocks: drop it
+                flush()
+                blocks.extend(_render_block_list(child.children, base_url, ns))
+            else:  # D7: plain link in the run
+                inner = _render_inline_children(child, base_url, ns).strip()
+                if inner == "":
+                    continue  # empty link, no marker: nothing
+                url = _rewrite_url(child.get("href"), base_url, ns)
+                if url is not None:
+                    run.append(f"[{inner}]({url})")
+                else:  # E6: no usable href -> plain text
+                    run.append(inner)
         else:
-            # Unknown or inline tag in block position: unwrap (totality).
-            t = _render_inline_children(child, base_url, ns).strip()
-            if t != "":
-                blocks.append(t)
+            # Unknown or inline tag in block position: join the run (totality).
+            run.append(_render_inline_piece(child, base_url, ns))
+    flush()
     return blocks
 
 
-def _append_block_link(a: Tag, base_url: str, ns: str, blocks: list[str]) -> None:
-    m = _anchor_marker(a, base_url, ns)  # D6: None unless a named anchor
-    if m is not None:
-        blocks.append(m)  # marker as its own block line
-        blocks.extend(_render_block_list(a.children, base_url, ns))
-        return
-    inner = _render_inline_children(a, base_url, ns).strip()
-    if inner == "" or _has_blockish_descendant(a):
-        blocks.extend(_render_block_list(a.children, base_url, ns))  # link dropped
-        return
-    url = _rewrite_url(a.get("href"), base_url, ns)
-    if url is not None:
-        blocks.append(f"[{inner}]({url})")
-    else:  # E6: no usable href -> plain text
-        blocks.append(inner)
+def _contains_block_el(el: Tag) -> bool:
+    """D7: True if ``el`` has a descendant tag in :data:`_BLOCK`.
 
-
-def _has_blockish_descendant(el: Tag) -> bool:
-    return any(isinstance(desc, Tag) and (desc.name or "") in _BLOCKISH for desc in el.descendants)
+    Containers (``div``/``span``/``font``/``center``) are deliberately not
+    in ``_BLOCK``: a container holding only inline content is inline-level
+    and coalesces into the current run instead of splitting it.
+    """
+    return any(isinstance(d, Tag) and (d.name or "") in _BLOCK for d in el.descendants)
 
 
 # --- inline context ----------------------------------------------------------

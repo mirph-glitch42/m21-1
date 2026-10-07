@@ -4,12 +4,12 @@
 id	start_line	end_line
 INDEX_BLOCK	3	13
 METADATA	15	36
-THEORY	37	246
-PSEUDOCODE	247	527
-WALKTHROUGH	528	620
-IMPLEMENTATION	621	730
-TESTS	731	809
-REFERENCES	810	825
+THEORY	37	273
+PSEUDOCODE	274	588
+WALKTHROUGH	589	691
+IMPLEMENTATION	692	808
+TESTS	809	894
+REFERENCES	895	910
 <!-- INDEX:END -->
 
 <!-- SECTION:METADATA -->
@@ -19,14 +19,14 @@ REFERENCES	810	825
 |---|---|
 | Name | Rich HTML → Markdown block converter for eGain article content |
 | Slug | html-to-markdown-section-extraction |
-| Version | 0.4.0 |
+| Version | 0.5.0 |
 | Status | implemented |
 | Author | Bionic agent (on behalf of murphyjj) |
 | Created | 2026-10-02 |
-| Last modified | 2026-10-05 |
-| Status history | 0.1.0 (2026-10-02): initial draft; 0.2.0 (2026-10-03): implemented in src/m21_crawl/mdconv.py; 0.3.0 (2026-10-04): layout-frame dissolution (D5) — tables whose rows all lead with a heading dissolve into real headings + block content; TESTS case 13 rewritten, cases 26–30 added; 0.4.0 (2026-10-05): named-anchor preservation with per-article namespaces (D6) — an ``<a>`` that carries a non-empty ``id``/``name`` and no usable ``href`` is emitted as a raw-HTML marker element at its source position (hoisted to its own line before a heading), in-article ``#fragment`` links are rewritten to the matching ``art_{id}_`` namespace so the assembled manual keeps unique ids, and a layout label cell's non-heading content is no longer silently dropped; TESTS case 27 rewritten, cases 31–36 added |
+| Last modified | 2026-10-06 |
+| Status history | 0.1.0 (2026-10-02): initial draft; 0.2.0 (2026-10-03): implemented in src/m21_crawl/mdconv.py; 0.3.0 (2026-10-04): layout-frame dissolution (D5) — tables whose rows all lead with a heading dissolve into real headings + block content; TESTS case 13 rewritten, cases 26–30 added; 0.4.0 (2026-10-05): named-anchor preservation with per-article namespaces (D6) — an ``<a>`` that carries a non-empty ``id``/``name`` and no usable ``href`` is emitted as a raw-HTML marker element at its source position (hoisted to its own line before a heading), in-article ``#fragment`` links are rewritten to the matching ``art_{id}_`` namespace so the assembled manual keeps unique ids, and a layout label cell's non-heading content is no longer silently dropped; TESTS case 27 rewritten, cases 31–36 added; 0.5.0 (2026-10-06): inline-run coalescing in block context (D7) — text, inline tags, named anchors, and plain links sitting in a `div`/`span`/`font`/`center` container or at the fragment top level no longer fragment into standalone paragraphs: they join a current inline run that is flushed (joined per E8, stripped, appended if non-empty) at the next block element (`h1`–`h6`, `p`, `ul`, `ol`, `table`, `blockquote`, `pre`, `hr`) or at the end of the list, while a container holding a block element keeps the old flush-and-recurse split; TESTS cases 37–43 added |
 | Languages | Python 3.12 (implementation); pseudocode is language-agnostic |
-| Implementation location | src/m21_crawl/mdconv.py — HtmlConversionError L62–69; _parse L71–74; convert L76–106; block context L108–182; inline context L184–265; tables L267–426 (layout frames D5: L288–361); lists L428–456; normalization, named anchors (D6), and URLs L458–544 (v0.4.0, 2026-10-05) |
+| Implementation location | src/m21_crawl/mdconv.py — HtmlConversionError L66–72; _parse L75–77; convert L80–106; block context L109–210 (inline-run coalescing D7: L112–200; _contains_block_el L203–210); inline context L213–293; tables L296–454 (layout frames D5: L320–392); lists L457–484; normalization, named anchors (D6), and URLs L487–576 (v0.5.0, 2026-10-06) |
 | Time complexity | O(C) — C = characters of input HTML (single pass over the parsed tree) |
 | Space complexity | O(C) — parsed tree + output string |
 | Determinism | deterministic (no timestamps, no randomness, fixed BASE_URL constant) |
@@ -233,6 +233,33 @@ The implementation therefore deviates as follows (all pinned by tests):
   text; TESTS case 36). The classification is a pure attribute + structural
   read of the tree, so totality and determinism are preserved (TESTS case 27,
   cases 31–36).
+- **D7 — Inline runs coalesce in block context.** eGain wraps body text in
+  bare ``<div>``/``<span>`` containers (and occasionally places it at the
+  fragment top level), and the v0.4.0 block walk gave every child of an
+  unwrapped container — and every top-level fragment child — its own block:
+  a sentence with one ``<em>`` inside a ``<div>`` rendered as three
+  paragraphs (≈9,851 fragmented runs in the assembled manual, backlog B4),
+  violating goal 1 (do not change the manual's ORGANIZATION). User rule
+  (2026-10-06): "if they would be in-line with real HTML, then they will be
+  inline here as well." The block walk therefore recognizes only true block
+  elements — ``h1``–``h6``, ``p``, ``ul``, ``ol``, ``table``,
+  ``blockquote``, ``pre``, ``hr`` — as block delimiters. Everything else in
+  block context is *inline-level*: text pieces, inline tags (``b``, ``i``,
+  ``em``, ``strong``, ``s``, ``code``, ``u``, …), named anchors (D6 marker +
+  inner text), and plain links (``[text](url)``) all accumulate in a current
+  **inline run**. A container (``div``/``span``/``font``/``center``) that
+  holds no block element contributes its children's inline pieces to the run
+  (exactly as inline rendering would); a container that *does* hold a block
+  element (heading, ``p``, list, table, quote, pre, hr) flushes the run and
+  is recursed into, preserving the old block structure. The run is
+  **flushed** at each block delimiter and at the end of the list: pieces
+  joined one by one with the inline joiner (D2 spacing rules), stripped, and
+  appended as one block when non-empty. Boundary whitespace in text pieces is
+  preserved (D1) so ``An *initial claim* is …`` keeps its spaces. A run that
+  degenerates to an isolated named anchor flushes to a marker-only line
+  (TESTS cases 31/36 — byte-identical to v0.4.0 output). The classification
+  is a pure structural read of the tree, so totality and determinism are
+  preserved (TESTS cases 37–43).
 
 ### 2.7 Error model (summary)
 
@@ -248,8 +275,8 @@ The implementation therefore deviates as follows (all pinned by tests):
 ## 3. Pseudocode
 
 ```
-BLOCKISH := {h1..h6, p, ul, ol, table, blockquote, pre, hr, div}
-UNWRAP_BLOCK := {div, span, font, center}
+BLOCK := {h1..h6, p, ul, ol, table, blockquote, pre, hr}    # D7: block delimiters
+UNWRAP_BLOCK := {div, span, font, center}                   # containers
 
 function convert(html, base_url, article_id="") -> str:
     # Pre: html is a str (or None), base_url is an absolute http(s) URL.
@@ -269,55 +296,89 @@ function convert(html, base_url, article_id="") -> str:
 
 # --- block context ---------------------------------------------------------
 function render_block_list(children, base_url, ns) -> list[str]:
+    # D7: only BLOCK elements start a new block; everything else is
+    # inline-level and accumulates in `run`. The run is flushed — pieces
+    # joined one by one per D2, stripped, appended if non-empty — at each
+    # BLOCK element and at the end of the list.
     blocks <- []
+    run <- []
+    function flush():
+        t <- run[0] if run is non-empty else ""
+        for piece in run[1:]:
+            t <- join_inline(t, piece)                  # D2, one by one
+        t <- t.strip()
+        run <- []
+        if t != "": blocks.append(t)
     for child in children:
         if child is text:
             t <- normalize_text(child)
-            if t != "": blocks.append(t)                # rule E11
-        else if child.name in {h1..h6}:
-            for m in collect_named_anchors(child, base_url, ns):  # D6: hoist to own lines
-                blocks.append(m)
-            level <- int(child.name[1])                 # 1..6; clamp to 1..6
-            t <- render_inline_children(child, base_url, ns, anchor_mode="text")
-            if t != "":
-                blocks.append(("#" * level) + " " + t)
-        else if child.name == "p":
-            t <- render_inline_children(child, base_url, ns)
-            if t != "": blocks.append(t)
-        else if child.name in {ul, ol}:
-            blocks.append(render_list(child, base_url, ns))
-        else if child.name == "table":
-            blocks.append(render_table(child, base_url, ns))
-        else if child.name == "hr":
-            blocks.append("---")
-        else if child.name == "blockquote":
-            inner <- render_block_list(child.children, base_url, ns)
-            if inner is non-empty:
-                body <- join(inner, "\n\n")
-                blocks.append(prefix_every_line(body, "> "))
-        else if child.name == "pre":
-            code <- text_content(child)                 # newlines preserved
-            fence <- "```" if code does not contain "```" else "````"
-            blocks.append(fence + "\n" + code + "\n" + fence)
-        else if child.name in {a}:
+            if t.strip() != "":
+                run.append(t)                           # D7: unstripped (D1):
+                                                        # boundary whitespace
+                                                        # survives to the join
+        else if child.name in BLOCK:
+            flush()
+            if child.name in {h1..h6}:
+                for m in collect_named_anchors(child, base_url, ns):  # D6: hoist
+                    blocks.append(m)
+                t <- render_inline_children(child, base_url, ns, anchor_mode="text")
+                if t.strip() != "":
+                    blocks.append(("#" * int(child.name[1])) + " " + t.strip())
+            else if child.name == "p":
+                t <- render_inline_children(child, base_url, ns)
+                if t.strip() != "": blocks.append(t.strip())
+            else if child.name in {ul, ol}:
+                blocks.append(render_list(child, base_url, ns))
+            else if child.name == "table":
+                blocks.append(render_table(child, base_url, ns))
+            else if child.name == "hr":
+                blocks.append("---")
+            else if child.name == "blockquote":
+                inner <- render_block_list(child.children, base_url, ns)
+                if inner is non-empty:
+                    body <- join(inner, "\n\n")
+                    blocks.append(prefix_every_line(body, "> "))
+            else if child.name == "pre":
+                code <- text_content(child)             # newlines preserved
+                fence <- "```" if code does not contain "```" else "````"
+                blocks.append(fence + "\n" + code + "\n" + fence)
+        else if child.name in UNWRAP_BLOCK:             # container
+            if contains_block_el(child):                # D7: real block structure
+                flush()
+                blocks.extend(render_block_list(child.children, base_url, ns))
+            else:                                       # D7: inline-only: flatten
+                for c in child.children:
+                    run.append(render_inline_piece(c, base_url, ns))
+        else if child.name == "a":
             m <- anchor_marker(child, base_url, ns)     # D6: None unless a named anchor
-            if m is not None:
+            if m is not None and contains_block_el(child):   # block-level anchor (D6)
+                flush()
                 blocks.append(m)                        # marker as its own block line
                 blocks.extend(render_block_list(child.children, base_url, ns))
-            else if has_blockish_descendant(child) or render_inline_children(child, base_url, ns) == "":
-                blocks.extend(render_block_list(child.children, base_url, ns))  # link dropped
-            else:
-                url <- rewrite_url(attr(child,"href"), base_url, ns)
-                if url is not None:
-                    blocks.append("[" + render_inline_children(child, base_url, ns) + "](" + url + ")")
+            else if m is not None:                      # D7: inline-level anchor
+                run.append(m + render_inline_children(child, base_url, ns))
+            else if contains_block_el(child):           # link holding blocks: drop it
+                flush()
+                blocks.extend(render_block_list(child.children, base_url, ns))
+            else:                                       # D7: plain link in the run
+                inner <- render_inline_children(child, base_url, ns).strip()
+                if inner == "": pass                    # empty link, no marker: nothing
                 else:
-                    blocks.append(render_inline_children(child, base_url, ns))
-        else if child.name in UNWRAP_BLOCK:
-            blocks.extend(render_block_list(child.children, base_url, ns))      # container
+                    url <- rewrite_url(attr(child,"href"), base_url, ns)
+                    if url is not None:
+                        run.append("[" + inner + "](" + url + ")")   # D7: link in run
+                    else:
+                        run.append(inner)               # E6: plain text
         else if child is a tag (unknown or inline tag in block position):
-            t <- render_inline_children(child, base_url, ns)
-            if t != "": blocks.append(t)
+            run.append(render_inline_piece(child, base_url, ns))    # D7: total
+    flush()
     return blocks
+
+function contains_block_el(el) -> bool:
+    # D7: True if el has a descendant tag in BLOCK. Containers
+    # (div/span/font/center) are deliberately NOT in BLOCK: a container
+    # holding only inline content is inline-level and coalesces into the run.
+    return any(d is a tag and d.name in BLOCK for d in el.descendants)
 
 # --- inline context --------------------------------------------------------
 function render_inline_children(el, base_url, ns, anchor_mode="inline") -> str:
@@ -534,20 +595,30 @@ string or a recursive call on a strictly smaller subtree.
    empty string.
 2. Parse the HTML leniently into a tree. The parser repairs whatever the CMS
    did wrong; we never see a "parse error", only a tree.
-3. Walk the top level of the tree left to right. Each node is classified:
-   heading, paragraph, list, table, rule, quote, code block, link, container,
-   or something else. Each class has exactly one output recipe.
-4. Containers (`div`, `span`, `font`) have no recipe of their own — walk into
-   their children (that is how 500 decorative spans simply disappear).
-5. Everything textual passes through the normalizer: `&nbsp;` becomes a space,
+3. Walk the top level of the tree left to right. Only *block elements* —
+   headings, paragraphs, lists, tables, rules, quotes, code blocks — start a
+   new output block. Everything else is inline-level: it accumulates in an
+   *inline run* that is flushed into a single paragraph when the next block
+   element (or the end of the list) arrives (D7).
+4. Containers (`div`, `span`, `font`) have no recipe of their own (that is
+   how 500 decorative spans simply disappear). They split the run only when
+   they actually hold a block element — then they recurse into block context.
+   Otherwise their inline children are flattened straight into the current
+   run, so `An <em>initial claim</em> is a …` inside a `div` stays one
+   paragraph instead of fragmenting around the emphasized word (D7).
+5. Text nodes, inline tags (`b`/`i`/`s`/`code`/`u`/`sub`/`sup`), anchors, and
+   links all join the run; the run is flushed at block delimiters and at the
+   end, so adjacent pieces merge with correct spacing (D2) rather than
+   becoming standalone paragraphs (D7).
+6. Everything textual passes through the normalizer: `&nbsp;` becomes a space,
    zero-width junk is deleted, and runs of whitespace become a single space.
-6. Emphasis (`b`/`i`/`s`) and `code` wrap their already-rendered children in
+7. Emphasis (`b`/`i`/`s`) and `code` wrap their already-rendered children in
    Markdown markers; if the child was empty, the marker is dropped entirely so
    we never emit a bare `**`.
-7. Links get a URL rewrite: relative paths become absolute; `javascript:` is
+8. Links get a URL rewrite: relative paths become absolute; `javascript:` is
    dropped (plain text); VA article URLs lose their query string so the manual
    contains stable, canonical links.
-8. Named anchors — an `<a>` that carries an `id` or `name` but no usable link
+9. Named anchors — an `<a>` that carries an `id` or `name` but no usable link
    target — are preserved as self-closing marker elements (D6). Inside a
    heading or a table label the markers are hoisted onto their own line
    immediately before the heading (raw HTML inline in an ATX heading is the
@@ -557,15 +628,15 @@ string or a recursive call on a strictly smaller subtree.
    namespaced with the article id (`art_<id>_`) so anchors never collide
    across articles, and fragment-only links (`#1a`) are rewritten into the
    same namespace; a bare `#` (null link) is left untouched.
-9. Tables are classified first: a *layout frame* — every row's first cell
+10. Tables are classified first: a *layout frame* — every row's first cell
    leads with a heading (eGain's `label | spacer | content` grid) — is
    dissolved into real headings at their native levels, with each remaining
    cell rendered in block context so nested data tables surface as real GFM
    tables (D5). Any other table is built row by row: the first row is the
    header, ragged rows are padded, pipes in cell text are escaped. A table
    *inside such a table's cell* is rendered as escaped rows joined by `<br>`.
-10. Lists number or dash their items; nested lists indent by four spaces.
-11. All finished blocks are joined with a blank line and one trailing newline.
+11. Lists number or dash their items; nested lists indent by four spaces.
+12. All finished blocks are joined with a blank line and one trailing newline.
 
 ### 4.2 Worked example
 
@@ -654,6 +725,13 @@ so the function stays pure and testable.
 | `<a id="x" href="https://…"></a>` (usable link) | link rendered, `id` dropped (D6; TESTS 33) | a live link wins over a named anchor (documented limitation) |
 | `href="#"` (null link) | left as `#` (D6; TESTS 34) | bare null link, no fragment to rewrite |
 | Label cell with non-heading content beside the heading | heading, then the sibling rendered in block context (D6; TESTS 36) | D5 used to drop anchor siblings silently |
+| Inline-only `<div>` wrapping a run | one paragraph, container flattened (D7; TESTS 37) | real-HTML inline content stays inline (B4) |
+| Emphasized run with no container at all | one paragraph (D7; TESTS 38) | the run model is container-independent |
+| `<span>` inside `<div>` around a run | one paragraph, spans flattened (D7; TESTS 39) | decorative spans disappear (4.1 step 4) |
+| `***independent medical opinion***` before `(IMO)` | `***` hugs the parenthesis (D7; TESTS 40) | `_wrap` strips its inner text (D1/D2) |
+| `<i>Note</i>:` + link inside a `<div>` | one paragraph (D7; TESTS 41) | label and link coalesce into the run |
+| `<div>` containing a real `<p>` | run flushed, then the paragraph as its own block (D7; TESTS 42) | containers holding block elements still split |
+| `<a id="ref">` wrapping text inside a `<div>` | inline marker immediately before its text (D7; TESTS 43) | inline anchor joins the run (D6 inline mode) |
 | Table with a single row | that row is the header; no body | GFM requires a header row |
 | Ragged table row | padded with empty cells to the widest row (E12) | GFM rows must be uniform |
 | Pipe in cell text | escaped `\|` (E13) | unescaped pipes break the table |
@@ -774,6 +852,13 @@ shown as `""`).
 | 34 | null link `href="#"` | `<p><a href="#">top</a></p>` | `[top](#)\n` | D6: bare `#` is left untouched (not namespaced) |
 | 35 | id and name differ | `<p><a id="x" name="y">label</a></p>` | `<a id="x" name="y"></a>label\n` | D6: both attrs are emitted |
 | 36 | label cell anchor sibling of heading | `<table><tr><td><h3>Section</h3><a name="top"></a></td><td></td><td><p>Body</p></td></tr></table>` | `### Section\n\n<a name="top"></a>\n\nBody\n` | D6: the label cell's non-heading anchor sibling is preserved (D5 dropped it) |
+| 37 | div wraps an emphasized run | `<div>An <em>initial claim</em> is a request for benefits.</div>` | `An *initial claim* is a request for benefits.\n` | D7: an inline-only container flattens into one paragraph (B4) |
+| 38 | top-level emphasized run | `An <em>initial claim</em> is a request for benefits.` | `An *initial claim* is a request for benefits.\n` | D7: the run model needs no container at all |
+| 39 | nested spans inside a div | `<div><span>An</span> <em>initial claim</em> <span>is a request.</span></div>` | `An *initial claim* is a request.\n` | D7: decorative spans flatten into the run |
+| 40 | bold-emphasis hugging a parenthesis | `An <strong><em>independent medical opinion </em></strong>(IMO), as discussed in <a href="http://www.ecfr.gov/current/title-38/section-3.328">38 CFR 3.328</a>, is an independent assessment.` | `An ***independent medical opinion***(IMO), as discussed in [38 CFR 3.328](http://www.ecfr.gov/current/title-38/section-3.328), is an independent assessment.\n` | D7: `_wrap` strips its inner, so `***` hugs `(IMO)` |
+| 41 | italic label + link inside a div | `<div><i>Note</i>: As discussed in <a href="https://example.com/x">the guidance</a>, VA Central Office reviews the claim.</div>` | `*Note*: As discussed in [the guidance](https://example.com/x), VA Central Office reviews the claim.\n` | D7: label and link coalesce into the run |
+| 42 | div holding a real paragraph | `<div>An <em>initial claim</em> is a request.<p>Next block.</p></div>` | `An *initial claim* is a request.\n\nNext block.\n` | D7: a container with a block element still splits |
+| 43 | named anchor inside a div run | `<div>See <a id="ref">the reference</a> for details.</div>` | `See <a id="ref"></a>the reference for details.\n` | D7: inline anchor joins the run (D6 inline mode) |
 
 **Namespaced (article_id) group.** The cases above use `article_id=""` (unit
 tests), so markers carry bare ids. A separate group calls

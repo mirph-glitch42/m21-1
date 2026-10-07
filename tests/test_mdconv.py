@@ -215,6 +215,49 @@ CASES: list[tuple[str, str, str]] = [
         "<td></td><td><p>Body</p></td></tr></table>",
         '### Section\n\n<a name="top"></a>\n\nBody\n',
     ),
+    (
+        "case37 div wraps an emphasized run",
+        "<div>An <em>initial claim</em> is a request for benefits.</div>",
+        "An *initial claim* is a request for benefits.\n",
+    ),
+    (
+        "case38 top-level emphasized run",
+        "An <em>initial claim</em> is a request for benefits.",
+        "An *initial claim* is a request for benefits.\n",
+    ),
+    (
+        "case39 nested spans inside a div",
+        "<div><span>An</span> <em>initial claim</em> <span>is a request.</span></div>",
+        "An *initial claim* is a request.\n",
+    ),
+    (
+        "case40 bold-emphasis hugging a parenthesis",
+        "An <strong><em>independent medical opinion </em></strong>(IMO), "
+        "as discussed in "
+        '<a href="http://www.ecfr.gov/current/title-38/section-3.328">38 CFR 3.328</a>'
+        ", is an independent assessment.",
+        "An ***independent medical opinion***(IMO), as discussed in "
+        "[38 CFR 3.328](http://www.ecfr.gov/current/title-38/section-3.328), "
+        "is an independent assessment.\n",
+    ),
+    (
+        "case41 italic label + link inside a div",
+        "<div><i>Note</i>: As discussed in "
+        '<a href="https://example.com/x">the guidance</a>, '
+        "VA Central Office reviews the claim.</div>",
+        "*Note*: As discussed in [the guidance](https://example.com/x), "
+        "VA Central Office reviews the claim.\n",
+    ),
+    (
+        "case42 div holding a real paragraph",
+        "<div>An <em>initial claim</em> is a request.<p>Next block.</p></div>",
+        "An *initial claim* is a request.\n\nNext block.\n",
+    ),
+    (
+        "case43 named anchor inside a div run",
+        '<div>See <a id="ref">the reference</a> for details.</div>',
+        'See <a id="ref"></a>the reference for details.\n',
+    ),
 ]
 
 
