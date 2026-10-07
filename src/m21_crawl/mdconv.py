@@ -1,6 +1,6 @@
 """mdconv: deterministic rich-HTML -> GFM block converter for eGain article content.
 
-Implements ``algorithms/html-to-markdown-section-extraction.md`` (v0.5.0):
+Implements ``algorithms/html-to-markdown-section-extraction.md`` (v0.6.0):
 
 - total, deterministic two-context (block/inline) tree walk over a lenient
   lxml parse (BeautifulSoup is the parser of record: fragments stay flat);
@@ -16,6 +16,11 @@ Implements ``algorithms/html-to-markdown-section-extraction.md`` (v0.5.0):
   every row's first cell leads with a heading is a *layout frame* and
   dissolves into real headings at their native level with block-rendered
   content (D5, ``_render_layout_frame``);
+- layout frames dissolve by *row kind* (D8): a heading label (T1), a
+  plain-text section-mark or meta label with exactly two visible cells (T2,
+  B6), or an all-empty row (T3, renders nothing); a label that normalizes
+  exactly to ``Change Date`` renders as the GFM quote block
+  ``> **Change Date**`` + ``> {date}`` (B11, both the T1 and T2 paths);
 - named anchors — an ``<a>`` with an ``id``/``name`` but no usable link
   target — are preserved as self-closing ``<a id=...></a>`` markers,
   namespaced per article (``art_<id>_``) and hoisted to their own line
@@ -61,6 +66,11 @@ _INLINE_UNWRAP = _HEADING | {
     "sub",
     "blockquote",
 }
+# D8 (B6): generalized layout-frame row classification
+_SECTION_MARK = re.compile(r"^[IVXLC]+\.\s?(?:iv|iii|ii|i)(?:\.\s?[A-Za-z0-9]+)*\.\s")
+_META_LABELS = frozenset({"Introduction", "Change Date", "In This Section", "Overview"})
+_CHANGE_DATE = "Change Date"
+_VISIBLE_BLOCK = frozenset({"img", "table", "ul", "ol"})
 
 
 class HtmlConversionError(RuntimeError):
@@ -336,59 +346,134 @@ def _layout_heading(cell: Tag) -> Tag | None:
     return None
 
 
+def _cell_visible(cell: Tag) -> bool:
+    """D8: a cell is *visible* if it shows text or a block-level element.
+
+    Whitespace-only spacers are invisible; a cell holding an ``img``/
+    ``table``/list but no text still counts (TESTS case44 image cell).
+    """
+    if _normalize_text(cell.get_text()).strip() != "":
+        return True
+    return any(isinstance(d, Tag) and (d.name or "") in _VISIBLE_BLOCK for d in cell.descendants)
+
+
+def _plain_label(cell: Tag) -> str:
+    """D8: the label cell's normalized plain text (stripped)."""
+    return _normalize_text(cell.get_text()).strip()
+
+
+def _frame_row_kind(tr: Tag) -> str | None:
+    """D8: classify one frame row (doc 2.2).
+
+    ``T1`` — first cell leads with a heading (D5 label); ``T2`` — after
+    stripping invisible spacers exactly two visible inline-only cells remain
+    and the first's plain text is a section mark or a meta label (B6 plain
+    label); ``T3`` — no visible cell (renders nothing); ``None`` — a
+    genuine data row, which disqualifies the whole table.
+    """
+    cells = _cells_of(tr)
+    if not cells:
+        return None
+    if _layout_heading(cells[0]) is not None:
+        return "T1"
+    visible = [c for c in cells if _cell_visible(c)]
+    if not visible:
+        return "T3"
+    if len(visible) != 2 or _contains_block_el(visible[0]):
+        return None
+    label = _plain_label(visible[0])
+    if _SECTION_MARK.match(label) or label in _META_LABELS:
+        return "T2"
+    return None
+
+
 def _is_layout_frame(el: Tag) -> bool:
-    """D5: a table whose EVERY row's first cell leads with a heading.
+    """D8: a table whose EVERY row classifies as T1/T2/T3 (doc 2.2).
 
     eGain wraps article content in ``label | spacer | content`` grids whose
-    label cells carry the section marks (e.g. ``I.i.1.A.1.a. ...``). Tables
-    that fail the test are genuine data tables and keep the GFM rendering.
+    label cells carry section marks (``I.i.1.A.1.a. ...``) or meta labels
+    (``Introduction``/``Change Date``/``In This Section``/``Overview``), in
+    either a heading (T1) or plain text (T2). A single genuine data row
+    (``None``) disqualifies the whole table, which keeps GFM rendering.
     """
     rows = _table_rows(el)
-    if not rows:
-        return False
-    for tr in rows:
-        cells = _cells_of(tr)
-        if not cells or _layout_heading(cells[0]) is None:
-            return False
-    return True
+    return bool(rows) and all(_frame_row_kind(tr) is not None for tr in rows)
+
+
+def _change_date_blocks(body: list[str]) -> list[str]:
+    """B11: a Change Date frame renders as a GFM quote block.
+
+    Single-line body -> a two-line quote (marker line + date line); a
+    multi-block body -> the marker line alone, then the body blocks after
+    it (never drop text).
+    """
+    if len(body) == 1 and "\n" not in body[0]:
+        return [f"> **Change Date**\n> {body[0]}"]
+    return ["> **Change Date**", *body]
 
 
 def _render_layout_frame(el: Tag, base_url: str, ns: str) -> str:
-    """D5: dissolve a layout frame into real headings + block content.
+    """D8: dissolve a layout frame row by row (doc 2.2).
 
-    Each row emits its label heading at the heading's *native level* with its
-    text rendered verbatim, then renders every remaining cell's children in
-    **block** context, so a real data table nested in the content column
-    surfaces as a real GFM table (user goals 2/3). Blocks are joined by one
-    blank line. Called only on tables that passed :func:`_is_layout_frame`.
-
-    D6: the label heading's named anchors are hoisted to their own lines
-    before the heading, and the label cell's non-heading children (e.g. an
-    anchor sibling of the heading) are rendered in block context after it —
-    D5 used to drop them silently.
+    T1 — the label cell leads with a heading: emit it at its *native level*
+    (named anchors hoisted first, D6), keep the label cell's non-heading
+    children, then block-render the remaining cells so nested data tables
+    surface as real GFM tables. T2 — a plain-text label (section mark or
+    meta label): emit ``### `` + the label (anchors hoisted) then
+    block-render the content cell. T3 — a row with no visible cell renders
+    nothing. B11: a label normalizing exactly to ``Change Date`` renders
+    as a quote block instead of a heading, on both the T1 and T2 paths.
+    A T3-only frame returns ``""`` and the caller drops it (the
+    ``if b != ""`` guard in :func:`_render_block_list`).
     """
     blocks: list[str] = []
     for tr in _table_rows(el):
         cells = _cells_of(tr)
         if not cells:
             continue
-        heading = _layout_heading(cells[0])
-        if heading is not None:
+        kind = _frame_row_kind(tr)
+        if kind == "T3":
+            continue
+        if kind == "T1":
+            heading = _layout_heading(cells[0])
             for m in _collect_named_anchors(heading, base_url, ns):  # D6: hoist
                 blocks.append(m)
             t = _render_inline_children(heading, base_url, ns, anchor_mode="text").strip()
-            if t != "":
-                blocks.append("#" * int(heading.name[1]) + " " + t)
-            for sib in cells[0].children:  # D6: keep non-heading label content
-                if sib is heading:
-                    continue
-                blocks.extend(b for b in _render_block_list([sib], base_url, ns) if b != "")
-        else:  # unreachable for frames (guarded); conservative text fallback
-            t = _render_inline_children(cells[0], base_url, ns).strip()
-            if t != "":
-                blocks.append(t)
-        for cell in cells[1:]:
-            blocks.extend(b for b in _render_block_list(cell.children, base_url, ns) if b != "")
+            if t == _CHANGE_DATE:  # B11
+                cd_body: list[str] = []
+                for sib in cells[0].children:
+                    if sib is heading:
+                        continue
+                    cd_body.extend(b for b in _render_block_list([sib], base_url, ns) if b != "")
+                for cell in cells[1:]:
+                    cd_body.extend(
+                        b for b in _render_block_list(cell.children, base_url, ns) if b != ""
+                    )
+                blocks.extend(_change_date_blocks(cd_body))
+            else:
+                if t != "":
+                    blocks.append("#" * int(heading.name[1]) + " " + t)
+                for sib in cells[0].children:  # D6: keep non-heading label content
+                    if sib is heading:
+                        continue
+                    blocks.extend(b for b in _render_block_list([sib], base_url, ns) if b != "")
+                for cell in cells[1:]:
+                    blocks.extend(
+                        b for b in _render_block_list(cell.children, base_url, ns) if b != ""
+                    )
+        elif kind == "T2":
+            visible = [c for c in cells if _cell_visible(c)][:2]
+            label, content = visible[0], visible[1]
+            for m in _collect_named_anchors(label, base_url, ns):  # D6: hoist
+                blocks.append(m)
+            if _plain_label(label) == _CHANGE_DATE:  # B11
+                body = [b for b in _render_block_list(content.children, base_url, ns) if b != ""]
+                blocks.extend(_change_date_blocks(body))
+            else:
+                blocks.append("### " + _plain_label(label))
+                for b in _render_block_list(content.children, base_url, ns):
+                    if b != "":
+                        blocks.append(b)
     return "\n\n".join(blocks)
 
 

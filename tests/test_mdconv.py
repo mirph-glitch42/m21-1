@@ -1,9 +1,9 @@
 """mdconv: rich HTML -> GFM converter (TDD per html-to-markdown-section-extraction.md).
 
-All 36 TESTS cases are transcribed byte-exact from doc section 6 (G11
+All 56 TESTS cases are transcribed byte-exact from doc section 6 (G11
 synthetic inputs shaped like live CMS output), plus the namespaced
-(article_id) group of doc 6 (D6 named anchors). Property tests P1-P4 follow
-doc 6.1 with the fixed seed 20261002.
+(article_id) group of doc 6 (D6 named anchors; D8 T2 label hoisting).
+Property tests P1-P4 follow doc 6.1 with the fixed seed 20261002.
 """
 
 import random
@@ -17,7 +17,7 @@ from m21_crawl.mdconv import HtmlConversionError, convert
 
 BASE_URL = "https://www.knowva.ebenefits.va.gov"
 
-# (name, input, expected) — doc section 6, cases 1-36, byte-exact expected.
+# (name, input, expected) — doc section 6, cases 1-56, byte-exact expected.
 CASES: list[tuple[str, str, str]] = [
     (
         "case01 minimal paragraph",
@@ -258,6 +258,81 @@ CASES: list[tuple[str, str, str]] = [
         '<div>See <a id="ref">the reference</a> for details.</div>',
         'See <a id="ref"></a>the reference for details.\n',
     ),
+    (
+        "case44 T2 section-mark frame, spacer + image",
+        "<table><tr><td><span>II.i.2.B.4.c. Example of Outdated Form Determination</span></td>"
+        '<td></td><td><img src="/img/form.png" alt="VA Form 21-526EZ"></td></tr></table>',
+        "### II.i.2.B.4.c. Example of Outdated Form Determination\n\n"
+        "![VA Form 21-526EZ](https://www.knowva.ebenefits.va.gov/img/form.png)\n",
+    ),
+    (
+        "case45 T2 mark label + nested data table",
+        "<table><tr><td>II.i.2.C.6.h. Rating Review of Undeliverable Mail</td>"
+        "<td><table><tr><th>If</th><th>Then</th></tr>"
+        "<tr><td>no EP</td><td>remand</td></tr></table></td></tr></table>",
+        "### II.i.2.C.6.h. Rating Review of Undeliverable Mail\n\n"
+        "| If | Then |\n| --- | --- |\n| no EP | remand |\n",
+    ),
+    (
+        "case46 T2 Change Date bold label (B11)",
+        "<table><tr><td><b>Change Date</b></td><td></td><td>November 18, 2020</td></tr></table>",
+        "> **Change Date**\n> November 18, 2020\n",
+    ),
+    (
+        "case47 T2 spacer-first Introduction",
+        "<table><tr><td></td><td>Introduction</td>"
+        "<td><p>This topic contains the following.</p></td></tr></table>",
+        "### Introduction\n\nThis topic contains the following.\n",
+    ),
+    (
+        "case48 two-cell letterhead stays GFM",
+        "<table><tr><td>Department of Veterans Affairs</td>"
+        "<td>Memorandum of Changes</td></tr></table>",
+        "| Department of Veterans Affairs | Memorandum of Changes |\n| --- | --- |\n",
+    ),
+    (
+        "case49 two-cell memo row stays GFM",
+        "<table><tr><td>K-1</td><td>Form number for estate tax</td></tr></table>",
+        "| K-1 | Form number for estate tax |\n| --- | --- |\n",
+    ),
+    (
+        "case50 T2 4-cell spacer-first In This Section",
+        "<table><tr><td></td><td><b>In This Section</b></td><td></td>"
+        "<td><p>Topics listed below.</p></td></tr></table>",
+        "### In This Section\n\nTopics listed below.\n",
+    ),
+    (
+        "case51 T2 mark label with named anchor",
+        '<table><tr><td>V.iii.5.3.g<a id="g5" name="g5">.</a> Granting a Subclass</td>'
+        "<td><p>Body text</p></td></tr></table>",
+        '<a id="g5" name="g5"></a>\n\n### V.iii.5.3.g. Granting a Subclass\n\nBody text\n',
+    ),
+    (
+        "case52 T2 mark with space after a digit segment",
+        "<table><tr><td>IX.i.2.4. b. Where to Find the Form</td>"
+        "<td><p>Available online.</p></td></tr></table>",
+        "### IX.i.2.4. b. Where to Find the Form\n\nAvailable online.\n",
+    ),
+    (
+        "case53 T2 bold In This Section, two cells",
+        "<table><tr><td><b>In This Section</b></td><td>content</td></tr></table>",
+        "### In This Section\n\ncontent\n",
+    ),
+    (
+        "case54 T3 all-empty table",
+        "<table><tr><td></td></tr></table>",
+        "",
+    ),
+    (
+        "case55 three-cell rating row stays GFM",
+        "<table><tr><td>7101</td><td>Hypertension</td><td>10</td></tr></table>",
+        "| 7101 | Hypertension | 10 |\n| --- | --- | --- |\n",
+    ),
+    (
+        "case56 T1 Change Date heading (B11)",
+        "<table><tr><td><h3>Change Date</h3></td><td></td><td>August 22, 2024</td></tr></table>",
+        "> **Change Date**\n> August 22, 2024\n",
+    ),
 ]
 
 
@@ -281,6 +356,19 @@ def test_namespaced_marker_in_heading() -> None:
     assert (
         convert(html, base_url=BASE_URL, article_id="123")
         == '<a id="art_123_1a" name="art_123_1a"></a>\n\n### Sec. Title\n\nBody\n'
+    )
+
+
+def test_namespaced_marker_in_t2_label() -> None:
+    html = (
+        '<table><tr><td>II.i.2.B.4.b<a id="4b" name="4b">.</a> '
+        "Determining the Date a Form Becomes Outdated</td>"
+        "<td><p>Body</p></td></tr></table>"
+    )
+    assert (
+        convert(html, base_url=BASE_URL, article_id="554400000174859")
+        == '<a id="art_554400000174859_4b" name="art_554400000174859_4b"></a>\n\n'
+        "### II.i.2.B.4.b. Determining the Date a Form Becomes Outdated\n\nBody\n"
     )
 
 

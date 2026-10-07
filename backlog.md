@@ -791,6 +791,50 @@ date, words verbatim); no other frame affected (Introduction /
 In This Section / Overview remain headings); `make gate` green; doc +
 tests + code in one atomic commit.
 
+## B12. CI gate for `algorithms/INDEX.md` staleness — **open, new 2026-10-07**
+
+**User request (verbatim, 2026-10-07):** "Add CI check for Index.md staleness."
+
+**Why (the bug this closes):** `algorithms/INDEX.md` is a hand-maintained
+aggregate registry, but both `doc-index` and `doc-index-check` in the
+Makefile `continue` past `*/INDEX.md`, so **no gate enforces it** — neither
+the local `gate` nor CI. It silently went stale: the html-to-markdown row
+read `0.5.0` while the document METADATA said `0.6.0`, and nothing caught
+it. The per-document *inline* indexes are checked; the aggregate registry
+is not. INDEX.md's own rules 3 and 5 already state that CI should assert
+this (Version == METADATA version; one row per doc, every row resolves);
+the check was simply never written.
+
+**Check to add (per INDEX.md rules 3 and 5):** for every `algorithms/*.md`
+except `INDEX.md`, assert:
+1. exactly one row exists in INDEX.md (matched by slug or file link);
+2. the row's `Version` equals the document METADATA `Version`;
+3. the row's `File` link target exists in the repo;
+4. the row's `Status` equals the METADATA `Status`.
+Plus the inverse: every INDEX.md row points at an existing file (no
+orphans).
+
+**Implementation:** a small deterministic, stdlib-only script
+(e.g. `scripts/check_index_registry.py`) that exits non-zero with the
+offending row named on any mismatch; wire it into a new
+`index-registry-check` Makefile target and add that target to `gate` and
+the CI workflow, mirroring how `doc-index-check` loops `algorithms/*.md`.
+
+**Ordering:** independent of B6–B11; small standalone cycle. Should land
+**before** the B6 closeout commit so the B6 version bump (0.5.0 → 0.6.0)
+is what first exercises the new gate (and the currently stale row is fixed
+as part of landing it).
+
+**Blast radius:** new `scripts/check_index_registry.py`; `Makefile`
+(new target + `gate` dependency); `.github/workflows` CI job; optional
+fixture test under `tests/`.
+
+**Acceptance criteria:** `index-registry-check` fails (non-zero, naming the
+offending row) when a row's Version/Status/File disagrees with METADATA, or
+a doc is missing its row, or a row is orphaned; passes on the current
+(fixed) registry; wired into `make gate` and CI; the stale `0.5.0` row is
+fixed as part of landing this.
+
 ## Standing constraints (apply to all items)
 
 - The manual's TEXT and ORGANIZATION must not change — formatting only
