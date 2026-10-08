@@ -50,7 +50,7 @@ def test_single_article_byte_exact() -> None:
         "\n"
         "## Table of Contents\n"
         "\n"
-        "1. General\n"
+        "1. [General](#general)\n"
         "\n"
         "## General\n"
         "\n"
@@ -63,7 +63,7 @@ def test_single_article_byte_exact() -> None:
 def test_two_articles_order_preserved() -> None:
     out = assemble(_articles(2), expected_count=2)
     toc = out.split("## Table of Contents\n\n")[1].split("\n\n## ")[0]
-    assert toc == "1. Article 1\n2. Article 2"
+    assert toc == "1. [Article 1](#article-1)\n2. [Article 2](#article-2)"
     assert out.index("## Article 1") < out.index("## Article 2")
 
 
@@ -116,7 +116,7 @@ def test_empty_breadcrumb_omitted() -> None:
         "\n"
         "## Table of Contents\n"
         "\n"
-        "1. NoCrumb\n"
+        "1. [NoCrumb](#nocrumb)\n"
         "\n"
         "## NoCrumb\n"
         "\n"
@@ -131,7 +131,7 @@ def test_empty_body_omits_body_block() -> None:
         "\n"
         "## Table of Contents\n"
         "\n"
-        "1. Empty\n"
+        "1. [Empty](#empty)\n"
         "\n"
         "## Empty\n"
         "\n"
@@ -391,3 +391,66 @@ def test_all_resolved_anchors_exist_as_headings() -> None:
     _, all_anchors = _oracle(articles)
     anchors = set(re.findall(r"\]\(#([^)]+)\)", out))
     assert anchors <= all_anchors
+
+
+# --- TOC internal links (B7: algorithms/internal-link-resolution.md 0.4.0) ---
+
+
+def _toc_block(out: str) -> str:
+    """The TOC entry lines, between the TOC H2 and the first article H2."""
+    return out.split("## Table of Contents\n\n")[1].split("\n\n## ")[0]
+
+
+def test_toc_entries_are_internal_links() -> None:
+    articles = [
+        Article(id="1", name="General", body_md="B1.\n"),
+        Article(id="2", name="General", body_md="B2.\n"),
+        Article(id="3", name="POA", body_md="B3.\n"),
+    ]
+    out = assemble(articles, expected_count=3)
+    anchor_by_id, _ = _oracle(articles)
+    lines = _toc_block(out).split("\n")
+    assert lines == [
+        "1. [General](#general)",
+        "2. [General](#general-1)",
+        "3. [POA](#poa)",
+    ]
+    for i, a in enumerate(articles, start=1):
+        assert lines[i - 1] == f"{i}. [{a.name}](#{anchor_by_id[a.id]})"
+
+
+def test_toc_visible_text_and_order_unchanged() -> None:
+    articles = [
+        Article(id="1", name="General", body_md="B1.\n"),
+        Article(id="2", name="POA", body_md="B2.\n"),
+    ]
+    out = assemble(articles, expected_count=2)
+    # B7 wraps each entry in a link, but the visible text and order are the
+    # pre-B7 plain list: stripping the link wrapping must recover it exactly.
+    stripped = re.sub(r"\[([^\]]+)\]\(#[^)]+\)", r"\1", _toc_block(out))
+    assert stripped == "1. General\n2. POA"
+
+
+def test_internalize_idempotent_on_toc() -> None:
+    from m21_crawl.assemble import _internalize_links
+
+    # A document that already has a linked TOC plus one known article-URL link:
+    # a second pass must be a no-op, and the TOC #fragment link must survive
+    # byte-identical (the _ARTICLE_LINK pattern can never match it).
+    anchor_by_id = {"1": "general"}
+    doc = f"## Table of Contents\n\n1. [General](#general)\n\n## General\n\n[see]({_LINK_BASE}1)\n"
+    once = _internalize_links(doc, anchor_by_id)
+    twice = _internalize_links(once, anchor_by_id)
+    assert once == twice
+    assert "1. [General](#general)" in once
+    assert "[see](#general)" in once
+    assert f"[see]({_LINK_BASE}1)" not in once
+
+
+def test_toc_anchors_resolve_census() -> None:
+    articles = [Article(id=str(i), name="General", body_md=f"B{i}.\n") for i in (1, 2, 3)]
+    out = assemble(articles, expected_count=3)
+    _, all_anchors = _oracle(articles)
+    targets = re.findall(r"\]\(#([^)]+)\)", _toc_block(out))
+    assert targets == ["general", "general-1", "general-2"]
+    assert set(targets) <= all_anchors

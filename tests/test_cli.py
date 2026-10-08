@@ -38,10 +38,10 @@ EXPECTED_MD = """\
 
 ## Table of Contents
 
-1. Article One
-2. Article Two
-3. Chapter Article
-4. Part 2 Article
+1. [Article One](#article-one)
+2. [Article Two](#article-two)
+3. [Chapter Article](#chapter-article)
+4. [Part 2 Article](#part-2-article)
 
 ## Article One
 
@@ -373,8 +373,8 @@ EXPECTED_MD_SKIP = """\
 
 ## Table of Contents
 
-1. Part 1 Article A
-2. Chapter Article
+1. [Part 1 Article A](#part-1-article-a)
+2. [Chapter Article](#chapter-article)
 
 ## Part 1 Article A
 

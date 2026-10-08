@@ -4,12 +4,12 @@
 id	start_line	end_line
 INDEX_BLOCK	3	13
 METADATA	15	36
-THEORY	37	230
-PSEUDOCODE	231	325
-WALKTHROUGH	326	368
-IMPLEMENTATION	369	456
-TESTS	457	489
-REFERENCES	490	506
+THEORY	37	247
+PSEUDOCODE	248	360
+WALKTHROUGH	361	407
+IMPLEMENTATION	408	498
+TESTS	499	535
+REFERENCES	536	552
 <!-- INDEX:END -->
 
 <!-- SECTION:METADATA -->
@@ -19,14 +19,14 @@ REFERENCES	490	506
 |---|---|
 | Name | Internal link resolution — rewrite cross-article hyperlinks into in-document section anchors |
 | Slug | internal-link-resolution |
-| Version | 0.3.0 |
+| Version | 0.4.0 |
 | Status | implemented |
 | Author | Bionic agent (on behalf of murphyjj) |
 | Created | 2026-10-03 |
-| Last modified | 2026-10-06 |
-| Status history | 0.1.0 (2026-10-03): initial draft — the assembled manual's ~14.4k cross-article hyperlinks (eGain article URLs) should become internal `#anchor` links to the target article's `## ` heading; links whose target id is absent from the manual stay as portal URLs · 0.2.0 (2026-10-04): implemented in `src/m21_crawl/assemble.py` (`_ARTICLE_LINK`, `heading_anchor`, `_internalize_links`, final pass in `assemble`) + 7 new tests in `tests/test_assemble.py`; slug worked-examples corrected to the renderer's triple-hyphen form · 0.3.0 (2026-10-06): B3 — anchors are now assigned in *document order* via a github-slugger occurrence replica (`Slugger`), with body-heading context (`_body_heading_texts`); C4 rewritten — duplicate article names map to their own heading's distinct `-N` slug, and an article name colliding with an earlier body heading is correctly suffixed |
+| Last modified | 2026-10-07 |
+| Status history | 0.1.0 (2026-10-03): initial draft — the assembled manual's ~14.4k cross-article hyperlinks (eGain article URLs) should become internal `#anchor` links to the target article's `## ` heading; links whose target id is absent from the manual stay as portal URLs · 0.2.0 (2026-10-04): implemented in `src/m21_crawl/assemble.py` (`_ARTICLE_LINK`, `heading_anchor`, `_internalize_links`, final pass in `assemble`) + 7 new tests in `tests/test_assemble.py`; slug worked-examples corrected to the renderer's triple-hyphen form · 0.3.0 (2026-10-06): B3 — anchors are now assigned in *document order* via a github-slugger occurrence replica (`Slugger`), with body-heading context (`_body_heading_texts`); C4 rewritten — duplicate article names map to their own heading's distinct `-N` slug, and an article name colliding with an earlier body heading is correctly suffixed · 0.4.0 (2026-10-07): B7 — the `## Table of Contents` is now a *linked* numbered list: each entry is `[name](#anchor)`, pointing at that article's own `## {name}` H2 anchor (the same id-keyed `anchor_by_id` map, so duplicate names still disambiguate). The anchor build is hoisted *ahead* of TOC rendering — the TOC is a heading-free list, so the slug walk and every existing anchor are unchanged — and `_internalize_links` leaves the TOC's `#`-fragment links untouched (they are not article-URL candidates), so the pass stays idempotent on the TOC; the TOC's visible text, numbering, and order are byte-identical (only link wrapping is added) |
 | Languages | Python 3.12 (implementation); pseudocode is language-agnostic |
-| Implementation location | src/m21_crawl/assemble.py — `_ARTICLE_LINK` L43; `_BODY_HEADING`/`_FENCE` L47–48; `heading_anchor` L79–87; `Slugger` L90–108; `_body_heading_texts` L111–135; `_internalize_links` L138–151; `_emitted_body` L165–177; final pass in `assemble` L218–229 (v0.3.0, 2026-10-06) |
+| Implementation location | src/m21_crawl/assemble.py — `_ARTICLE_LINK` L46; `_BODY_HEADING`/`_FENCE` L50–51; `heading_anchor` L82–90; `Slugger` L93–111; `_body_heading_texts` L114–138; `_internalize_links` L141–154; `_emitted_body` L168–180; anchor-hoist + linked TOC + rewrite pass in `assemble` L210–236 (v0.4.0, 2026-10-07) |
 | Time complexity | O(D + (N + H)·L) time: single regex rewrite pass O(D) + a document-order slug build that scans N article names and H body headings at O((N + H)·L) (see THEORY 2.4) |
 | Space complexity | O(N + D) working space (id→anchor map of N entries; the rewritten copy of D bytes) |
 | Determinism | deterministic (pure string transform; map built in portal order) |
@@ -61,6 +61,13 @@ to
 
 where `<slug>` is the GitHub/GFM anchor of the target article's `## {name}`
 heading. Everything else is byte-identical.
+
+In addition (B7), the `## Table of Contents` list is emitted *linked*:
+each entry `[name]` becomes `[name](#<slug>)`, where `<slug>` is that
+entry's **own** article's `## {name}` H2 anchor (the same id-keyed
+`anchor_by_id` map). The TOC's visible text, numbering, and order are
+unchanged — only the link wrapping is added (goal 1: no text or
+organization change).
 
 **Live scale (verified 2026-10-03 on the 442-article manual):**
 
@@ -102,6 +109,16 @@ heading. Everything else is byte-identical.
    (other portals, articles excluded as Historical/Rescinded) keep their
    portal URL — they still resolve online, and faking an anchor would
    create dead in-document links.
+8. **The TOC is linked (B7).** The `## Table of Contents` entries are
+   emitted as `[name](#<slug>)` using the *same* id-keyed `anchor_by_id`
+   map as cross-article links, so every TOC entry resolves to its
+   article's own `## {name}` H2 anchor (duplicate names disambiguate via
+   the Slugger's `-N` suffix). The TOC is a heading-free list — it
+   contributes nothing to the slug walk — and its `#`-fragment links are
+   not article-URL candidates, so `_internalize_links` leaves them
+   untouched and the pass stays idempotent on the TOC. The TOC's visible
+   text, numbering, and order are byte-identical (only link wrapping is
+   added).
 
 ### 2.2 Why this approach
 
@@ -275,13 +292,16 @@ function body_heading_texts(body_md) -> list    # headings in doc order, fences 
             texts.append(captured heading text) # '## ' marker stripped
     return texts
 
-function internalize(document: str, articles: list, title: str) -> str
+function build_anchor_map(articles, title) -> dict
     # articles: deduped, in document order; each has .id (str), .name (str),
     #           .body_md (str), .error (str or null). title: the H1 text
     #           (first heading in the doc). The dedup context is the body as
     #           EMITTED: the placeholder when .error is set (it carries no
     #           headings), else .body_md — never headings that are absent
     #           from the document.
+    # NOTE (B7): the TOC is a numbered list, not a heading — it contributes
+    # nothing to this walk, so building the map BEFORE the TOC is rendered is
+    # circularity-free and leaves every anchor byte-identical.
     slugger := Slugger()
     slugger.slug(title)                         # H1 — first heading in the doc
     slugger.slug('Table of Contents')           # H2 TOC (always present)
@@ -291,6 +311,12 @@ function internalize(document: str, articles: list, title: str) -> str
         emitted := a.placeholder if a.error else a.body_md
         for bh in body_heading_texts(emitted):
             slugger.slug(bh)                    # body headings = dedup context
+    return anchor_by_id
+
+function internalize(document: str, anchor_by_id: dict) -> str
+    # Rewrite ONLY known cross-article article-URL links to anchors. The TOC's
+    # `#`-fragment links (B7) are NOT article-URL candidates, so they pass
+    # through byte-identical — the pass is idempotent on the TOC.
     pattern := regex(LINK_DEST)                 # capture URL + trailing id
     function repl(match):
         target_id := match.group(id)
@@ -301,9 +327,18 @@ function internalize(document: str, articles: list, title: str) -> str
 
 # Integration point (assemble, after the completeness gates pass):
 function assemble(articles, expected_count, title) -> str
-    … existing: dedupe_first_wins, CompletenessError gate, TOC, blocks …
+    deduped := dedupe_first_wins(articles)
+    if len(deduped) != expected_count:
+        raise CompletenessError(expected_count, len(deduped))
+    anchor_by_id := build_anchor_map(deduped, title)   # B7: hoisted ahead of TOC
+    toc := ''                                          # B7: linked entries
+    for i, a in enumerate(deduped, start=1):
+        toc := toc + str(i) + '. [' + a.name + '](#' + anchor_by_id[a.id] + ')'
+    blocks := ['# ' + title, '## Table of Contents\n\n' + toc]
+    for a in deduped:
+        blocks.append(article_block(a))   # '## name', optional '> breadcrumb', body
     document := join(blocks, "\n\n") + "\n"
-    return internalize(document, deduped, title)
+    return internalize(document, anchor_by_id)
 ```
 
 **Ambiguity policy.** The token is unambiguous by construction (fixed
@@ -331,7 +366,11 @@ scan — no catastrophic-backtracking inputs exist for it.
 1. Take the deduped article list exactly as it produced the headings, and
    build a small dictionary: each article id → the slug of its `## `
    heading name (lowercased, punctuation stripped, spaces → hyphens).
-   First occurrence wins if an id somehow repeats.
+   First occurrence wins if an id somehow repeats. This map is built
+   *before* the document is rendered (B7), so the `## Table of Contents`
+   list is emitted **linked** — each entry `[name]` becomes
+   `[name](#slug)` pointing at that entry's own article heading — using the
+   exact same map the link-rewriting pass below uses.
 2. Scan the finished document once, left to right, looking for the exact
    shape `](` + article-URL + `)`.
 3. For each hit, pull out the trailing id. If the dictionary knows that
@@ -380,7 +419,10 @@ still point at the portal.
 - `anchor_by_id: dict[str, str]` — keys: deduped article ids (strings,
   portal ids are numeric strings); values: the slug the document-order
   `Slugger` assigns to that article's *own* `## {name}` heading. Built by
-  one left-to-right document-order walk (pseudocode).
+  one left-to-right document-order walk (pseudocode). (B7: the walk is
+  hoisted *ahead* of TOC rendering so the TOC can link each entry to its
+  own anchor; the TOC is a heading-free list, so it contributes nothing to
+  the walk and hoisting leaves every anchor byte-identical.)
 - `_body_heading_texts(body_md) -> list[str]` — the body's heading texts
   in document order, `#`-markers stripped, fenced code blocks skipped
   (defensive; the live manual has 0 fences today, but `mdconv` can emit
@@ -473,6 +515,10 @@ All sample data is synthetic (G11); ids are 11-digit fake portal ids.
 | 10 | Slugger dedup sequence (direct) | `Slugger().slug` on `A`, `A`, `A`, `B` | `a`, `a-1`, `a-2`, `b` | github-slugger occurrence logic, byte-exact (2.6) |
 | 11 | article name vs earlier body heading | article 1 named `X` with body `### General`; article 2 named `General` | article 2's own H2 → `#general-1`; a link to it uses `#general-1` | the body heading already claimed `general` in document order (2.6) |
 | 12 | 0-mismatch property | any article list with duplicate names + body-heading collisions | every emitted `](#…)` article anchor equals the `Slugger`'s document-order slug for that article's H2 | links land on the article's own heading, never a dead anchor (B3) |
+| 13 | happy: TOC entries are internal links (B7) | 3 articles, two sharing the name `General`; `assemble` | each TOC line == `{i}. [{name}](#{anchor})` where `anchor` is that article's own H2 slug (1st `General` → `general`, 2nd → `general-1`) | the TOC navigates to each entry's own article heading (B7) |
+| 14 | byte: TOC visible text and order unchanged (B7) | same articles as #13; strip the `[text](#anchor)` link wrapping from the TOC lines | the plain list equals the pre-B7 `{i}. {name}` form byte-for-byte | goal 1: only link wrapping is added — no text or organization change |
+| 15 | property: `_internalize_links` idempotent on the TOC (B7) | a document with a linked TOC plus one known article-URL link; run `_internalize_links` twice | the TOC's `#`-fragment links are byte-identical on both passes, while the article-URL link resolves once | the TOC fragment links are not candidates, so the pass cannot corrupt or double-rewrite them |
+| 16 | property: 0 dead TOC anchors (B7 census) | duplicate-named articles (as in #13) | every TOC `#target` ∈ the oracle's full anchor set (`all_anchors`) | every TOC link lands on a real heading — the offline core of the live "442 TOC links verified" criterion |
 
 ### 6.1 Property tests
 

@@ -4,17 +4,18 @@ Turns the crawled, per-article Markdown into the final deliverable:
 
   1. one H1 title (the manual name, from ``config.MANUAL_TITLE``);
   2. a ``## Table of Contents`` numbered list of article names in portal
-     order (never re-sorted);
+     order (never re-sorted), each entry linking to its article's own
+     ``## {name}`` anchor (B7);
   3. one ``## {name}`` section per article, optionally preceded by a
      ``> {breadcrumb}`` blockquote (the topic chain, root excluded) and
      followed by the article body;
-  4. internal link resolution (final pass):
-     ``algorithms/internal-link-resolution.md`` — cross-article hyperlinks
-     (eGain article URLs) whose target id is in the manual become in-document
-     anchors of that article's *own* ``## {name}`` heading; anchors are
-     GitHub document-order slugs (``Slugger``: a duplicate heading gets
-     ``-1``, ``-2``, …, so each id resolves to its own heading); unknown
-     ids, images, and external links stay verbatim.
+  4. internal link resolution: the anchor map (article id → the GitHub
+     document-order slug of that article's *own* ``## {name}`` heading) is
+     computed *ahead of rendering*, then a single rewrite pass redirects
+     known cross-article hyperlinks (eGain article URLs) and the TOC entries
+     to those anchors (``Slugger``: a duplicate heading gets ``-1``, ``-2``,
+     …, so each id resolves to its own heading); unknown ids, images, and
+     external links stay verbatim (algorithms/internal-link-resolution.md).
 
 Guarantees (pinned by tests/test_assemble.py):
 
@@ -27,6 +28,8 @@ Guarantees (pinned by tests/test_assemble.py):
   - an article carrying ``error`` renders the placeholder
     ``> [content unavailable: {error}]`` instead of its body;
   - blocks joined by ``\\n\\n``; exactly one trailing ``\\n``;
+  - the TOC is linked: each entry is ``{i}. [{name}](#{anchor})`` pointing
+    at that article's own ``## {name}`` heading (B7);
   - internal link resolution is a pure, single-pass rewrite: it never
     creates or removes links, only redirects known cross-article ids to
     existing headings (doc invariants A/B/C).
@@ -204,20 +207,10 @@ def assemble(
     if len(deduped) != expected_count:
         raise CompletenessError(expected_count, len(deduped))
 
-    toc_lines = "\n".join(f"{i}. {a.name}" for i, a in enumerate(deduped, start=1))
-    parts = [f"# {title}"]
-    if toc_lines != "":
-        parts.append("## Table of Contents\n\n" + toc_lines)
-    else:
-        parts.append("## Table of Contents")
-    parts.extend(_article_block(a) for a in deduped)
-    document = "\n\n".join(parts) + "\n"
-    # Final pass (after the gates): resolve cross-article hyperlinks to the
-    # headings this same list produced, in GitHub document order (B3, C4):
-    # the H1 title and the TOC H2 first, then each article's H2 and its
-    # emitted body's headings in order. An article whose name collides with
-    # an earlier heading gets (and its links resolve to) its own deduped
-    # slug — e.g. the 2nd "General" → "general-1".
+    # B7: compute anchors in GitHub document order *before* rendering, so the
+    # TOC can link each entry to its article's own ## H2 anchor. The TOC is a
+    # numbered list (no headings), so it contributes nothing to the slug walk
+    # and the walk is unchanged by hoisting it here.
     slugger = Slugger()
     slugger.slug(title)
     slugger.slug("Table of Contents")
@@ -226,4 +219,18 @@ def assemble(
         anchor_by_id[a.id] = slugger.slug(a.name)
         for bh in _body_heading_texts(_emitted_body(a)):
             slugger.slug(bh)
+
+    toc_lines = "\n".join(
+        f"{i}. [{a.name}](#{anchor_by_id[a.id]})" for i, a in enumerate(deduped, start=1)
+    )
+    parts = [f"# {title}"]
+    if toc_lines != "":
+        parts.append("## Table of Contents\n\n" + toc_lines)
+    else:
+        parts.append("## Table of Contents")
+    parts.extend(_article_block(a) for a in deduped)
+    document = "\n\n".join(parts) + "\n"
+    # Single rewrite pass: redirect known cross-article hyperlinks to the
+    # anchors computed above (B3, C4). The TOC entries are already linked and
+    # are #fragments, so _ARTICLE_LINK never matches them (idempotent).
     return _internalize_links(document, anchor_by_id)

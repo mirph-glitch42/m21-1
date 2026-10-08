@@ -5,7 +5,7 @@ session can start without re-deriving context: problem (with measured
 evidence), blast radius, the process the governing skills require, open
 decisions, and acceptance criteria.
 
-Order = user priority. Status: **B1, B2, B3, B4, B5, B6, B11, B13 done (B6/B11 in `f48faf9`; B13 in `817a8f3`)**; **B7 open — new 2026-10-06, internal links in the generated TOC, design drafted**; **B8 open — new 2026-10-07, dead internal links incl. "To Top" (119 case-sensitive / 28 case-insensitive dead of 23,095)**; **B9 open — new 2026-10-07, raw spaces in link destinations (51 links + 9 images) break Markdown**; **B10 open — new 2026-10-07, broken image links (36 legacy-host `vaww.vrm.km.va.gov` URLs; live/dead census partial — local DNS outage, re-verify when network recovers)**; **B12 open — new 2026-10-07, CI gate for `algorithms/INDEX.md` staleness**; **B14 open — new 2026-10-07, 14 residual leaked layout frames (enumerated in the B6 closeout; unverified hypothesis: block-level children in the label cell defeat the discriminator) **.
+Order = user priority. Status: **B1, B2, B3, B4, B5, B6, B7, B11, B12, B13 done (B6/B11 in `f48faf9`; B13 in `817a8f3`; B12 in `403550c`; B7 in this session's commit)**; **B8 open — new 2026-10-07, dead internal links incl. "To Top" (119 case-sensitive / 28 case-insensitive dead of 23,095)**; **B9 open — new 2026-10-07, raw spaces in link destinations (51 links + 9 images) break Markdown**; **B10 open — new 2026-10-07, broken image links (36 legacy-host `vaww.vrm.km.va.gov` URLs; live/dead census partial — local DNS outage, re-verify when network recovers)**; **B14 open — new 2026-10-07, 14 residual leaked layout frames (enumerated in the B6 closeout; unverified hypothesis: block-level children in the label cell defeat the discriminator)**; **B15 open — new 2026-10-07, Change Date frames not in a quote block (B11 gap; mdconv cycle)**.
 
 ## B1. Replace eGain layout tables with standard Markdown layout — **DONE (2026-10-04)**
 
@@ -570,7 +570,7 @@ extraction.md` v0.6.0, D8 generalization + B11 meta-label carve-out):**
   tracked as **B14**. `make gate` green; GitHub CI green; text and
   organization unchanged.
 
-## B7. TOC entries lack internal links — **open, new 2026-10-06**
+## B7. TOC entries lack internal links — **DONE (2026-10-07)**
 
 **User report (verbatim, 2026-10-06):** "Add internal links to the
 generated TOC at the beginning of the document."
@@ -623,6 +623,30 @@ dedup context included); TOC numbering/order/text unchanged;
 tests + code + registry in one atomic commit; on the regenerated manual
 all 442 TOC links verified against a document-order anchor census (0 dead
 TOC links).
+
+**Completion note (2026-10-07):** Full algorithm-records-keeper cycle:
+`algorithms/internal-link-resolution.md` → **v0.4.0** (pseudocode split
+into `build_anchor_map` + `internalize`; TESTS cases 13–16; WALKTHROUGH
+4.1; Implementation-location L210–236) and the `algorithms/INDEX.md`
+registry row. `assemble.py` hoists the document-order slug walk ahead of
+TOC rendering and emits `{i}. [{name}](#{anchor})`; the TOC is a
+heading-free list, so it contributes nothing to the walk and every
+pre-existing anchor stays byte-identical. `_internalize_links` matches
+only `_ARTICLE_LINK` (`http(s)://…/article/{id}`), so `#fragment` TOC
+targets pass through untouched — idempotency on the TOC is structural and
+pinned by `test_internalize_idempotent_on_toc`. New tests:
+`test_toc_entries_are_internal_links` (incl. the dedupe case
+`general`/`general-1`), `test_toc_visible_text_and_order_unchanged`,
+`test_toc_anchors_resolve_census` (0 dead TOC anchors against a
+document-order anchor census). `tests/test_cli.py`
+`EXPECTED_MD`/`EXPECTED_MD_SKIP` TOCs moved to the linked form (16 green);
+`tests/test_assemble.py` 28 green; `make gate` green (182 tests). The
+full-manual "all 442 TOC links verified" census needs the live crawl (the
+`live`-marked test, not in `make gate`); the offline core is
+`test_toc_anchors_resolve_census` and re-runs at the next `make crawl`.
+Landed atomically (doc + tests + code + registry) as
+`feat(assemble): link TOC entries to their own anchors (B7)`; the B15
+docs-only entry rides along in the same commit.
 
 ## B8. Dead internal links, incl. "To Top" — **open, new 2026-10-07**
 
@@ -1040,6 +1064,62 @@ label line + content blocks, words verbatim, anchors live where the
 source has them); 0 leaked header-only tables remain (40 protected,
 enumerated, byte-identical); `make gate` + GitHub CI green; text and
 organization unchanged.
+
+## B15. Change Date frames not in a quote block (B11 gap) — **open, new 2026-10-07**
+
+**User request (verbatim, 2026-10-07):** "For backlog: not all change
+dates are in quote blocks." + screenshot (article "M21-1, Part VIII,
+Subpart iv, Chapter 7, Section A - Compensation for Paired Organs or
+Extremities Under 38 CFR 3.383") showing `Change Date` rendered as a
+**heading** and `May 13, 2015` as a **plain paragraph** — i.e. NOT the B11
+quote block (`> **Change Date**` / `> May 13, 2015`).
+
+**Why this is a gap (not a regression):** B11's closeout (2026-10-07)
+verified **1,260** `> **Change Date**` quote lines and **0**
+`#`–`###### Change Date` headings on the post-B13 re-crawl. This frame
+proves that census was incomplete: at least one Change Date frame in the
+regenerated manual still renders heading + plain date. B11's detection was
+scoped to (a) D5-dissolved *frame label* headings and (b) B6 meta-label
+*table* rows. A `Change Date` that is a **standalone heading not part of a
+dissolved frame** (or a bold-paragraph label, or a heading level the census
+did not enumerate, e.g. `<h4>`) falls outside both paths.
+
+**Work items (in order):**
+
+1. Census the regenerated manual for every `Change Date` occurrence that is
+   **not** a `> **Change Date**` quote line — headings of any level,
+   bold-paragraph labels, table rows — and enumerate them (line number +
+   owning article id + exact source variant). Confirm count > 0 and pin the
+   missed shape(s).
+2. Fetch the owning article's raw eGain HTML (fetch recipe in the B6
+   closeout) and trace `mdconv` — confirm exactly which branch lets it
+   through (likely a non-frame heading, or a label the D5/D8 paths don't
+   match). Do not guess: the discriminator change must match the observed
+   source shape.
+3. Doc cycle first (algorithm-records-keeper): extend the Change Date
+   carve-out in `html-to-markdown-section-extraction.md` so *any* `Change
+   Date` label (heading or bold label, any level, frame or not) converges
+   to the quote block; keep anchor hoisting where the source had a heading;
+   never drop text.
+4. TDD RED→GREEN: a case that reproduces the missed shape from raw HTML
+   before the fix; `make gate` green; GitHub CI green; one atomic commit
+   (doc + code + tests + this backlog entry).
+5. Re-census after the fix: expect **0** non-quote-block Change Date frames
+   in the regenerated manual; the full population (1,260 + the missed set)
+   renders as `> **Change Date**` + verbatim date.
+
+**Blast radius:** the D5 heading carve-out / `_render_layout_frame` in
+`src/m21_crawl/mdconv.py`; the algorithm doc (D5/D8 carve-out);
+`tests/test_mdconv.py`.
+
+**Acceptance criteria:** in the regenerated manual, **0** `Change Date`
+labels render as a heading, bold paragraph, or table row outside the quote
+block; every Change Date frame renders as `> **Change Date**` + verbatim
+date (words unchanged — the approved B11 deviation); `make gate` + GitHub
+CI green.
+
+**Ordering:** independent of B7–B14; small standalone cycle. Rides the same
+`mdconv` doc as B6/B11/B13/B14.
 
 ## Standing constraints (apply to all items)
 
