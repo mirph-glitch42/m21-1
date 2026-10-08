@@ -843,7 +843,7 @@ path + D5 T1 carve-out; TESTS case 46 expectation rewritten + T1 case);
 `make gate` green; GitHub CI green; text verbatim, organization as the
 approved deviation.
 
-## B12. CI gate for `algorithms/INDEX.md` staleness — **open, new 2026-10-07**
+## B12. CI gate for `algorithms/INDEX.md` staleness — **DONE (2026-10-07)**
 
 **User request (verbatim, 2026-10-07):** "Add CI check for Index.md staleness."
 
@@ -886,6 +886,31 @@ offending row) when a row's Version/Status/File disagrees with METADATA, or
 a doc is missing its row, or a row is orphaned; passes on the current
 (fixed) registry; wired into `make gate` and CI; the stale `0.5.0` row is
 fixed as part of landing this.
+
+**Closeout (2026-10-07):** DONE. `scripts/check_index_registry.py`
+(stdlib-only, deterministic, venv-agnostic via `$(PY)` so CI's no-`.venv`
+interpreter runs it) enforces INDEX.md rules 3 and 5: exactly one row per
+doc (matched by slug or the `File` link), row `Version` == METADATA
+`Version`, row `Status` == METADATA `Status`, row `File` target exists and
+is the document itself, and no orphan rows. Exits `1` on drift (offending
+rows named), `2` on a malformed registry or document. Wired into
+`make index-registry-check`, added to `gate` (after `doc-index-check`),
+and a CI step after "Algorithm doc index check." `tests/test_index_registry.py`
+covers the in-sync case, every drift case (version / status / missing row /
+duplicate rows / orphan row / missing file target), the structural cases
+(no table, bad cell count), the `Status` vs `Status history`
+disambiguation, and the subprocess exit codes (0/1/2). `make gate` green
+(178 tests); the previously stale row was already fixed in `817a8f3`, so the
+gate passes on the current registry and now guards it.
+
+**Decision — no algorithm doc (recorded per B12 closeout):** B12 is a CI
+*gate* script (tooling), not an application algorithm. The spec's blast
+radius lists only the script + Makefile + CI + tests, and the repo
+convention documents only the crawler/converter algorithms (the vendored
+`build_index.py` gate has no `algorithms/` entry of its own). This note
+stands in for an `algorithms/` document.
+
+Landed atomically (script + tests + Makefile + CI + this closeout).
 
 ## B13. Sloppy double horizontal rules around dissolved frames — **DONE (2026-10-07)**
 

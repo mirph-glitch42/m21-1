@@ -45,6 +45,9 @@ jobs:
       - name: Algorithm doc index check
         run: make doc-index-check
 
+      - name: Algorithm registry check
+        run: make index-registry-check
+
       - name: Unit tests (no network)
         run: python -m pytest -q tests -m "not live"
 

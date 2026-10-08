@@ -46,10 +46,13 @@ doc-index-check: ## Verify algorithm-doc indexes are fresh (gate)
 		$(PY) scripts/build_index.py "$$doc" --check || fail=1; \
 	done; exit $$fail
 
-gate: format-check lint doc-index-check test secrets ## Full local gate (cheap -> expensive)
+index-registry-check: ## Verify algorithms/INDEX.md is in sync with the docs (gate)
+	$(PY) scripts/check_index_registry.py --dir algorithms
+
+gate: format-check lint doc-index-check index-registry-check test secrets ## Full local gate (cheap -> expensive)
 	@echo "✓ gate green"
 
 crawl: ## Crawl the manual and write output/M21-1-Adjudication-Procedures-Manual.md
 	PYTHONPATH=src $(PY) -m m21_crawl.cli
 
-.PHONY: setup format format-check lint test test-live secrets secrets-history doc-index doc-index-check gate crawl
+.PHONY: setup format format-check lint test test-live secrets secrets-history doc-index doc-index-check index-registry-check gate crawl
