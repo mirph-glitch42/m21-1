@@ -4,12 +4,12 @@
 id	start_line	end_line
 INDEX_BLOCK	3	13
 METADATA	15	36
-THEORY	37	247
-PSEUDOCODE	248	360
-WALKTHROUGH	361	407
-IMPLEMENTATION	408	498
-TESTS	499	535
-REFERENCES	536	552
+THEORY	37	377
+PSEUDOCODE	378	529
+WALKTHROUGH	530	621
+IMPLEMENTATION	622	759
+TESTS	760	806
+REFERENCES	807	828
 <!-- INDEX:END -->
 
 <!-- SECTION:METADATA -->
@@ -19,16 +19,16 @@ REFERENCES	536	552
 |---|---|
 | Name | Internal link resolution — rewrite cross-article hyperlinks into in-document section anchors |
 | Slug | internal-link-resolution |
-| Version | 0.4.0 |
+| Version | 0.5.0 |
 | Status | implemented |
 | Author | Bionic agent (on behalf of murphyjj) |
 | Created | 2026-10-03 |
-| Last modified | 2026-10-07 |
-| Status history | 0.1.0 (2026-10-03): initial draft — the assembled manual's ~14.4k cross-article hyperlinks (eGain article URLs) should become internal `#anchor` links to the target article's `## ` heading; links whose target id is absent from the manual stay as portal URLs · 0.2.0 (2026-10-04): implemented in `src/m21_crawl/assemble.py` (`_ARTICLE_LINK`, `heading_anchor`, `_internalize_links`, final pass in `assemble`) + 7 new tests in `tests/test_assemble.py`; slug worked-examples corrected to the renderer's triple-hyphen form · 0.3.0 (2026-10-06): B3 — anchors are now assigned in *document order* via a github-slugger occurrence replica (`Slugger`), with body-heading context (`_body_heading_texts`); C4 rewritten — duplicate article names map to their own heading's distinct `-N` slug, and an article name colliding with an earlier body heading is correctly suffixed · 0.4.0 (2026-10-07): B7 — the `## Table of Contents` is now a *linked* numbered list: each entry is `[name](#anchor)`, pointing at that article's own `## {name}` H2 anchor (the same id-keyed `anchor_by_id` map, so duplicate names still disambiguate). The anchor build is hoisted *ahead* of TOC rendering — the TOC is a heading-free list, so the slug walk and every existing anchor are unchanged — and `_internalize_links` leaves the TOC's `#`-fragment links untouched (they are not article-URL candidates), so the pass stays idempotent on the TOC; the TOC's visible text, numbering, and order are byte-identical (only link wrapping is added) |
+| Last modified | 2026-10-08 |
+| Status history | 0.1.0 (2026-10-03): initial draft — the assembled manual's ~14.4k cross-article hyperlinks (eGain article URLs) should become internal `#anchor` links to the target article's `## ` heading; links whose target id is absent from the manual stay as portal URLs · 0.2.0 (2026-10-04): implemented in `src/m21_crawl/assemble.py` (`_ARTICLE_LINK`, `heading_anchor`, `_internalize_links`, final pass in `assemble`) + 7 new tests in `tests/test_assemble.py`; slug worked-examples corrected to the renderer's triple-hyphen form · 0.3.0 (2026-10-06): B3 — anchors are now assigned in *document order* via a github-slugger occurrence replica (`Slugger`), with body-heading context (`_body_heading_texts`); C4 rewritten — duplicate article names map to their own heading's distinct `-N` slug, and an article name colliding with an earlier body heading is correctly suffixed · 0.4.0 (2026-10-07): B7 — the `## Table of Contents` is now a *linked* numbered list: each entry is `[name](#anchor)`, pointing at that article's own `## {name}` H2 anchor (the same id-keyed `anchor_by_id` map, so duplicate names still disambiguate). The anchor build is hoisted *ahead* of TOC rendering — the TOC is a heading-free list, so the slug walk and every existing anchor are unchanged — and `_internalize_links` leaves the TOC's `#`-fragment links untouched (they are not article-URL candidates), so the pass stays idempotent on the TOC; the TOC's visible text, numbering, and order are byte-identical (only link wrapping is added) · 0.5.0 (2026-10-08): B8 — a second pass resolves the manual's in-document `#fragment` links (intra-article links, `To Top` links) against the document's **defined-anchor set** (headings slugged in document order + raw `<a id>` named anchors; first-wins per lowercased key): stage 1 **canonicalizes** a case-variant fragment (e.g. `#…_top` vs defined `#…_Top`) to the exact defined spelling; stage 2 **remaps** a still-unresolved `art_{id}_…` fragment to the article's own `## ` H2 anchor (top of the article); exact matches, TOC links, external URLs, and fragments whose id is not in the manual pass through byte-identical (a dead ref is never fabricated). Verified 2026-10-08 on the 442-article manual: 23,068 internal links, 214 dead (91 case-variants + 123 truly absent, 168 distinct — 100% remappable) → post-fix re-census 0 dead |
 | Languages | Python 3.12 (implementation); pseudocode is language-agnostic |
-| Implementation location | src/m21_crawl/assemble.py — `_ARTICLE_LINK` L46; `_BODY_HEADING`/`_FENCE` L50–51; `heading_anchor` L82–90; `Slugger` L93–111; `_body_heading_texts` L114–138; `_internalize_links` L141–154; `_emitted_body` L168–180; anchor-hoist + linked TOC + rewrite pass in `assemble` L210–236 (v0.4.0, 2026-10-07) |
-| Time complexity | O(D + (N + H)·L) time: single regex rewrite pass O(D) + a document-order slug build that scans N article names and H body headings at O((N + H)·L) (see THEORY 2.4) |
-| Space complexity | O(N + D) working space (id→anchor map of N entries; the rewritten copy of D bytes) |
+| Implementation location | src/m21_crawl/assemble.py — `_ARTICLE_LINK` L52; `_BODY_HEADING`/`_FENCE` L56–57; `_NAMED_ANCHOR` L65; `_FRAGMENT_LINK` L69; `_ART_ID` L72 (B8); `heading_anchor` L103–111; `Slugger` L114–133; `_body_heading_texts` L135–159; `_internalize_links` L162–175; `_defined_anchors` L178–214 (B8); `_resolve_fragment_links` L216–250 (B8); `_emitted_body` L263–275; anchor-hoist + linked TOC + both rewrite passes in `assemble` L288–338 (v0.5.0, 2026-10-08) |
+| Time complexity | O(D + (N + H)·L) time: the B3/B7 document-order slug build O((N + H)·L) + two linear rewrite passes over D (article-URLs, then B8 fragments; the B8 anchor walk is O(D) and its canonical map O(A), A ≤ D) (see THEORY 2.4) |
+| Space complexity | O(N + A + D) working space (id→anchor map of N entries; B8 canonical map of A anchors; the rewritten copy of D bytes) |
 | Determinism | deterministic (pure string transform; map built in portal order) |
 | Dependencies | `m21_crawl.assemble` (deduped article list + document string) |
 | Thread safety | pure function over immutable input — safe to call concurrently |
@@ -69,6 +69,25 @@ entry's **own** article's `## {name}` H2 anchor (the same id-keyed
 unchanged — only the link wrapping is added (goal 1: no text or
 organization change).
 
+In addition (B8), the manual's existing *in-document* `#fragment` links
+(intra-article links and the per-article `To Top` links) are resolved
+against the document's **defined-anchor set** — every heading's
+document-order slug plus every raw `<a id>` named-anchor id (2.7):
+
+- **stage 1 (canonicalize):** a fragment that differs only in case from a
+  defined anchor (e.g. link `#art_…_top`, defined `art_…_Top`) is
+  rewritten to the defined anchor's exact spelling, so case-sensitive
+  renderers resolve it exactly as case-insensitive ones do;
+- **stage 2 (remap):** a fragment that is still unresolved but of the
+  form `art_{id}_…` with `{id}` in the manual is rewritten to that
+  article's own `## {name}` H2 anchor — the article's first emitted
+  anchor, i.e. its top;
+- every other fragment (exact matches — including the TOC's own links —,
+  external URLs, images, and fragments whose id is not in the manual)
+  passes through byte-identical. A dead reference to an id that is
+  absent is a portal-side broken ref: it is left as-is and enumerable,
+  never fabricated into a fake anchor.
+
 **Live scale (verified 2026-10-03 on the 442-article manual):**
 
 | Observation | Value |
@@ -76,7 +95,11 @@ organization change).
 | article-URL hyperlinks (`/system/ws/vNN/ss/article/<id>`) | 14,447 |
 | distinct hosts used by those links | 1 (`www.knowva.ebenefits.va.gov`) |
 | duplicate article names among the 442 | 0 (→ every anchor is unambiguous) |
-| intra-article `#anchor` links (e.g. `#1a`) | thousands — **out of scope** (see 2.2) |
+| intra-article `#anchor` links (e.g. `#1a`) | resolved by B8 (2.7); the dead ones are all `art_{id}_…` refs |
+| in-document `#fragment` links (B8 census 2026-10-08) | 23,068 |
+| defined anchors: heading slugs + `<a id>` named (B8) | 21,468 (21,464 unique; 0 case collisions) |
+| dead internal links (B8) | 214 = 91 case-variants (91 distinct) + 123 truly-absent (77 distinct, 58 article ids; 100% remappable) |
+| `To Top` links (B8) | 418 (417 exact `[To Top]`; 95 dead pre-fix; all live after the fix) |
 
 **Contract.**
 
@@ -119,6 +142,19 @@ organization change).
    untouched and the pass stays idempotent on the TOC. The TOC's visible
    text, numbering, and order are byte-identical (only link wrapping is
    added).
+9. **Fragment isolation (B8).** Only bare `#fragment` link destinations
+   — a `](` immediately followed by `#` with no `)` inside the
+   destination — are candidates for stages 1–2. External URL
+   destinations (even with a `#fragment` suffix), image URLs, and
+   non-link text are never touched.
+10. **Canonical existence (B8).** Every fragment rewritten by stage 1 or
+    2 is byte-identical to a defined anchor in the document (a heading
+    slug or a named-anchor id); the pass can never *introduce* a dead
+    link (Invariant D).
+11. **Top-of-article remap (B8).** A truly absent `art_{id}_…` fragment
+    remaps to the article's `## ` H2 anchor (its first emitted anchor,
+    i.e. its top). Link text, count, and order are unchanged; fragments
+    whose id is not in the manual stay as-is (C7's identity recovery).
 
 ### 2.2 Why this approach
 
@@ -142,11 +178,17 @@ organization change).
      duplicate every heading and change the visible document.
   3. *Keep URLs, add a link index appendix* — rejected: the links remain
      external; the point is in-document navigation.
-- **Intra-article `#anchor` links are deferred.** They already are
-  in-document anchors; their *targets* (eGain `<a name="1a">` positions)
-  simply don't exist in the converted Markdown. Restoring them requires
-  anchor-position recording during HTML→Markdown conversion — a different
-  algorithm (converter-side), documented here only as out of scope.
+- **Intra-article `#anchor` links (B8).** The manual's in-document
+  `#fragment` links fall into two families. The `art_{id}_…` family is
+  resolvable: its targets are the article's own headings or named
+  anchors, so B8 canonicalizes case-variants and remaps the truly-absent
+  ones to the article's own H2 (2.7). The *other* family — bare eGain
+  marker positions (`#1a`, `<a name="1a">`) that mdconv dropped — has no
+  target in the converted Markdown; restoring those would require
+  anchor-position recording during HTML→Markdown conversion (a different,
+  converter-side algorithm). The B8 census shows every dead fragment in
+  this manual is `art_{id}_…`-shaped, so nothing of that kind remains
+  after the fix.
 
 ### 2.3 Correctness argument
 
@@ -176,7 +218,22 @@ outside the match, so it is untouched.
 **Sketch.** Each `](…)` token either matches the article-URL shape or not.
 If not: byte-identical (A). If yes: id lookup either succeeds → replaced
 by the anchor of an existing heading (B), or fails → original substring
-returned (A). No other code path mutates the document. □
+returned (A). No other code path mutates the document.
+
+**Invariant D (canonical existence, B8).** Every fragment rewritten by
+stage 1 or 2 is byte-identical to an anchor the document actually
+defines — a heading slug or a `<a id>` id. Stage 1 rewrites only to
+values of the defined-anchor set; stage 2 only to
+`anchor_by_id[id]` (the article's own H2 slug, itself a heading slug).
+Hence the fragment pass can never *introduce* a dead link: the dead
+count can only decrease.
+
+**Invariant E (identity of the rest, B8).** A fragment passes through
+unchanged unless it (a) exactly names a defined anchor (kept verbatim —
+this is what saves the TOC's own links), (b) is a case-variant of one,
+or (c) is `art_{id}_…` with a known id. External URL destinations,
+image URLs, and fragments whose id is not in the manual match no rewrite
+rule and are byte-identical (C7). □
 
 ### 2.4 Complexity
 
@@ -189,6 +246,11 @@ Document of size D bytes, N articles, average name length L:
   copy). The rewrite dominates on the live manual (D ≈ 13.7 MB, N = 442).
   Both terms are linear; no quadratic behavior is possible because the
   pattern has no backtracking loops.
+- B8 fragment pass: one fence-aware line walk collecting the defined
+  anchor set (O(D) + A inserts, A ≤ D) + one lowercased canonical map
+  (O(A) hash work) + one left-to-right `re.sub` scan of D → **O(D) time,
+  O(A + D) space** on top of the above. Still linear; the live pass
+  measures well under 1 s (6.2).
 
 ### 2.5 Slug rules (GitHub/GFM)
 
@@ -241,9 +303,77 @@ GitHub on the base form (verified: 0 mismatches across all 442 article
 headings). B3 only layers the occurrence dedup on top; it does not change
 how a single heading is slugged.
 
-### 2.7 Deviations
+**Named anchors (B8 context).** Besides headings, the document defines
+anchors with explicit `<a id="…" name="…"></a>` markers (mdconv preserves
+eGain's named markers; 9,507 in the live manual). A renderer resolves a
+`#fragment` link against *both* heading slugs and named-anchor ids. The
+id→anchor map `anchor_by_id` (headings only) is therefore the *remap*
+authority (stage 2), while the full *defined-anchor set* — heading slugs
+plus named ids — is the *canonicalization* authority (stage 1, 2.7).
 
-none — documented before implementation.
+### 2.7 Defined-anchor set and fragment resolution (B8)
+
+**Defined anchor set.** The anchors a renderer resolves against in the
+final document are exactly: (a) every heading's document-order slug (the
+`Slugger`'s return values, 2.6 — H1, `## Table of Contents`, every
+article H2, every body heading; fenced code blocks skipped), plus
+(b) every raw `<a id="X">` named-anchor id, taken verbatim (a renderer
+uses the id as-is — it is *not* slugged). `defined_anchors(document)`
+walks the document once, fence-aware, collecting both families in
+document order.
+
+**Two-stage resolution.** Given the anchor set and the id→anchor map:
+
+1. **Stage 1 — canonicalize (case-folded lookup).** For each link whose
+   destination is a bare `#fragment`: if the fragment is an exact member
+   of the anchor set → keep verbatim (this is what saves the TOC's own
+   links). Otherwise, if `fragment.lower()` equals the lowercased form of
+   some defined anchor → rewrite to that anchor's *exact* spelling
+   (first definition wins, document order). This repairs case-variants
+   such as link `#art_…_top` vs defined `art_…_Top`, in either
+   direction.
+2. **Stage 2 — remap to top of article.** If still unresolved and the
+   fragment matches `art_{digits}_…` and that id is in the manual →
+   rewrite to `anchor_by_id[id]`, the article's own H2 slug — its first
+   emitted anchor, i.e. its top. This repairs the `To Top`-style refs
+   whose exact marker (e.g. `<a id="art_…_top">`) mdconv dropped while
+   the article heading survived.
+
+Everything else — external URLs, images, fragments whose id is not in
+the manual, fragments that are neither exact, case-variant, nor
+`art_{id}` — passes through byte-identical. A dead reference is never
+*fabricated*: the pass only ever rewrites to anchors that provably
+exist (Invariant D).
+
+**Why stage 1 before stage 2.** Stage 2's rewrite target
+(`anchor_by_id`) is always a heading slug and therefore already in the
+anchor set; running canonicalization first means stage 2 only fires on
+fragments stage 1 couldn't fix, and the combined pass is idempotent — a
+second pass finds every rewritten fragment exact-defined and rewrites
+nothing.
+
+**Scale (live, 2026-10-08).** 23,068 in-document `#` links; 21,468
+defined anchors (21,464 unique, 0 case collisions); 214 dead = 91
+case-variant (91 distinct) + 123 truly-absent (77 distinct) instances —
+all 168 distinct fragments are `art_{id}_…` with a known id (100%
+remappable). Post-fix re-census: 0 dead internal links; all 418 `to top`
+links live.
+
+### 2.8 Deviations
+
+- **Stage 2 remaps to the article's H2, not to a "top" marker.** The
+  manual's `To Top` links point at per-article `<a id="art_{id}_top">`
+  markers that mdconv drops; the article's own H2 is the nearest
+  surviving anchor (the article's top). Visible link text (`To Top`) is
+  preserved — only the destination changes (goal 1).
+- **Case-folded canonicalization is an extension, not a slug rule.**
+  Renderers disagree on case-insensitive fragment matching (case-sensitive
+  on some, case-insensitive on others); the manual mixes `top`/`Top` and
+  `January`/`january` for the same marker. Canonicalizing to the defined
+  spelling is strictly more correct in every renderer: an exact match
+  beats a case-folded match everywhere.
+
+none else — documented before implementation.
 
 <!-- SECTION:PSEUDOCODE -->
 ## 3. Pseudocode
@@ -325,6 +455,39 @@ function internalize(document: str, anchor_by_id: dict) -> str
         return match.whole                      # unknown id: identity (C7)
     return replace_all(document, pattern, repl) # single left-to-right pass
 
+# B8: fragment resolution — runs AFTER internalize, on the finished document
+function defined_anchors(document) -> list
+    # Fence-aware line walk; order = document order (2.7).
+    out := []
+    in_fence := false
+    for line in split(document, '\n'):
+        if line matches FENCE:                 # ^\s{0,3}(`{3,}|~{3,})
+            toggle in_fence (same fence char); continue
+        if in_fence: continue
+        if line matches '^(#{1,6})\s+(.+?)\s*$':
+            out.append(slugger_context.slug(captured heading))  # doc-order slug
+        else:
+            for m in line.find_all(NAMED_ANCHOR):  # <a id="X" …> ANYWHERE in line
+                out.append(m.group(id))           # raw id, verbatim (not slugged)
+    return out
+
+function resolve_fragments(document, anchor_set, anchor_by_id) -> str
+    exact := set(anchor_set)
+    canonical := {}                    # lower(fragment) -> exact spelling
+    for a in anchor_set:               # first definition wins (document order)
+        canonical.setdefault(a.lower(), a)
+    function repl(match):
+        frag := match.group(fragment)  # raw, spaces included — no encoding here
+        if frag in exact:
+            return match.whole         # already defined (incl. TOC links)
+        if frag.lower() in canonical:
+            return '](#' + canonical[frag.lower()] + ')'      # stage 1
+        m := frag.match(ART_ID)        # art_<digits>_… (case-insensitive id)
+        if m and m.group(id) in anchor_by_id:
+            return '](#' + anchor_by_id[m.group(id)] + ')'    # stage 2 (top)
+        return match.whole             # unknown: identity (C7) — never fabricate
+    return replace_all(document, regex(FRAGMENT_LINK), repl)
+
 # Integration point (assemble, after the completeness gates pass):
 function assemble(articles, expected_count, title) -> str
     deduped := dedupe_first_wins(articles)
@@ -338,7 +501,9 @@ function assemble(articles, expected_count, title) -> str
     for a in deduped:
         blocks.append(article_block(a))   # '## name', optional '> breadcrumb', body
     document := join(blocks, "\n\n") + "\n"
-    return internalize(document, anchor_by_id)
+    document := internalize(document, anchor_by_id)    # cross-article links
+    anchor_set := defined_anchors(document)             # B8: defined anchors
+    return resolve_fragments(document, anchor_set, anchor_by_id)  # B8: #frags
 ```
 
 **Ambiguity policy.** The token is unambiguous by construction (fixed
@@ -352,7 +517,11 @@ not match and survive as-is.
 
 **Idempotence.** After one pass, resolved links are `](#slug)` — the
 pattern requires `http(s)://`, so a second pass rewrites nothing:
-`internalize(internalize(d)) == internalize(d)`.
+`internalize(internalize(d)) == internalize(d)`. B8 is likewise
+idempotent: every fragment `resolve_fragments` rewrites becomes
+exact-defined, so a second pass hits only the "already defined" branch.
+Stage order (canonicalize → remap) is what makes this provable: remap
+targets are heading slugs, hence already in the anchor set.
 
 **Backtracking budget.** The pattern has no nested/overlapping quantifiers
 (`HOST` is one flat char class, ids are `\d+`); worst case is a linear
@@ -376,7 +545,22 @@ scan — no catastrophic-backtracking inputs exist for it.
 3. For each hit, pull out the trailing id. If the dictionary knows that
    id, replace the URL with `#` plus its slug. If not, copy the original
    text through unchanged.
-4. Return the document. Nothing else in the file moved.
+4. That makes the cross-article links internal. Now walk the *finished*
+   document once more and collect every anchor it defines: each heading's
+   document-order slug (2.6) and each raw `<a id>` named-anchor id, in
+   the order they appear (code fences skipped).
+5. Scan that document for bare `#fragment` link destinations. For each:
+   if the fragment exactly names a defined anchor, leave it alone (this
+   is what protects the TOC's own links). If it only *differs in case*
+   from a defined anchor, rewrite it to the defined anchor's exact
+   spelling (so case-sensitive renderers resolve it too). If it is still
+   unresolved but names an article (`art_{id}_…`) that is in the manual,
+   point it at that article's own `## ` heading — the article's top,
+   which is what its `To Top` link meant. Anything else — external URLs,
+   unknown ids — is copied through unchanged.
+6. Return the document. Cross-article links are internal, and the
+   manual's own intra-article and `To Top` links now resolve in every
+   renderer. Nothing else in the file moved.
 
 ### 4.2 Worked example
 
@@ -404,6 +588,36 @@ Document body (simplified) contains:
 
 Result: exactly one link changed; the external reference and the image
 still point at the portal.
+
+### 4.3 Worked example (B8 fragment resolution)
+
+Article `…95621` (named `M21-1 Guidance`) emits, among other things:
+
+```
+## M21-1 Guidance
+<a id="art_…95621_Letter" name="…"></a>
+<a id="art_…95621_Top" name="…"></a>
+```
+
+and another article's body contains:
+
+```
+[see letter](#art_…95621_Letter)      # exact defined anchor
+[see letter](#art_…95621_letter)      # case-variant (defined: …_Letter)
+[to top](#art_…95621_to top)          # marker absent, id known
+```
+
+1. The anchor set includes `art_…95621_Letter`, `art_…95621_Top`, and
+   the article's own H2 slug (its top).
+2. `[see letter](#…_Letter)` — fragment exact-defined → kept verbatim.
+3. `[see letter](#…_letter)` — not exact, but lowercases to the same key
+   as a defined anchor → rewritten to `#art_…95621_Letter` (stage 1).
+4. `[to top](#art_…95621_to top)` — still unresolved, but its id
+   `…95621` is in the manual → rewritten to the article's own H2 slug —
+   the top of the article (stage 2).
+
+Result: all three links resolve; only the two broken destinations
+changed, and link text is untouched.
 
 <!-- SECTION:IMPLEMENTATION -->
 ## 5. Implementation notes (entry-level guide)
@@ -434,6 +648,23 @@ still point at the portal.
   ```
 
   Group 1 = full URL (kept if the id is unknown), group 2 = the id.
+- B8 (v0.5.0) patterns and functions:
+  - `_NAMED_ANCHOR` — `<a\s+id="([^"]+)"` — matched per line with
+    `re.search`/`findall` **anywhere in the line** (named anchors occur
+    inline in text lines; a line-anchored `match` undercounts — 5.4).
+  - `_FRAGMENT_LINK` — `\]\(#([^)]*)\)` — the only fragment candidates
+    (bare `#` destinations; group 1 = the raw fragment, spaces
+    included).
+  - `_ART_ID` — `art_(\d+)` — the article identity inside a
+    still-unresolved fragment (stage 2).
+  - `defined_anchors(document) -> list[str]` — the fence-aware line walk
+    of 2.7: heading slugs (reusing the document-order `Slugger`) plus
+    raw `<a id>` ids, in document order.
+  - `resolve_fragments(document, anchor_set, anchor_by_id) -> str` — the
+    two-stage `re.sub` pass of 2.7 (exact → canonicalize → remap →
+    identity).
+  - `assemble` runs `_internalize_links` first, then
+    `resolve_fragments` (stage order, 2.7).
 
 ### 5.2 Edge cases and defined behavior
 
@@ -453,6 +684,12 @@ still point at the portal.
 | Unicode in names (e.g. `’`) | non-alnum dropped, letters kept | Unicode-aware slug (2.5) |
 | Link text containing `](` | text untouched — only the URL token is replaced | match is scoped to the destination (B) |
 | `> [content unavailable: …]` placeholder | unchanged | no `](URL)` token present (A) |
+| Fragment exact-defined (incl. TOC links, `art_…_Letter`) | kept verbatim | stage-0 short-circuit (2.7) |
+| Case-variant fragment (`#…_top` vs defined `…_Top`, either direction) | rewritten to the defined anchor's exact spelling | stage 1 canonicalization (2.7) |
+| Truly-absent `art_{id}_…` with known id (`To Top` marker dropped by mdconv) | rewritten to the article's own H2 slug (its top) | stage 2 remap (2.7) |
+| Fragment `art_{id}_…` with id NOT in the manual | unchanged | never fabricated (C7, Invariant D) |
+| Fragment with raw spaces (`#…_to top`) | resolved by exact / case-folded raw lookup (no percent-encoding here — B9) | named ids are taken verbatim (2.7) |
+| Named anchor inline in a text line | collected by per-line `search`/`findall`, not line-anchored `match` | inline anchors exist (5.4) |
 
 ### 5.3 Invariants and how to test them
 
@@ -466,6 +703,14 @@ still point at the portal.
   candidate is in that set.
 - **I3 (identity).** A document containing no article-URL links is
   byte-identical through `assemble` twice. Test: compare strings.
+- **I4 (canonical existence, B8).** Every fragment the pass rewrites
+  equals a defined anchor (heading slug or named id) byte-for-byte.
+  Test: collect `defined_anchors` over the output; assert every
+  destination that changed is in that set.
+- **I5 (dead count only decreases, B8).** `dead_after ≤ dead_before`,
+  with 0 new dead links introduced. Test: census (exact + case-folded
+  membership) before and after; assert no previously-live fragment
+  becomes dead.
 
 ### 5.4 Pitfalls and known traps
 
@@ -484,6 +729,22 @@ still point at the portal.
 - **Do not add a third-party slugger package.** One 4-line function,
   pinned by byte-exact tests — cheaper than a dependency (pragmatic
   reuse-of-stdlib rule).
+- **Use `search`/`findall`, not `match`, for named anchors (B8).** Named
+  anchors occur *inline* in text lines; a line-anchored `re.match`
+  undercounts them (9,477 vs the true 9,507 on the live manual) and
+  yields wrong dead counts. Match `<a\s+id="…"` anywhere in the line.
+- **Don't percent-encode fragments in this pass (B8).** Named ids carry
+  raw spaces (`art_…_to top`); the canonical lookup is on the *raw*
+  fragment. URL-encoding spaces belongs to the later B9 destination
+  rewrite, not here — encoding here would break the exact/case-folded
+  lookups and change live links.
+- **Stage order matters (B8).** Canonicalize before remap: remap targets
+  are already in the anchor set, which is what makes the combined pass
+  provably idempotent.
+- **Never fabricate a dead reference (B8).** A fragment whose id is not
+  in the manual (Historical/Rescinded or foreign) must stay as-is;
+  rewriting it to a "nearest" article would create a *wrong* link that
+  silently resolves — worse than a dead one.
 
 ### 5.5 Language notes
 
@@ -519,6 +780,13 @@ All sample data is synthetic (G11); ids are 11-digit fake portal ids.
 | 14 | byte: TOC visible text and order unchanged (B7) | same articles as #13; strip the `[text](#anchor)` link wrapping from the TOC lines | the plain list equals the pre-B7 `{i}. {name}` form byte-for-byte | goal 1: only link wrapping is added — no text or organization change |
 | 15 | property: `_internalize_links` idempotent on the TOC (B7) | a document with a linked TOC plus one known article-URL link; run `_internalize_links` twice | the TOC's `#`-fragment links are byte-identical on both passes, while the article-URL link resolves once | the TOC fragment links are not candidates, so the pass cannot corrupt or double-rewrite them |
 | 16 | property: 0 dead TOC anchors (B7 census) | duplicate-named articles (as in #13) | every TOC `#target` ∈ the oracle's full anchor set (`all_anchors`) | every TOC link lands on a real heading — the offline core of the live "442 TOC links verified" criterion |
+| 17 | happy: case-variant fragment canonicalized (B8) | article `("…11111", "General")` with named anchor `<a id="art_…11111_Top" name="…"></a>`; body links `[t](#art_…11111_top)` and `[u](#ART_…11111_TOP)` | both rewrite to `#art_…11111_Top` — the defined anchor's exact spelling, in either case direction | stage 1 (2.7); case-sensitive renderers now resolve it |
+| 18 | happy: absent `art_{id}_…` remapped to the article's top (B8) | article `("…11111", "General")`; body link `[to top](#art_…11111_to top)` (the marker itself is not emitted) | rewrites to the article's own H2 slug `#general` | stage 2 (2.7); `To Top` lands on the top of the article |
+| 19 | edge: unknown id never fabricated (B8) | one article `("…11111", "General")`; body links `[x](#art_99999999999_x)` and `[y](#something_else)` | both byte-identical — no anchor invented | C7 / Invariant D — a dead ref is never faked (2.7) |
+| 20 | edge: raw-space fragments (B8) | named `<a id="art_…11111_to top">`; body links `[a](#art_…11111_to top)` (exact) and `[b](#art_…11111_TO TOP)` (case-variant) | exact kept verbatim; case-variant rewritten to `#art_…11111_to top` (raw space preserved) | named ids are verbatim; lookups run on the raw fragment — no percent-encoding here (B9) |
+| 21 | property: fragment pass idempotent (B8) | a document with case-variant + absent + exact fragments; run `_resolve_fragment_links` twice | output of pass 1 == output of pass 2 (every rewritten fragment is exact-defined on pass 2) | idempotence (2.7 / 3) |
+| 22 | property: dead count only decreases (B8) | same document as #21; census (exact + case-folded membership) before and after | every resolvable dead fragment is gone; no previously-live fragment becomes dead | I5 — the pass can never introduce a dead link (2.7) |
+| 23 | edge: external URL fragments untouched (B8) | body links `[e](https://www.ecfr.gov/current#sec-1)` and `![d](https://…/img/x.png#f)` | both byte-identical | fragment pass is scoped to bare `#` destinations (C9, Invariant E) |
 
 ### 6.1 Property tests
 
@@ -531,7 +799,10 @@ decrease, never increase; (c) link *text* is unchanged — the multiset of
 
 Live manual (D ≈ 13.7 MB, 14,447 candidate tokens): the rewrite pass must
 finish well under 1 s on a laptop-class CPU (linear scan; the full crawl
-already takes ~3 min, so this pass is negligible by design).
+already takes ~3 min, so this pass is negligible by design). The B8
+fragment pass (anchor walk + `re.sub` over the same D, 23,068 fragment
+tokens) is the same order and also finishes well under 1 s on a
+laptop-class CPU (verified 2026-10-08).
 
 <!-- SECTION:REFERENCES -->
 ## 7. References
@@ -550,3 +821,8 @@ already takes ~3 min, so this pass is negligible by design).
   stay external).
 - Live portal observation (2026-10-03): 442-article manual, 14,447
   article-URL links, single host, zero duplicate names.
+- Live fragment census (2026-10-08, B8): 23,068 in-document `#fragment`
+  links; 21,468 defined anchors (21,464 unique; 0 case collisions); 214
+  dead (91 case-variant + 123 truly-absent instances, 168 distinct — all
+  `art_{id}_…`, 100% remappable); 418 `to top` links, 95 dead pre-fix.
+  Post-fix re-census: 0 dead internal links.

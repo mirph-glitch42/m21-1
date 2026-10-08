@@ -5,7 +5,7 @@ session can start without re-deriving context: problem (with measured
 evidence), blast radius, the process the governing skills require, open
 decisions, and acceptance criteria.
 
-Order = user priority. Status: **B1, B2, B3, B4, B5, B6, B7, B11, B12, B13 done (B6/B11 in `f48faf9`; B13 in `817a8f3`; B12 in `403550c`; B7 in this session's commit)**; **B8 open — new 2026-10-07, dead internal links incl. "To Top" (119 case-sensitive / 28 case-insensitive dead of 23,095)**; **B9 open — new 2026-10-07, raw spaces in link destinations (51 links + 9 images) break Markdown**; **B10 open — new 2026-10-07, broken image links (36 legacy-host `vaww.vrm.km.va.gov` URLs; live/dead census partial — local DNS outage, re-verify when network recovers)**; **B14 open — new 2026-10-07, 14 residual leaked layout frames (enumerated in the B6 closeout; unverified hypothesis: block-level children in the label cell defeat the discriminator)**; **B15 open — new 2026-10-07, Change Date frames not in a quote block (B11 gap; mdconv cycle)**.
+Order = user priority. Status: **B1, B2, B3, B4, B5, B6, B7, B8, B11, B12, B13 done (B6/B11 in `f48faf9`; B13 in `817a8f3`; B12 in `403550c`; B7/B8 in this session's commit)**; **B9 open — new 2026-10-07, raw spaces in link destinations (51 links + 9 images) break Markdown**; **B10 open — new 2026-10-07, broken image links (36 legacy-host `vaww.vrm.km.va.gov` URLs; live/dead census partial — local DNS outage, re-verify when network recovers)**; **B14 open — new 2026-10-07, 14 residual leaked layout frames (enumerated in the B6 closeout; unverified hypothesis: block-level children in the label cell defeat the discriminator)**; **B15 open — new 2026-10-07, Change Date frames not in a quote block (B11 gap; mdconv cycle)**.
 
 ## B1. Replace eGain layout tables with standard Markdown layout — **DONE (2026-10-04)**
 
@@ -648,7 +648,7 @@ Landed atomically (doc + tests + code + registry) as
 `feat(assemble): link TOC entries to their own anchors (B7)`; the B15
 docs-only entry rides along in the same commit.
 
-## B8. Dead internal links, incl. "To Top" — **open, new 2026-10-07**
+## B8. Dead internal links, incl. "To Top" — **DONE (2026-10-08)**
 
 **User report (verbatim, 2026-10-07):** "Some of the 'To Top' links
 work (goes to the top of the article that it follows), but a lot of
@@ -690,6 +690,44 @@ case-insensitive-dead links remapped to a live anchor or enumerated
 with reason; all 418 `To Top` links land on a live anchor in both
 GitHub and a case-sensitive local renderer; post-fix re-census: 0 dead
 internal links.
+
+**Completion note (2026-10-08):** Full algorithm-records-keeper cycle:
+`algorithms/internal-link-resolution.md` → **v0.5.0** (§2.7 two-stage
+fragment resolution — canonicalize, then remap — with pseudocode, TESTS
+cases 17–23, WALKTHROUGH 4.3, Implementation-location line map) and the
+`algorithms/INDEX.md` registry row. `assemble.py` adds `_NAMED_ANCHOR`
+(per-line `findall` — the census scans that seeded this item used
+first-anchor-per-line and missed 14 named ids on multi-anchor lines, all
+in `art_554400000174883`), `_FRAGMENT_LINK`, `_ART_ID`,
+`_defined_anchors` (fence-aware walk: headings slugged in document order
++ raw `<a id>` ids, first-wins per lowercased key) and
+`_resolve_fragment_links` (stage 1 canonicalizes a case-variant
+fragment to the exact defined spelling; stage 2 remaps a still-unresolved
+`art_{id}_…` fragment to that article's own `## ` H2 slug; every other
+fragment — exact matches, TOC links, external URLs, unknown ids — passes
+byte-identical, so a dead ref is never fabricated). The pass runs after
+`_internalize_links` and is idempotent — a second run finds every
+fragment exact-defined and rewrites nothing. New tests (cases 17–23):
+`test_case_variant_fragment_canonicalized`,
+`test_absent_art_fragment_remapped_to_article_top`,
+`test_unknown_art_id_never_fabricated`, `test_raw_space_fragments`,
+`test_resolve_fragment_links_idempotent`,
+`test_fragment_pass_never_introduces_dead_links`,
+`test_external_url_fragments_untouched` — `tests/test_assemble.py` 35
+green. Corrected census (2026-10-08, `output/` 442-article manual):
+23,068 in-document `#fragment` links; 21,468 defined anchors (21,464
+unique); 214 dead = 91 case-variants (91 distinct) + 123 truly-absent
+(77 distinct, all `art_{id}_…` across 58 article ids) — all 168
+distinct fragments remappable (100%); 418 `to top` links (417 exact
+`[To Top]`), 95 dead pre-fix. This supersedes the 2026-10-07 census
+above (different snapshot + first-anchor-per-line scan). Post-fix: 214
+fragments rewritten, every rewrite landing on a defined anchor, anchor
+set stable, **0 dead internal links** — all four acceptance criteria met
+(exact defined anchors resolve in both GitHub's case-insensitive and
+case-sensitive local renderers). `make gate` green (189 tests).
+Landed atomically (doc + tests + code + registry + backlog) as
+`feat(assemble): resolve dead #fragments to canonical anchors (B8)`;
+`output/` stays untracked.
 
 ## B9. Raw spaces in link destinations — **open, new 2026-10-07**
 

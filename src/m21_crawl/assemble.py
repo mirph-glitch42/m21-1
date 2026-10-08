@@ -32,7 +32,13 @@ Guarantees (pinned by tests/test_assemble.py):
     at that article's own ``## {name}`` heading (B7);
   - internal link resolution is a pure, single-pass rewrite: it never
     creates or removes links, only redirects known cross-article ids to
-    existing headings (doc invariants A/B/C).
+    existing headings (doc invariants A/B/C);
+  - the manual's own in-document ``#fragment`` links are resolved against
+    the defined-anchor set (heading slugs + ``<a id>`` named ids): case
+    variants are canonicalized to the defined spelling, absent
+    ``art_{id}_…`` fragments are remapped to the article's own H2 anchor,
+    and unknown fragments, external URL fragments, and images stay
+    verbatim — no anchor is ever fabricated (doc invariants D/E, B8).
 """
 
 import re
@@ -49,6 +55,21 @@ _ARTICLE_LINK = re.compile(r"\]\((https?://[^/\s)]+/system/ws/v\d+/ss/article/(\
 # same shapes as the test oracle in tests/test_assemble.py).
 _BODY_HEADING = re.compile(r"^#{1,6}\s+(.+?)\s*$")
 _FENCE = re.compile(r"^\s{0,3}(`{3,}|~{3,})")
+
+# Named anchors (B8): the manual's To Top / in-article markers emit
+# ``<a id="art_{id}_…" name="…"></a>`` lines — the id is the raw anchor
+# spelling (spaces kept, case kept) and is taken verbatim. Per-line
+# ``search`` (NOT line-anchored ``match``): the anchors are inline in the
+# document, so a line-anchored pattern misses them (9,477 vs 9,507, B8
+# census — internal-link-resolution.md 5.4).
+_NAMED_ANCHOR = re.compile(r'<a\s+id="([^"]+)"')
+# Bare fragment destinations (B8): only ``](#frag)`` links — external URL
+# fragments (``…#sec-1`` after a scheme) and image destinations never
+# match (C9).
+_FRAGMENT_LINK = re.compile(r"\]\(#([^)]*)\)")
+# art_{id}_… fragment prefix (B8): group 1 is the article id — the same
+# identity ``anchor_by_id`` keys on, so the remap never crosses articles.
+_ART_ID = re.compile(r"art_(\d+)")
 
 
 class CompletenessError(RuntimeError):
@@ -154,6 +175,80 @@ def _internalize_links(document: str, anchor_by_id: dict[str, str]) -> str:
     return _ARTICLE_LINK.sub(_replace, document)
 
 
+def _defined_anchors(document: str) -> list[str]:
+    """Every anchor the document defines, in document order (doc 2.7, B8).
+
+    A *defined anchor* is what a renderer would give an in-document target:
+    the GitHub slug of each heading (fresh ``Slugger`` — the same document
+    order the renderer sees, first occurrence keeps the base slug) plus the
+    raw id of every ``<a id="…">`` named anchor (verbatim — case and spaces
+    preserved). Fenced code is skipped, so ``#`` lines and anchor-looking
+    text inside code fences never count (same fence rule as
+    ``_body_heading_texts``).
+
+    Named ids are searched *anywhere* in the line — the manual's markers
+    are inline, and a line-anchored pattern undercounts (B8 census: 9,477
+    vs 9,507) and miscounts the dead links.
+    """
+    out: list[str] = []
+    slugger = Slugger()
+    fence_char: str | None = None
+    for line in document.splitlines():
+        fence = _FENCE.match(line)
+        if fence:
+            ch = fence.group(1)[0]
+            if fence_char is None:
+                fence_char = ch
+            elif ch == fence_char:
+                fence_char = None
+            continue
+        if fence_char is not None:
+            continue
+        m = _BODY_HEADING.match(line)
+        if m:
+            out.append(slugger.slug(m.group(1)))
+            continue
+        for named in _NAMED_ANCHOR.findall(line):
+            out.append(named)
+    return out
+
+
+def _resolve_fragment_links(
+    document: str,
+    anchor_set: set[str],
+    anchor_by_id: dict[str, str],
+) -> str:
+    """Resolve the manual's own ``#fragment`` links (doc 2.7, B8).
+
+    Two stages, in order, over bare ``](#frag)`` links only (C9): stage 1
+    canonicalizes a fragment that differs from a defined anchor only in
+    case to the defined anchor's exact spelling (first definition wins —
+    the same first-wins rule ``_dedupe_first_wins`` applies to ids); stage
+    2 remaps an absent ``art_{id}_…`` fragment whose id is in the manual to
+    that article's own H2 anchor (its top — the marker the crawl dropped).
+    Everything else — exact-defined fragments, unknown ids, external URL
+    fragments, images — is byte-identical: no anchor is ever fabricated
+    (invariant D). Canonicalizing before remapping is what makes the pass
+    idempotent: the output of either stage is exact-defined, so a second
+    pass is a no-op (invariant E).
+    """
+    canonical = {a.lower(): a for a in anchor_set}
+
+    def _replace(match: re.Match[str]) -> str:
+        frag = match.group(1)
+        if frag in anchor_set:  # already exact-defined: keep verbatim
+            return match.group(0)
+        exact = canonical.get(frag.lower())
+        if exact is not None:  # stage 1: case-variant → defined spelling
+            return f"](#{exact})"
+        m = _ART_ID.match(frag)
+        if m is not None and m.group(1) in anchor_by_id:  # stage 2: remap
+            return f"](#{anchor_by_id[m.group(1)]})"
+        return match.group(0)  # unknown id / no id: never fabricate (C9)
+
+    return _FRAGMENT_LINK.sub(_replace, document)
+
+
 def _dedupe_first_wins(articles: list[Article]) -> list[Article]:
     seen: set[str] = set()
     out: list[Article] = []
@@ -230,7 +325,14 @@ def assemble(
         parts.append("## Table of Contents")
     parts.extend(_article_block(a) for a in deduped)
     document = "\n\n".join(parts) + "\n"
-    # Single rewrite pass: redirect known cross-article hyperlinks to the
-    # anchors computed above (B3, C4). The TOC entries are already linked and
+    # Rewrite pass 1 (B3, C4): redirect known cross-article hyperlinks to
+    # the anchors computed above. The TOC entries are already linked and
     # are #fragments, so _ARTICLE_LINK never matches them (idempotent).
-    return _internalize_links(document, anchor_by_id)
+    document = _internalize_links(document, anchor_by_id)
+    # Rewrite pass 2 (B8, invariants D/E): resolve the manual's own
+    # #fragment links against the defined-anchor set of the FINAL document
+    # (heading slugs + named ids). Runs after pass 1 because pass 1 can
+    # introduce fragments; both passes are idempotent, so the composed
+    # output is stable.
+    anchors = _defined_anchors(document)
+    return _resolve_fragment_links(document, set(anchors), anchor_by_id)

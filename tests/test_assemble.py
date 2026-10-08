@@ -20,7 +20,13 @@ Contract (pinned by these byte-exact tests):
     heading; unknown ids, images, and external links stay verbatim;
     anchors use GitHub's document-order slug dedup (a duplicate heading
     gets ``-1``, ``-2``, …), so each id resolves to its own heading
-    (algorithms/internal-link-resolution.md, B3).
+    (algorithms/internal-link-resolution.md, B3);
+  - the manual's own in-document ``#fragment`` links (intra-article,
+    ``To Top``) are resolved against the defined-anchor set (heading
+    slugs + ``<a id>`` named ids): case-variants are canonicalized to the
+    defined spelling, and absent ``art_{id}_…`` fragments are remapped to
+    the article's own H2 anchor; fragments whose id is not in the manual,
+    external URL fragments, and images stay verbatim (B8).
 """
 
 import re
@@ -454,3 +460,100 @@ def test_toc_anchors_resolve_census() -> None:
     targets = re.findall(r"\]\(#([^)]+)\)", _toc_block(out))
     assert targets == ["general", "general-1", "general-2"]
     assert set(targets) <= all_anchors
+
+
+# --- B8 fragment resolution (algorithms/internal-link-resolution.md 0.5.0) ---
+
+
+def test_case_variant_fragment_canonicalized() -> None:
+    # Case 17: a fragment differing only in case from a defined named anchor
+    # is rewritten to the defined anchor's exact spelling — in either
+    # direction (link lower / upper, defined mixed-case).
+    body = '<a id="art_11111_Top" name="x"></a>\n\n[t](#art_11111_top) [u](#ART_11111_TOP)\n'
+    out = assemble([Article(id="11111", name="General", body_md=body)], expected_count=1)
+    assert "[t](#art_11111_Top)" in out
+    assert "[u](#art_11111_Top)" in out
+    assert "[t](#art_11111_top)" not in out
+    assert "[u](#ART_11111_TOP)" not in out
+
+
+def test_absent_art_fragment_remapped_to_article_top() -> None:
+    # Case 18: a truly absent art_{id}_… fragment (the To Top marker was
+    # dropped by mdconv) remaps to the article's own H2 anchor — its top.
+    body = "[to top](#art_11111_to top)\n"
+    out = assemble([Article(id="11111", name="General", body_md=body)], expected_count=1)
+    assert "[to top](#general)" in out
+    assert "(#art_11111_to top)" not in out
+
+
+def test_unknown_art_id_never_fabricated() -> None:
+    # Case 19: fragments whose id is not in the manual (and non-art
+    # fragments) pass through byte-identical — no anchor is invented.
+    body = "[x](#art_99999999999_x) [y](#something_else)\n"
+    out = assemble([Article(id="11111", name="General", body_md=body)], expected_count=1)
+    assert "[x](#art_99999999999_x)" in out
+    assert "[y](#something_else)" in out
+
+
+def test_raw_space_fragments() -> None:
+    # Case 20: named ids carry raw spaces and are taken verbatim; the
+    # exact match is kept, the case-variant is canonicalized to the raw
+    # spelling (no percent-encoding in this pass — that is B9).
+    body = (
+        '<a id="art_11111_to top" name="x"></a>\n\n[a](#art_11111_to top) [b](#art_11111_TO TOP)\n'
+    )
+    out = assemble([Article(id="11111", name="General", body_md=body)], expected_count=1)
+    assert "[a](#art_11111_to top)" in out
+    assert "[b](#art_11111_to top)" in out
+    assert "[b](#art_11111_TO TOP)" not in out
+
+
+def test_resolve_fragment_links_idempotent() -> None:
+    # Case 21: every fragment the pass rewrites becomes exact-defined, so a
+    # second pass is a byte-identical no-op.
+    from m21_crawl.assemble import _defined_anchors, _resolve_fragment_links
+
+    anchor_by_id = {"1": "general"}
+    doc = (
+        "## General\n"
+        '<a id="art_1_Top" name="x"></a>\n'
+        "[t](#art_1_top)\n"
+        "[top](#art_1_to top)\n"
+        "[ok](#general)\n"
+    )
+    once = _resolve_fragment_links(doc, _defined_anchors(doc), anchor_by_id)
+    twice = _resolve_fragment_links(once, _defined_anchors(once), anchor_by_id)
+    assert once == twice
+    assert "[t](#art_1_Top)" in once
+    assert "[top](#general)" in once
+    assert "[ok](#general)" in once
+
+
+def test_fragment_pass_never_introduces_dead_links() -> None:
+    # Case 22 (I5): after assembly, every internal #target resolves to a
+    # defined anchor (heading slug or named id) — except the deliberately
+    # unknown id, which stays a dead portal-side ref by design.
+    from m21_crawl.assemble import _defined_anchors
+
+    body = (
+        '<a id="art_11111_Letter" name="x"></a>\n'
+        "[a](#art_11111_letter) [b](#art_11111_TO TOP) [c](#art_99999_x) [d](#general)\n"
+    )
+    out = assemble([Article(id="11111", name="General", body_md=body)], expected_count=1)
+    defined = set(_defined_anchors(out))
+    targets = set(re.findall(r"\]\(#([^)]+)\)", out))
+    assert "art_11111_Letter" in defined
+    assert targets - {"art_99999_x"} <= defined
+
+
+def test_external_url_fragments_untouched() -> None:
+    # Case 23 (C9): the fragment pass is scoped to bare # destinations —
+    # external URL fragments and image fragments are byte-identical.
+    body = (
+        "[e](https://www.ecfr.gov/current#sec-1)\n"
+        "\n"
+        "![d](https://www.knowva.ebenefits.va.gov/img/x.png#f)\n"
+    )
+    out = assemble([Article(id="11111", name="General", body_md=body)], expected_count=1)
+    assert "[e](https://www.ecfr.gov/current#sec-1)" in out
+    assert "![d](https://www.knowva.ebenefits.va.gov/img/x.png#f)" in out
