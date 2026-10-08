@@ -4,12 +4,12 @@
 id	start_line	end_line
 INDEX_BLOCK	3	13
 METADATA	15	36
-THEORY	37	355
-PSEUDOCODE	356	729
-WALKTHROUGH	730	842
-IMPLEMENTATION	843	968
-TESTS	969	1071
-REFERENCES	1072	1087
+THEORY	37	375
+PSEUDOCODE	376	755
+WALKTHROUGH	756	871
+IMPLEMENTATION	872	999
+TESTS	1000	1111
+REFERENCES	1112	1127
 <!-- INDEX:END -->
 
 <!-- SECTION:METADATA -->
@@ -19,14 +19,14 @@ REFERENCES	1072	1087
 |---|---|
 | Name | Rich HTML → Markdown block converter for eGain article content |
 | Slug | html-to-markdown-section-extraction |
-| Version | 0.7.0 |
+| Version | 0.8.0 |
 | Status | implemented |
 | Author | Bionic agent (on behalf of murphyjj) |
 | Created | 2026-10-02 |
-| Last modified | 2026-10-07 |
-| Status history | 0.1.0 (2026-10-02): initial draft; 0.2.0 (2026-10-03): implemented in src/m21_crawl/mdconv.py; 0.3.0 (2026-10-04): layout-frame dissolution (D5) — tables whose rows all lead with a heading dissolve into real headings + block content; TESTS case 13 rewritten, cases 26–30 added; 0.4.0 (2026-10-05): named-anchor preservation with per-article namespaces (D6) — an ``<a>`` that carries a non-empty ``id``/``name`` and no usable ``href`` is emitted as a raw-HTML marker element at its source position (hoisted to its own line before a heading), in-article ``#fragment`` links are rewritten to the matching ``art_{id}_`` namespace so the assembled manual keeps unique ids, and a layout label cell's non-heading content is no longer silently dropped; TESTS case 27 rewritten, cases 31–36 added; 0.5.0 (2026-10-06): inline-run coalescing in block context (D7) — text, inline tags, named anchors, and plain links sitting in a `div`/`span`/`font`/`center` container or at the fragment top level no longer fragment into standalone paragraphs: they join a current inline run that is flushed (joined per E8, stripped, appended if non-empty) at the next block element (`h1`–`h6`, `p`, `ul`, `ol`, `table`, `blockquote`, `pre`, `hr`) or at the end of the list, while a container holding a block element keeps the old flush-and-recurse split; TESTS cases 37–43 added; 0.6.0 (2026-10-07): generalized layout-frame dissolution (D8) — the frame test now classifies each row (T1 heading label, T2 plain-text label: after stripping empty spacers exactly two visible inline-only cells remain and the label's plain text is a section mark or a meta label in {Introduction, Change Date, In This Section, Overview}, T3 all-empty row rendering nothing) so eGain's plain-text label variants (section marks with named anchors, bold/meta labels, spacer-first order) dissolve to real headings with anchors hoisted (D6) instead of leaking as header-only GFM tables (backlog B6); a label that normalizes exactly to `Change Date` renders as the GFM quote block `> **Change Date**` + `> {date}` in both the T1 and T2 paths (user-approved readability deviation, backlog B11); TESTS cases 44–56 added; 0.7.0 (2026-10-07): decorative block-level `<hr>` renders nothing (D9) — eGain wraps every layout-frame row in a pure-`<hr>` wrapper div for decoration, and emitting `---` per rule doubled every frame's rules (backlog B13: 12,673 standalone `---` blocks and 13 visible double-rule pairs in the post-B6 manual); a block-level `<hr>` now renders nothing while still acting as a block delimiter/flush point, and the inline cell fallback ` — ` is unchanged; TESTS case 17 rewritten, cases 57–58 added |
+| Last modified | 2026-10-08 |
+| Status history | 0.1.0 (2026-10-02): initial draft; 0.2.0 (2026-10-03): implemented in src/m21_crawl/mdconv.py; 0.3.0 (2026-10-04): layout-frame dissolution (D5) — tables whose rows all lead with a heading dissolve into real headings + block content; TESTS case 13 rewritten, cases 26–30 added; 0.4.0 (2026-10-05): named-anchor preservation with per-article namespaces (D6) — an ``<a>`` that carries a non-empty ``id``/``name`` and no usable ``href`` is emitted as a raw-HTML marker element at its source position (hoisted to its own line before a heading), in-article ``#fragment`` links are rewritten to the matching ``art_{id}_`` namespace so the assembled manual keeps unique ids, and a layout label cell's non-heading content is no longer silently dropped; TESTS case 27 rewritten, cases 31–36 added; 0.5.0 (2026-10-06): inline-run coalescing in block context (D7) — text, inline tags, named anchors, and plain links sitting in a `div`/`span`/`font`/`center` container or at the fragment top level no longer fragment into standalone paragraphs: they join a current inline run that is flushed (joined per E8, stripped, appended if non-empty) at the next block element (`h1`–`h6`, `p`, `ul`, `ol`, `table`, `blockquote`, `pre`, `hr`) or at the end of the list, while a container holding a block element keeps the old flush-and-recurse split; TESTS cases 37–43 added; 0.6.0 (2026-10-07): generalized layout-frame dissolution (D8) — the frame test now classifies each row (T1 heading label, T2 plain-text label: after stripping empty spacers exactly two visible inline-only cells remain and the label's plain text is a section mark or a meta label in {Introduction, Change Date, In This Section, Overview}, T3 all-empty row rendering nothing) so eGain's plain-text label variants (section marks with named anchors, bold/meta labels, spacer-first order) dissolve to real headings with anchors hoisted (D6) instead of leaking as header-only GFM tables (backlog B6); a label that normalizes exactly to `Change Date` renders as the GFM quote block `> **Change Date**` + `> {date}` in both the T1 and T2 paths (user-approved readability deviation, backlog B11); TESTS cases 44–56 added; 0.7.0 (2026-10-07): decorative block-level `<hr>` renders nothing (D9) — eGain wraps every layout-frame row in a pure-`<hr>` wrapper div for decoration, and emitting `---` per rule doubled every frame's rules (backlog B13: 12,673 standalone `---` blocks and 13 visible double-rule pairs in the post-B6 manual); a block-level `<hr>` now renders nothing while still acting as a block delimiter/flush point, and the inline cell fallback ` — ` is unchanged; TESTS case 17 rewritten, cases 57–58 added; 0.8.0 (2026-10-08): raw spaces in link/image destinations are percent-encoded to %20 at emit time (D10) — a raw space ends a Markdown destination in most renderers (backlog B9, 2026-10-07 census: 51 destinations — ~40 external URLs, 9 knowva /img/ image URLs, 9 internal space anchors, 2 malformed to-top fragments); rewrite_url (the single choke point for links and images) encodes spaces only and leaves every other character verbatim, on both the namespaced-fragment path and the absolute path; anchor markers keep their raw-space id/name attributes (renderers decode the fragment when matching); TESTS cases 59–62 added |
 | Languages | Python 3.12 (implementation); pseudocode is language-agnostic |
-| Implementation location | src/m21_crawl/mdconv.py — constants L49–76 (D8 frame row kinds L73–76: _SECTION_MARK, _META_LABELS, _CHANGE_DATE, _VISIBLE_BLOCK); HtmlConversionError L79–86; _parse L88–91; convert L93–123; block context L125–227 (inline-run coalescing D7: _render_block_list L125; _contains_block_el L216; D9 hr drop L171–172); inline context L229–310; tables L312–546 (frame classification D8: _layout_heading L333, _cell_visible L352, _plain_label L363, _frame_row_kind L368, _is_layout_frame L393; dissolution D8+B11: _change_date_blocks L406, _render_layout_frame L418; nested/cell helpers L481–534); lists L548–576; normalization, named anchors (D6), and URLs L578–664 (v0.7.0, 2026-10-07) |
+| Implementation location | src/m21_crawl/mdconv.py — constants L49–76 (D8 frame row kinds L73–76: _SECTION_MARK, _META_LABELS, _CHANGE_DATE, _VISIBLE_BLOCK); HtmlConversionError L79–86; _parse L88–91; convert L93–123; block context L125–227 (inline-run coalescing D7: _render_block_list L125; _contains_block_el L216; D9 hr drop L171–172); inline context L229–310; tables L312–546 (frame classification D8: _layout_heading L333, _cell_visible L352, _plain_label L363, _frame_row_kind L368, _is_layout_frame L393; dissolution D8+B11: _change_date_blocks L406, _render_layout_frame L418; nested/cell helpers L481–534); lists L548–576; normalization, named anchors (D6), spaces (D10), and URLs L578–680 (v0.8.0, 2026-10-08; D10: _encode_spaces L634, _rewrite_url L645) |
 | Time complexity | O(C) — C = characters of input HTML (single pass over the parsed tree) |
 | Space complexity | O(C) — parsed tree + output string |
 | Determinism | deterministic (no timestamps, no randomness, fixed BASE_URL constant) |
@@ -339,6 +339,26 @@ The implementation therefore deviates as follows (all pinned by tests):
   the section structure. The inline-position fallback (`<hr>` inside a cell
   → ` — `, 5.2) is unchanged — no corpus evidence of `<hr>` inside a table
   cell (TESTS case 17 rewritten; cases 57–58).
+- **D10 — Raw spaces in link/image destinations are percent-encoded at
+  emit time (B9).** eGain link and image destinations contain raw ASCII
+  spaces: the 2026-10-07 census found 51 such destinations in the assembled
+  manual — ~40 external `vbaw.vba.va.gov` document URLs, 9 knowva `/img/`
+  URLs such as `M21-1 structure.png`, 9 in-article anchors such as
+  `#art_…_M21-1 Guidance`, and 2 malformed `to top` fragments. A raw space
+  ends a Markdown destination in most renderers, so the link silently
+  truncates at the first space. `rewrite_url` is the single choke point
+  through which every link and image destination passes (link href in both
+  contexts, image `src`, and the named-anchor usability check), so it
+  percent-encodes the space to `%20` on the way out. **Spaces only**: every
+  other character is left verbatim (backlog decision — do not re-encode
+  characters the source already carries). The encoding applies to the
+  namespaced fragment path and to every absolute path; a bare `#` null link
+  has no fragment and is untouched. Destinations are not visible text, so
+  contract 2 (TEXT fidelity) is unaffected. The *anchor* side is deliberately
+  not encoded: a named-anchor marker is raw HTML whose `id`/`name` attributes
+  keep the raw space, while renderers percent-decode a link fragment when
+  matching, so `[see](#…_M21-1%20Guidance)` still lands on
+  `<a id="…_M21-1 Guidance"></a>` (TESTS cases 59–62).
 
 ### 2.7 Error model (summary)
 
@@ -708,8 +728,9 @@ function rewrite_url(href, base_url, ns) -> str | None:
     h <- trim(href); if h == "": return None
     if h starts with "javascript:" (case-insensitive): return None    # E6
     if h starts with "#":                                  # D6: in-article fragment
-        if h == "#" or ns == "": return h                    # null link or no namespace
-        return "#" + ns + h[1:]                              # namespace the fragment
+        if h != "#" and ns != "": h <- "#" + ns + h[1:]     # namespace the fragment
+        if h == "#": return h                                # null link: no fragment
+        return encode_spaces(h)                              # D10: space -> %20
     if h starts with "http://" or "https://":
         absolute <- h
     else if h starts with "//":
@@ -720,8 +741,13 @@ function rewrite_url(href, base_url, ns) -> str | None:
         absolute <- h                     # scheme-relative oddities: keep verbatim
     # Canonicalize article URLs: drop the query string (id is in the path).
     if absolute matches ^(https?://[^/]+/system/ws/v\d+/ss/article/)(\d+)(\?.*)?$:
-        return group(1) + group(2)
-    return absolute
+        absolute <- group(1) + group(2)
+    return encode_spaces(absolute)                           # D10: space -> %20
+
+function encode_spaces(url) -> str:
+    # D10: percent-encode raw spaces at emit time (backlog B9); every other
+    # character is left verbatim.
+    return url.replace(" ", "%20")
 ```
 
 Termination: pre-order walk over a finite tree; every branch terminates in a
@@ -758,7 +784,10 @@ string or a recursive call on a strictly smaller subtree.
    we never emit a bare `**`.
 8. Links get a URL rewrite: relative paths become absolute; `javascript:` is
    dropped (plain text); VA article URLs lose their query string so the manual
-   contains stable, canonical links.
+   contains stable, canonical links; raw spaces in any destination are
+   percent-encoded to `%20` so the Markdown destination never ends at a space
+   (D10, backlog B9), while anchor markers keep their raw-space attributes
+   (renderers decode the fragment when matching).
 9. Named anchors — an `<a>` that carries an `id` or `name` but no usable link
    target — are preserved as self-closing marker elements (D6). Inside a
    heading or a table label the markers are hoisted onto their own line
@@ -875,6 +904,7 @@ so the function stays pure and testable.
 | `<a id="x" name="y"></a>` (id and name differ) | both attrs emitted, each namespaced (D6; TESTS 35) | preserve whatever the source declares |
 | `<a id="x" href="https://…"></a>` (usable link) | link rendered, `id` dropped (D6; TESTS 33) | a live link wins over a named anchor (documented limitation) |
 | `href="#"` (null link) | left as `#` (D6; TESTS 34) | bare null link, no fragment to rewrite |
+| Destination with a raw space (`https://…/a b.pdf`, `#M21-1 Guidance`) | the space becomes `%20`, every other character verbatim (D10; TESTS 59–62) | a raw space ends the Markdown destination in most renderers (B9) |
 | Label cell with non-heading content beside the heading | heading, then the sibling rendered in block context (D6; TESTS 36) | D5 used to drop anchor siblings silently |
 | Inline-only `<div>` wrapping a run | one paragraph, container flattened (D7; TESTS 37) | real-HTML inline content stays inline (B4) |
 | Emphasized run with no container at all | one paragraph (D7; TESTS 38) | the run model is container-independent |
@@ -914,6 +944,7 @@ so the function stays pure and testable.
 | Every `\|` inside a table cell is escaped | assert no unescaped pipe splits a cell: re-split the GFM table and compare cell counts to the input (case 12) |
 | No words lost (contract 2) | for a no-markup input, assert the output (minus newlines) contains every input word (case 1) |
 | Canonical article URLs | assert no output link contains a `?` for `/system/ws/vNN/ss/article/` ids (case 4) |
+| No raw spaces in link/image destinations | scan every `](` destination in the output for an ASCII space; expect none (cases 59–61) | a raw space truncates the destination in most renderers (D10; B9) |
 
 ### 5.4 Pitfalls and known traps
 
@@ -1034,6 +1065,10 @@ shown as `""`).
 | 56 | T1 `Change Date` heading (B11) | `<table><tr><td><h3>Change Date</h3></td><td></td><td>August 22, 2024</td></tr></table>` | `> **Change Date**\n> August 22, 2024\n` | B11 carves out the T1 path too (a heading-labeled `Change Date` frame) |
 | 57 | hr-flanked frame renders without rules | `<div><hr/></div><table><tr><td><h3>Change Date</h3></td><td>&nbsp;</td><td>February 14, 2025</td></tr></table><div><hr/></div>` | `> **Change Date**\n> February 14, 2025\n` | D9 (B13): the decorative hr wrappers render nothing; the frame dissolves normally |
 | 58 | hr between paragraphs | `<p>A</p><hr><p>B</p>` | `A\n\nB\n` | D9: the hr is dropped but still flushes the run — both paragraphs kept, no rule |
+| 59 | external link destination with raw spaces | `<p><a href="https://example.com/forms/21 0966.pdf">form</a></p>` | `[form](https://example.com/forms/21%200966.pdf)\n` | D10: the destination no longer ends at the first space (B9) |
+| 60 | image src with raw spaces | `<p><img src="/img/M21-1 structure.png" alt="Structure"></p>` | `![Structure](https://www.knowva.ebenefits.va.gov/img/M21-1%20structure.png)\n` | D10 applies to image destinations (B9: the 9 knowva image URLs) |
+| 61 | namespaced fragment with raw space (article_id=123) | `<p><a href="#M21-1 Guidance">see</a></p>` | `[see](#art_123_M21-1%20Guidance)\n` | D10 encodes the namespaced fragment; the renderer decodes %20 when matching the raw-space marker (B9: the 9 internal space anchors) |
+| 62 | named-anchor marker keeps raw space (article_id=123) | `<a id="M21-1 Guidance" name="M21-1 Guidance"></a>` | `<a id="art_123_M21-1 Guidance" name="art_123_M21-1 Guidance"></a>\n` | the anchor side stays raw HTML; encoded link (61) and raw anchor (62) meet after the renderer decodes the fragment |
 
 **Namespaced (article_id) group.** The cases above use `article_id=""` (unit
 tests), so markers carry bare ids. A separate group calls
@@ -1042,6 +1077,11 @@ tests), so markers carry bare ids. A separate group calls
 and on rewritten fragment links (`](#art_123_1a)`), while `href="#"` stays
 `#`. It also covers a T2 section-mark label whose named anchor hoists with
 the `art_<id>_` prefix (D8: the plain-label path uses the same D6 hoisting).
+It also covers the D10 space pair: a fragment link whose target carries a raw
+space emits the `%20`-encoded destination (case 61) while a named-anchor
+marker keeps its raw-space `id`/`name` attributes (case 62), so the encoded
+link side and the raw anchor side still meet once the renderer decodes the
+fragment.
 This is what makes the ~13,134 dead `#fragment` links resolvable in the
 assembled manual (B2 acceptance: 0 dead intra-article fragments).
 

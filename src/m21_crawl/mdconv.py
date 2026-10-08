@@ -631,13 +631,27 @@ def _collect_named_anchors(el: Tag, base_url: str, ns: str) -> list[str]:
     return out
 
 
+def _encode_spaces(url: str) -> str:
+    """D10: percent-encode raw spaces in an emitted link/image destination.
+
+    A raw space ends a Markdown destination in most renderers, so only the
+    space is encoded; every other character is left verbatim (backlog B9).
+    Applied at emit time in :func:`_rewrite_url`, the single choke point for
+    link and image destinations.
+    """
+    return url.replace(" ", "%20")
+
+
 def _rewrite_url(href: str | None, base_url: str, ns: str) -> str | None:
     """Resolve ``href`` to a canonical absolute URL, or ``None`` to drop it.
 
     ``javascript:`` hrefs are dropped (E6); fragment-only hrefs (``#frag``)
     are namespaced with ``ns`` (D6) while a bare ``#`` is left untouched;
     article URLs (``/system/ws/vNN/ss/article/{id}``) lose their query string
-    because the id is already in the path.
+    because the id is already in the path; raw spaces are percent-encoded to
+    ``%20`` at emit time (D10) — a raw space ends a Markdown destination in
+    most renderers (backlog B9). Named-anchor markers are not encoded: their
+    raw ``id``/``name`` attributes match the renderer-decoded fragment.
     """
     if href is None:
         return None
@@ -647,9 +661,11 @@ def _rewrite_url(href: str | None, base_url: str, ns: str) -> str | None:
     if h.lower().startswith("javascript:"):  # E6
         return None
     if h.startswith("#"):  # D6: in-article fragment
-        if h == "#" or ns == "":
-            return h  # null link or no namespace
-        return "#" + ns + h[1:]
+        if h != "#" and ns != "":
+            h = "#" + ns + h[1:]  # namespace the fragment
+        if h == "#":
+            return h  # null link: no fragment to encode
+        return _encode_spaces(h)  # D10: raw space ends a destination
     if h.startswith("http://") or h.startswith("https://"):
         absolute = h
     elif h.startswith("//"):
@@ -660,5 +676,5 @@ def _rewrite_url(href: str | None, base_url: str, ns: str) -> str | None:
         absolute = h  # scheme-relative oddities: keep verbatim (doc 3)
     m = _ARTICLE_URL.match(absolute)
     if m is not None:
-        return m.group(1) + m.group(2)
-    return absolute
+        absolute = m.group(1) + m.group(2)
+    return _encode_spaces(absolute)  # D10: raw space ends a destination

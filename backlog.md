@@ -5,7 +5,7 @@ session can start without re-deriving context: problem (with measured
 evidence), blast radius, the process the governing skills require, open
 decisions, and acceptance criteria.
 
-Order = user priority. Status: **B1, B2, B3, B4, B5, B6, B7, B8, B11, B12, B13 done (B6/B11 in `f48faf9`; B13 in `817a8f3`; B12 in `403550c`; B7/B8 in this session's commit)**; **B9 open — new 2026-10-07, raw spaces in link destinations (51 links + 9 images) break Markdown**; **B10 open — new 2026-10-07, broken image links (36 legacy-host `vaww.vrm.km.va.gov` URLs; live/dead census partial — local DNS outage, re-verify when network recovers)**; **B14 open — new 2026-10-07, 14 residual leaked layout frames (enumerated in the B6 closeout; unverified hypothesis: block-level children in the label cell defeat the discriminator)**; **B15 open — new 2026-10-07, Change Date frames not in a quote block (B11 gap; mdconv cycle)**.
+Order = user priority. Status: **B1, B2, B3, B4, B5, B6, B7, B8, B9, B11, B12, B13 done (B6/B11 in `f48faf9`; B13 in `817a8f3`; B12 in `403550c`; B7/B8/B9 in this session's commit)**; **B10 open — new 2026-10-07, broken image links (36 legacy-host `vaww.vrm.km.va.gov` URLs; live/dead census partial — local DNS outage, re-verify when network recovers)**; **B14 open — new 2026-10-07, 14 residual leaked layout frames (enumerated in the B6 closeout; unverified hypothesis: block-level children in the label cell defeat the discriminator)**; **B15 open — new 2026-10-07, Change Date frames not in a quote block (B11 gap; mdconv cycle)**.
 
 ## B1. Replace eGain layout tables with standard Markdown layout — **DONE (2026-10-04)**
 
@@ -729,7 +729,34 @@ Landed atomically (doc + tests + code + registry + backlog) as
 `feat(assemble): resolve dead #fragments to canonical anchors (B8)`;
 `output/` stays untracked.
 
-## B9. Raw spaces in link destinations — **open, new 2026-10-07**
+## B9. Raw spaces in link destinations — **DONE (2026-10-08)**
+
+**Completion (2026-10-08).** Percent-encode spaces at emit time in
+`_rewrite_url` — the single choke point for link and image destinations
+(`src/m21_crawl/mdconv.py` v0.8.0, D10): new `_encode_spaces` helper
+(L634) applied to the namespaced fragment path and every absolute path;
+a bare `#` stays bare; spaces only, every other character verbatim
+(backlog decision). Named-anchor markers keep raw `id`/`name`
+attributes: renderers percent-decode the fragment when matching, so
+`[…](#art_…_M21-1%20Guidance)` still targets `name="art_…_M21-1 Guidance"`.
+Doc cycle: html-to-markdown-section-extraction v0.7.0 → 0.8.0 (D10,
+TESTS cases 59–62, 5.2 edge row, invariant "no raw spaces in emitted
+link/image destinations"); registry row 0.8.0. TDD: RED `case59` /
+`case60` + `test_namespaced_fragment_link_with_raw_space` (+
+`test_namespaced_anchor_marker_keeps_raw_space`, green from the start —
+locks the anchor-side behavior) → GREEN; `make gate` green (193 tests).
+Offline verification on the assembled manual (`/tmp/b9_census.py`):
+baseline 51 raw-space destinations (measured split: 33 external URLs,
+9 internal fragments incl. the 2 to-top fragments, 9 knowva `/img/`
+URLs) → **0** after the D10 simulation; B8 re-resolution on the
+simulated doc → **0 dead internal links**. **Tradeoff (option (a),
+handoff lean, flagged here for the user):** the 9 internal
+space-anchors no longer exact-match their raw-space markers once
+encoded — B8 stage 2 remaps them to the owning article's H2 (Prologue
+×7, Overview ×2) instead of the sub-anchor: landing degrades from
+sub-anchor to article top. Option (b) (percent-decode in assemble
+stage 1, amending the B8 doc/tests) is deferred as a follow-up if
+sub-anchor fidelity is wanted. `output/` stays untracked.
 
 **User report (verbatim, 2026-10-07):** "There appear to be links that
 are malformed? Not entirely sure what I am looking at, but the table

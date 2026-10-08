@@ -1,8 +1,9 @@
 """mdconv: rich HTML -> GFM converter (TDD per html-to-markdown-section-extraction.md).
 
-All 56 TESTS cases are transcribed byte-exact from doc section 6 (G11
+All 60 TESTS cases are transcribed byte-exact from doc section 6 (G11
 synthetic inputs shaped like live CMS output), plus the namespaced
-(article_id) group of doc 6 (D6 named anchors; D8 T2 label hoisting).
+(article_id) group of doc 6 (D6 named anchors; D8 T2 label hoisting;
+D10 raw-space fragment/anchor pair).
 Property tests P1-P4 follow doc 6.1 with the fixed seed 20261002.
 """
 
@@ -17,7 +18,7 @@ from m21_crawl.mdconv import HtmlConversionError, convert
 
 BASE_URL = "https://www.knowva.ebenefits.va.gov"
 
-# (name, input, expected) — doc section 6, cases 1-56, byte-exact expected.
+# (name, input, expected) — doc section 6, cases 1-60, byte-exact expected.
 CASES: list[tuple[str, str, str]] = [
     (
         "case01 minimal paragraph",
@@ -344,6 +345,16 @@ CASES: list[tuple[str, str, str]] = [
         "<p>A</p><hr><p>B</p>",
         "A\n\nB\n",
     ),
+    (
+        "case59 external link destination with raw spaces (D10)",
+        '<p><a href="https://example.com/forms/21 0966.pdf">form</a></p>',
+        "[form](https://example.com/forms/21%200966.pdf)\n",
+    ),
+    (
+        "case60 image src with raw spaces (D10)",
+        '<p><img src="/img/M21-1 structure.png" alt="Structure"></p>',
+        "![Structure](https://www.knowva.ebenefits.va.gov/img/M21-1%20structure.png)\n",
+    ),
 ]
 
 
@@ -394,6 +405,21 @@ def test_namespaced_fragment_link() -> None:
     assert (
         convert('<p><a href="#1a">see</a></p>', base_url=BASE_URL, article_id="123")
         == "[see](#art_123_1a)\n"
+    )
+
+
+def test_namespaced_fragment_link_with_raw_space() -> None:
+    assert (
+        convert('<p><a href="#M21-1 Guidance">see</a></p>', base_url=BASE_URL, article_id="123")
+        == "[see](#art_123_M21-1%20Guidance)\n"
+    )
+
+
+def test_namespaced_anchor_marker_keeps_raw_space() -> None:
+    html = '<a id="M21-1 Guidance" name="M21-1 Guidance"></a>'
+    assert (
+        convert(html, base_url=BASE_URL, article_id="123")
+        == '<a id="art_123_M21-1 Guidance" name="art_123_M21-1 Guidance"></a>\n'
     )
 
 
