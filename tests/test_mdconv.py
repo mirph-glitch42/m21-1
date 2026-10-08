@@ -1,9 +1,9 @@
 """mdconv: rich HTML -> GFM converter (TDD per html-to-markdown-section-extraction.md).
 
-All 60 TESTS cases are transcribed byte-exact from doc section 6 (G11
+All 64 TESTS cases are transcribed byte-exact from doc section 6 (G11
 synthetic inputs shaped like live CMS output), plus the namespaced
 (article_id) group of doc 6 (D6 named anchors; D8 T2 label hoisting;
-D10 raw-space fragment/anchor pair).
+D10 raw-space fragment/anchor pair; D11 legacy-host remap cases 63–66).
 Property tests P1-P4 follow doc 6.1 with the fixed seed 20261002.
 """
 
@@ -18,7 +18,7 @@ from m21_crawl.mdconv import HtmlConversionError, convert
 
 BASE_URL = "https://www.knowva.ebenefits.va.gov"
 
-# (name, input, expected) — doc section 6, cases 1-60, byte-exact expected.
+# (name, input, expected) — doc section 6, cases 1-64, byte-exact expected.
 CASES: list[tuple[str, str, str]] = [
     (
         "case01 minimal paragraph",
@@ -354,6 +354,30 @@ CASES: list[tuple[str, str, str]] = [
         "case60 image src with raw spaces (D10)",
         '<p><img src="/img/M21-1 structure.png" alt="Structure"></p>',
         "![Structure](https://www.knowva.ebenefits.va.gov/img/M21-1%20structure.png)\n",
+    ),
+    (
+        "case61 legacy-host image remap (D11/B10)",
+        '<p><img src="https://vaww.vrm.km.va.gov/img/III.v.1.A_Method_1.png" alt="Method 1"></p>',
+        "![Method 1](https://www.knowva.ebenefits.va.gov/img/III.v.1.A_Method_1.png)\n",
+    ),
+    (
+        "case62 legacy-host document link remap (D11/B10)",
+        '<p><a href="https://vaww.vrm.km.va.gov/system/templates/selfservice/va_kanew/'
+        "help/agent/locale/en-US/portal/554400000001034/"
+        'topic/554400000003361/Rate-Tables">Rate Tables</a></p>',
+        "[Rate Tables](https://www.knowva.ebenefits.va.gov/system/templates/selfservice/"
+        "va_kanew/help/agent/locale/en-US/portal/554400000001034/topic/"
+        "554400000003361/Rate-Tables)\n",
+    ),
+    (
+        "case63 legacy URL with raw space: remap then encode (D11 before D10)",
+        '<p><a href="https://vaww.vrm.km.va.gov/img/M21-1 structure.png">fig</a></p>',
+        "[fig](https://www.knowva.ebenefits.va.gov/img/M21-1%20structure.png)\n",
+    ),
+    (
+        "case64 look-alike host not remapped (D11)",
+        '<p><a href="https://vaww.vrm.km.va.gov.evil.example/img/x.png">x</a></p>',
+        "[x](https://vaww.vrm.km.va.gov.evil.example/img/x.png)\n",
     ),
 ]
 

@@ -74,6 +74,11 @@ _SECTION_MARK = re.compile(r"^[IVXLC]+\.\s?(?:iv|iii|ii|i)(?:\.\s?[A-Za-z0-9]+)*
 _META_LABELS = frozenset({"Introduction", "Change Date", "In This Section", "Overview"})
 _CHANGE_DATE = "Change Date"
 _VISIBLE_BLOCK = frozenset({"img", "table", "ul", "ol"})
+# D11 (B10): dead legacy portal host -> canonical live host. The host must
+# be followed by /, ?, #, or end-of-string, so look-alike hosts
+# (vaww.vrm.km.va.gov.evil.example) do not match.
+_LEGACY_HOST = re.compile(r"^(https?://)vaww\.vrm\.km\.va\.gov(?=[/?#]|$)")
+_LIVE_HOST = "www.knowva.ebenefits.va.gov"
 
 
 class HtmlConversionError(RuntimeError):
@@ -642,6 +647,24 @@ def _encode_spaces(url: str) -> str:
     return url.replace(" ", "%20")
 
 
+def _remap_legacy_host(url: str) -> str:
+    """D11 (backlog B10): swap the dead legacy host for the live one.
+
+    ``vaww.vrm.km.va.gov`` carries no DNS records (verified 2026-10-08:
+    zero answer records from the authoritative ``va.gov`` zone while
+    sibling hosts resolve), while ``www.knowva.ebenefits.va.gov`` serves
+    every legacy path at the same location (36/36 ``/img/`` images and
+    11/12 document URLs GET-verified live, content types checked). Only
+    the host is replaced; scheme, path, query, and fragment are left
+    verbatim. Applied in :func:`_rewrite_url` before :func:`_encode_spaces`
+    (D10).
+    """
+    m = _LEGACY_HOST.match(url)
+    if m is None:
+        return url
+    return m.group(1) + _LIVE_HOST + url[m.end() :]
+
+
 def _rewrite_url(href: str | None, base_url: str, ns: str) -> str | None:
     """Resolve ``href`` to a canonical absolute URL, or ``None`` to drop it.
 
@@ -652,6 +675,9 @@ def _rewrite_url(href: str | None, base_url: str, ns: str) -> str | None:
     ``%20`` at emit time (D10) — a raw space ends a Markdown destination in
     most renderers (backlog B9). Named-anchor markers are not encoded: their
     raw ``id``/``name`` attributes match the renderer-decoded fragment.
+    Destinations on the dead legacy host ``vaww.vrm.km.va.gov`` are remapped
+    to ``www.knowva.ebenefits.va.gov`` before that encoding (D11, backlog
+    B10).
     """
     if href is None:
         return None
@@ -677,4 +703,4 @@ def _rewrite_url(href: str | None, base_url: str, ns: str) -> str | None:
     m = _ARTICLE_URL.match(absolute)
     if m is not None:
         absolute = m.group(1) + m.group(2)
-    return _encode_spaces(absolute)  # D10: raw space ends a destination
+    return _encode_spaces(_remap_legacy_host(absolute))  # D11 then D10

@@ -797,7 +797,7 @@ regenerated manual; the 9 space-anchors resolve in both GitHub and a
 case-sensitive local renderer; a sample of external space-URLs opens
 correctly.
 
-## B10. Broken image links (legacy host) — **open, new 2026-10-07**
+## B10. Broken image links (legacy host) — **DONE (2026-10-08)**
 
 **User report (verbatim, 2026-10-07):** "large number of broken image
 links. need to verify that the links are working in online manual, and
@@ -843,6 +843,55 @@ live/dead verdict recorded; live ones render (content-verified); dead
 ones remapped to a content-verified knowva equivalent or left as-is
 with the dead set enumerated; 0 images render as broken placeholders
 on known-live hosts.
+
+**Completion record (2026-10-08).** Network recovered; verdict
+**re-taken and conclusive**:
+
+- `dig vaww.vrm.km.va.gov` → NOERROR with **zero answer records**, SOA
+  `ns1x.va.gov` (the name is absent from the authoritative `va.gov`
+  zone); control `www.knowva.ebenefits.va.gov` resolves and answers
+  (HTTP 302 on `/`) → the host is dead, not a local DNS fault. (DoH
+  endpoints themselves don't resolve from this box, so direct `dig`
+  served as the DNS evidence.)
+- **36/36** distinct `vaww.vrm.km.va.gov/img/` URLs are **live at
+  `www.knowva.ebenefits.va.gov` on the exact same path**: GET with a
+  browser UA (GET, not HEAD — the WAF 403s HEAD even for live images)
+  → HTTP 200, `image/png`/`image/jpeg` content type, non-empty body.
+  Byte fingerprints recorded at probe time (three filename triples are
+  byte-identical on the live host — `SecD_Manage_Evidence.png/2/6` =
+  12,452 B md5 `c9792f50…`; `…_3.png/7.png` = 11,132 B md5
+  `83861819…` — the site's own renames; each URL serves whatever the
+  live site serves at that path, so no content mismatch is possible).
+- **Bonus census — 12 additional non-image legacy URLs** (48 distinct
+  total, 56 occurrences): 11/12 live on knowva same-path (case-law
+  content pages, CSB/Rate-Tables topic pages, spellchecker widget); 1
+  is a 404 — a **source-malformed concatenated URL**
+  (`…top.jsp?…mainConsole=1https://corpweb1.dfas.mil/…`) that is
+  broken at the source and no worse after the remap; recorded as a
+  source defect, left as-is.
+- Root-cause insight: the **live portal itself** references the dead
+  legacy host in 36 `<img src>` attributes — the user's broken
+  placeholders are broken on the live site too.
+
+**Decision (agent, flagged for user review):** host-level remap
+`vaww.vrm.km.va.gov` → `www.knowva.ebenefits.va.gov`, scheme
+preserved, path/query/fragment verbatim — **not** a 36-entry image
+table: simpler, fixes the 36 images and the 11 live document links in
+one rule, and generalizes to any further legacy-host URL on the same
+path convention. Look-alike hosts are guarded: the host boundary must
+be `/`, `?`, `#`, or end-of-string (TESTS case 66).
+
+**Implementation:** D11 in
+`algorithms/html-to-markdown-section-extraction.md` **v0.9.0** —
+`_remap_legacy_host` applied in `_rewrite_url` (the single choke
+point), **before** D10 space encoding; TESTS cases 63–66; suite 197
+green.
+
+**Acceptance status:** verdict recorded ✓ (conclusive, 2026-10-08);
+all 36 live and content-verified ✓; remap applied ✓; regenerated
+manual (14,096,707 B, 0 failed articles): **0** legacy-host
+occurrences, all **106** image refs on knowva (84 distinct `/img/`
+paths = 48 original + 36 remapped, all on verified-live paths) ✓.
 
 ## B11. Change Date frames → quote block (readability deviation) — **DONE (2026-10-07)**
 

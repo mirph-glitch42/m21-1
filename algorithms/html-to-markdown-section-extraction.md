@@ -4,12 +4,12 @@
 id	start_line	end_line
 INDEX_BLOCK	3	13
 METADATA	15	36
-THEORY	37	375
-PSEUDOCODE	376	755
-WALKTHROUGH	756	871
-IMPLEMENTATION	872	999
-TESTS	1000	1111
-REFERENCES	1112	1127
+THEORY	37	406
+PSEUDOCODE	407	796
+WALKTHROUGH	797	916
+IMPLEMENTATION	917	1046
+TESTS	1047	1162
+REFERENCES	1163	1178
 <!-- INDEX:END -->
 
 <!-- SECTION:METADATA -->
@@ -19,14 +19,14 @@ REFERENCES	1112	1127
 |---|---|
 | Name | Rich HTML → Markdown block converter for eGain article content |
 | Slug | html-to-markdown-section-extraction |
-| Version | 0.8.0 |
+| Version | 0.9.0 |
 | Status | implemented |
 | Author | Bionic agent (on behalf of murphyjj) |
 | Created | 2026-10-02 |
 | Last modified | 2026-10-08 |
-| Status history | 0.1.0 (2026-10-02): initial draft; 0.2.0 (2026-10-03): implemented in src/m21_crawl/mdconv.py; 0.3.0 (2026-10-04): layout-frame dissolution (D5) — tables whose rows all lead with a heading dissolve into real headings + block content; TESTS case 13 rewritten, cases 26–30 added; 0.4.0 (2026-10-05): named-anchor preservation with per-article namespaces (D6) — an ``<a>`` that carries a non-empty ``id``/``name`` and no usable ``href`` is emitted as a raw-HTML marker element at its source position (hoisted to its own line before a heading), in-article ``#fragment`` links are rewritten to the matching ``art_{id}_`` namespace so the assembled manual keeps unique ids, and a layout label cell's non-heading content is no longer silently dropped; TESTS case 27 rewritten, cases 31–36 added; 0.5.0 (2026-10-06): inline-run coalescing in block context (D7) — text, inline tags, named anchors, and plain links sitting in a `div`/`span`/`font`/`center` container or at the fragment top level no longer fragment into standalone paragraphs: they join a current inline run that is flushed (joined per E8, stripped, appended if non-empty) at the next block element (`h1`–`h6`, `p`, `ul`, `ol`, `table`, `blockquote`, `pre`, `hr`) or at the end of the list, while a container holding a block element keeps the old flush-and-recurse split; TESTS cases 37–43 added; 0.6.0 (2026-10-07): generalized layout-frame dissolution (D8) — the frame test now classifies each row (T1 heading label, T2 plain-text label: after stripping empty spacers exactly two visible inline-only cells remain and the label's plain text is a section mark or a meta label in {Introduction, Change Date, In This Section, Overview}, T3 all-empty row rendering nothing) so eGain's plain-text label variants (section marks with named anchors, bold/meta labels, spacer-first order) dissolve to real headings with anchors hoisted (D6) instead of leaking as header-only GFM tables (backlog B6); a label that normalizes exactly to `Change Date` renders as the GFM quote block `> **Change Date**` + `> {date}` in both the T1 and T2 paths (user-approved readability deviation, backlog B11); TESTS cases 44–56 added; 0.7.0 (2026-10-07): decorative block-level `<hr>` renders nothing (D9) — eGain wraps every layout-frame row in a pure-`<hr>` wrapper div for decoration, and emitting `---` per rule doubled every frame's rules (backlog B13: 12,673 standalone `---` blocks and 13 visible double-rule pairs in the post-B6 manual); a block-level `<hr>` now renders nothing while still acting as a block delimiter/flush point, and the inline cell fallback ` — ` is unchanged; TESTS case 17 rewritten, cases 57–58 added; 0.8.0 (2026-10-08): raw spaces in link/image destinations are percent-encoded to %20 at emit time (D10) — a raw space ends a Markdown destination in most renderers (backlog B9, 2026-10-07 census: 51 destinations — ~40 external URLs, 9 knowva /img/ image URLs, 9 internal space anchors, 2 malformed to-top fragments); rewrite_url (the single choke point for links and images) encodes spaces only and leaves every other character verbatim, on both the namespaced-fragment path and the absolute path; anchor markers keep their raw-space id/name attributes (renderers decode the fragment when matching); TESTS cases 59–62 added |
+| Status history | 0.1.0 (2026-10-02): initial draft; 0.2.0 (2026-10-03): implemented in src/m21_crawl/mdconv.py; 0.3.0 (2026-10-04): layout-frame dissolution (D5) — tables whose rows all lead with a heading dissolve into real headings + block content; TESTS case 13 rewritten, cases 26–30 added; 0.4.0 (2026-10-05): named-anchor preservation with per-article namespaces (D6) — an ``<a>`` that carries a non-empty ``id``/``name`` and no usable ``href`` is emitted as a raw-HTML marker element at its source position (hoisted to its own line before a heading), in-article ``#fragment`` links are rewritten to the matching ``art_{id}_`` namespace so the assembled manual keeps unique ids, and a layout label cell's non-heading content is no longer silently dropped; TESTS case 27 rewritten, cases 31–36 added; 0.5.0 (2026-10-06): inline-run coalescing in block context (D7) — text, inline tags, named anchors, and plain links sitting in a `div`/`span`/`font`/`center` container or at the fragment top level no longer fragment into standalone paragraphs: they join a current inline run that is flushed (joined per E8, stripped, appended if non-empty) at the next block element (`h1`–`h6`, `p`, `ul`, `ol`, `table`, `blockquote`, `pre`, `hr`) or at the end of the list, while a container holding a block element keeps the old flush-and-recurse split; TESTS cases 37–43 added; 0.6.0 (2026-10-07): generalized layout-frame dissolution (D8) — the frame test now classifies each row (T1 heading label, T2 plain-text label: after stripping empty spacers exactly two visible inline-only cells remain and the label's plain text is a section mark or a meta label in {Introduction, Change Date, In This Section, Overview}, T3 all-empty row rendering nothing) so eGain's plain-text label variants (section marks with named anchors, bold/meta labels, spacer-first order) dissolve to real headings with anchors hoisted (D6) instead of leaking as header-only GFM tables (backlog B6); a label that normalizes exactly to `Change Date` renders as the GFM quote block `> **Change Date**` + `> {date}` in both the T1 and T2 paths (user-approved readability deviation, backlog B11); TESTS cases 44–56 added; 0.7.0 (2026-10-07): decorative block-level `<hr>` renders nothing (D9) — eGain wraps every layout-frame row in a pure-`<hr>` wrapper div for decoration, and emitting `---` per rule doubled every frame's rules (backlog B13: 12,673 standalone `---` blocks and 13 visible double-rule pairs in the post-B6 manual); a block-level `<hr>` now renders nothing while still acting as a block delimiter/flush point, and the inline cell fallback ` — ` is unchanged; TESTS case 17 rewritten, cases 57–58 added; 0.8.0 (2026-10-08): raw spaces in link/image destinations are percent-encoded to %20 at emit time (D10) — a raw space ends a Markdown destination in most renderers (backlog B9, 2026-10-07 census: 51 destinations — ~40 external URLs, 9 knowva /img/ image URLs, 9 internal space anchors, 2 malformed to-top fragments); rewrite_url (the single choke point for links and images) encodes spaces only and leaves every other character verbatim, on both the namespaced-fragment path and the absolute path; anchor markers keep their raw-space id/name attributes (renderers decode the fragment when matching); TESTS cases 59–62 added; 0.9.0 (2026-10-08): legacy-host remap (D11) — URLs on the dead legacy portal host vaww.vrm.km.va.gov (zero answer records from the authoritative va.gov zone, verified 2026-10-08 while sibling hosts resolve and answer) are remapped at emit time to the canonical live host www.knowva.ebenefits.va.gov, scheme preserved and path verbatim, before D10 space encoding: 36/36 legacy /img/ images and 11/12 legacy document URLs GET-verified live at the same path (backlog B10); look-alike hosts do not match; TESTS cases 63–66 added |
 | Languages | Python 3.12 (implementation); pseudocode is language-agnostic |
-| Implementation location | src/m21_crawl/mdconv.py — constants L49–76 (D8 frame row kinds L73–76: _SECTION_MARK, _META_LABELS, _CHANGE_DATE, _VISIBLE_BLOCK); HtmlConversionError L79–86; _parse L88–91; convert L93–123; block context L125–227 (inline-run coalescing D7: _render_block_list L125; _contains_block_el L216; D9 hr drop L171–172); inline context L229–310; tables L312–546 (frame classification D8: _layout_heading L333, _cell_visible L352, _plain_label L363, _frame_row_kind L368, _is_layout_frame L393; dissolution D8+B11: _change_date_blocks L406, _render_layout_frame L418; nested/cell helpers L481–534); lists L548–576; normalization, named anchors (D6), spaces (D10), and URLs L578–680 (v0.8.0, 2026-10-08; D10: _encode_spaces L634, _rewrite_url L645) |
+| Implementation location | src/m21_crawl/mdconv.py — constants L49–81 (D8 frame row kinds L73–76: _SECTION_MARK, _META_LABELS, _CHANGE_DATE, _VISIBLE_BLOCK; D11 legacy host L77–81: _LEGACY_HOST, _LIVE_HOST); HtmlConversionError L84–91; _parse L93–96; convert L98–128; block context L130–232 (inline-run coalescing D7: _render_block_list L130; _contains_block_el L221; D9 hr drop L176–177); inline context L234–315; tables L317–551 (frame classification D8: _layout_heading L338, _cell_visible L357, _plain_label L368, _frame_row_kind L373, _is_layout_frame L398; dissolution D8+B11: _change_date_blocks L411, _render_layout_frame L423; nested/cell helpers L486–539); lists L553–581; normalization, named anchors (D6), spaces (D10), legacy-host remap (D11), and URLs L583–706 (v0.9.0, 2026-10-08; D10: _encode_spaces L639; D11: _remap_legacy_host L650; _rewrite_url L668) |
 | Time complexity | O(C) — C = characters of input HTML (single pass over the parsed tree) |
 | Space complexity | O(C) — parsed tree + output string |
 | Determinism | deterministic (no timestamps, no randomness, fixed BASE_URL constant) |
@@ -359,6 +359,37 @@ The implementation therefore deviates as follows (all pinned by tests):
   keep the raw space, while renderers percent-decode a link fragment when
   matching, so `[see](#…_M21-1%20Guidance)` still lands on
   `<a id="…_M21-1 Guidance"></a>` (TESTS cases 59–62).
+- **D11 — Legacy-host URLs are remapped to the canonical live host at emit
+  time (B10).** eGain's live articles reference 48 distinct URLs on the
+  legacy portal host `vaww.vrm.km.va.gov` — 36 images under `/img/` plus 12
+  case/topic pages under `/system/templates/…` — but that host carries no
+  DNS records: the 2026-10-08 probe received zero answer records from the
+  authoritative `va.gov` zone while sibling hosts on the same resolver
+  resolve and answer, so this is host death, not a local network fault. As
+  a result every one of those links — in particular all 36 images — renders
+  as a broken placeholder both on the live manual and in this one (user
+  report: "large number of broken image links"; the earlier "wrong image"
+  report is the failure mode a fix must avoid). **Verification first (the
+  gate on the remap):** all 36 `/img/` paths were GET-probed (browser UA;
+  HEAD gets a 403 from the WAF even for live images) on
+  `www.knowva.ebenefits.va.gov` and 36/36 answered HTTP 200 with
+  `image/png`/`image/jpeg` content types and non-empty bodies; byte-count +
+  md5 fingerprints are recorded at closeout (two filename triples are
+  byte-identical on the live host — the site's own renames — and each URL
+  serves whatever the live site serves at that path). The 12 non-image
+  paths: 11/12 are live at the same path (case pages, topic pages,
+  spellchecker widget); the 12th is a source-malformed concatenated URL
+  that is already broken at the source and the remap does not worsen it.
+  **Only then is the remap applied:** `rewrite_url` — the single choke point
+  every link and image destination passes through (D10) — swaps the dead
+  host for the live host **before** D10's space encoding, leaving path,
+  query, and fragment verbatim and preserving the scheme. Host-level rather
+  than a 36-entry table: it fixes the 36 verified images, opportunistically
+  fixes the 11 live document links, and generalizes to any further
+  legacy-host URL on the same path convention. The host boundary is exact
+  (`/`, `?`, `#`, or end-of-string after the host), so look-alike hosts are
+  left untouched (TESTS case 66). Destinations are not visible text, so
+  contract 2 (TEXT fidelity) is unaffected (TESTS cases 63–65).
 
 ### 2.7 Error model (summary)
 
@@ -742,12 +773,22 @@ function rewrite_url(href, base_url, ns) -> str | None:
     # Canonicalize article URLs: drop the query string (id is in the path).
     if absolute matches ^(https?://[^/]+/system/ws/v\d+/ss/article/)(\d+)(\?.*)?$:
         absolute <- group(1) + group(2)
+    absolute <- remap_legacy_host(absolute)                  # D11: dead host -> live host
     return encode_spaces(absolute)                           # D10: space -> %20
 
 function encode_spaces(url) -> str:
     # D10: percent-encode raw spaces at emit time (backlog B9); every other
     # character is left verbatim.
     return url.replace(" ", "%20")
+
+function remap_legacy_host(url) -> str:
+    # D11 (B10): swap the dead legacy host for the canonical live host,
+    # scheme preserved, path/query/fragment verbatim. The host must be
+    # followed by /, ?, #, or end-of-string — a look-alike host
+    # (vaww.vrm.km.va.gov.evil.example) does not match.
+    if url matches ^(https?://)vaww\.vrm\.km\.va\.gov(?=[/?#]|$):
+        return group(1) + "www.knowva.ebenefits.va.gov" + url[after the host:]
+    return url
 ```
 
 Termination: pre-order walk over a finite tree; every branch terminates in a
@@ -787,7 +828,11 @@ string or a recursive call on a strictly smaller subtree.
    contains stable, canonical links; raw spaces in any destination are
    percent-encoded to `%20` so the Markdown destination never ends at a space
    (D10, backlog B9), while anchor markers keep their raw-space attributes
-   (renderers decode the fragment when matching).
+   (renderers decode the fragment when matching). Destinations on the dead
+   legacy host `vaww.vrm.km.va.gov` are remapped to the canonical live host
+   `www.knowva.ebenefits.va.gov` before that encoding — the path is
+   untouched, only the host (D11, backlog B10: 36/36 legacy images
+   GET-verified live at the same path).
 9. Named anchors — an `<a>` that carries an `id` or `name` but no usable link
    target — are preserved as self-closing marker elements (D6). Inside a
    heading or a table label the markers are hoisted onto their own line
@@ -905,6 +950,7 @@ so the function stays pure and testable.
 | `<a id="x" href="https://…"></a>` (usable link) | link rendered, `id` dropped (D6; TESTS 33) | a live link wins over a named anchor (documented limitation) |
 | `href="#"` (null link) | left as `#` (D6; TESTS 34) | bare null link, no fragment to rewrite |
 | Destination with a raw space (`https://…/a b.pdf`, `#M21-1 Guidance`) | the space becomes `%20`, every other character verbatim (D10; TESTS 59–62) | a raw space ends the Markdown destination in most renderers (B9) |
+| Destination on the legacy host (`https://vaww.vrm.km.va.gov/…`) | the host is replaced with `www.knowva.ebenefits.va.gov`, path verbatim, scheme preserved (D11; TESTS 63–66) | the legacy host has no DNS records (verified 2026-10-08); the live host serves every legacy path (B10) |
 | Label cell with non-heading content beside the heading | heading, then the sibling rendered in block context (D6; TESTS 36) | D5 used to drop anchor siblings silently |
 | Inline-only `<div>` wrapping a run | one paragraph, container flattened (D7; TESTS 37) | real-HTML inline content stays inline (B4) |
 | Emphasized run with no container at all | one paragraph (D7; TESTS 38) | the run model is container-independent |
@@ -945,6 +991,7 @@ so the function stays pure and testable.
 | No words lost (contract 2) | for a no-markup input, assert the output (minus newlines) contains every input word (case 1) |
 | Canonical article URLs | assert no output link contains a `?` for `/system/ws/vNN/ss/article/` ids (case 4) |
 | No raw spaces in link/image destinations | scan every `](` destination in the output for an ASCII space; expect none (cases 59–61) | a raw space truncates the destination in most renderers (D10; B9) |
+| No legacy-host destinations | scan every `](` destination in the output for `vaww.vrm.km.va.gov`; expect none (cases 63–64) | the legacy host has no DNS records (D11; B10) |
 
 ### 5.4 Pitfalls and known traps
 
@@ -1069,6 +1116,10 @@ shown as `""`).
 | 60 | image src with raw spaces | `<p><img src="/img/M21-1 structure.png" alt="Structure"></p>` | `![Structure](https://www.knowva.ebenefits.va.gov/img/M21-1%20structure.png)\n` | D10 applies to image destinations (B9: the 9 knowva image URLs) |
 | 61 | namespaced fragment with raw space (article_id=123) | `<p><a href="#M21-1 Guidance">see</a></p>` | `[see](#art_123_M21-1%20Guidance)\n` | D10 encodes the namespaced fragment; the renderer decodes %20 when matching the raw-space marker (B9: the 9 internal space anchors) |
 | 62 | named-anchor marker keeps raw space (article_id=123) | `<a id="M21-1 Guidance" name="M21-1 Guidance"></a>` | `<a id="art_123_M21-1 Guidance" name="art_123_M21-1 Guidance"></a>\n` | the anchor side stays raw HTML; encoded link (61) and raw anchor (62) meet after the renderer decodes the fragment |
+| 63 | legacy-host image remap (B10) | `<p><img src="https://vaww.vrm.km.va.gov/img/III.v.1.A_Method_1.png" alt="Method 1"></p>` | `![Method 1](https://www.knowva.ebenefits.va.gov/img/III.v.1.A_Method_1.png)\n` | D11: the dead host is swapped for the live host, path verbatim (B10: 36/36 GET-verified live) |
+| 64 | legacy-host document link remap (B10) | `<p><a href="https://vaww.vrm.km.va.gov/system/templates/selfservice/va_kanew/help/agent/locale/en-US/portal/554400000001034/topic/554400000003361/Rate-Tables">Rate Tables</a></p>` | `[Rate Tables](https://www.knowva.ebenefits.va.gov/system/templates/selfservice/va_kanew/help/agent/locale/en-US/portal/554400000001034/topic/554400000003361/Rate-Tables)\n` | D11: 11/12 legacy document URLs are live at the same path; the host-level remap fixes them too |
+| 65 | legacy URL with a raw space: remap then encode | `<p><a href="https://vaww.vrm.km.va.gov/img/M21-1 structure.png">fig</a></p>` | `[fig](https://www.knowva.ebenefits.va.gov/img/M21-1%20structure.png)\n` | D11 runs before D10 in the emit pipeline |
+| 66 | look-alike host is not remapped | `<p><a href="https://vaww.vrm.km.va.gov.evil.example/img/x.png">x</a></p>` | `[x](https://vaww.vrm.km.va.gov.evil.example/img/x.png)\n` | the host boundary must be exact: `/`, `?`, `#`, or end-of-string after the host |
 
 **Namespaced (article_id) group.** The cases above use `article_id=""` (unit
 tests), so markers carry bare ids. A separate group calls
