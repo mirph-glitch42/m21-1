@@ -1237,6 +1237,10 @@ census verified on that output):**
   letter) render as header-only tables — cosmetic, content intact
   (candidate: block-render single-row tables whose cells are
   inline-only content).
+- **Landed:** commit `827a8c0` (atomic: doc v0.11.0 + INDEX + tests +
+  code + this closeout); GitHub CI run 37999360788 (`head_sha`
+  `827a8c0…`, conclusion success) —
+  <https://github.com/mirph-glitch42/m21-1/actions/runs/37999360788>.
 
 ## B15. Change Date frames not in a quote block (B11 gap) — **open, new 2026-10-07**
 
