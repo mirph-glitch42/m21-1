@@ -336,22 +336,36 @@ def _render_table(el: Tag, base_url: str, ns: str) -> str:
 
 
 def _layout_heading(cell: Tag) -> Tag | None:
-    """D5: the cell's first *significant* child, if it is a heading ``h1``-``h6``.
+    """D5+D12: the cell's first significant child, if it is a heading ``h1``-``h6``.
 
-    Whitespace-only text is skipped; any other first child (visible text,
-    ``th``, a list, ...) disqualifies the cell. No container unwrapping — the
-    heading must lead the cell directly, so a label cell with preceding text
-    conservatively falls back to GFM rendering (never drop text).
+    Whitespace-only text is skipped; decorative containers
+    (``_UNWRAP_BLOCK``) are followed transparently, so a heading wrapped in
+    a ``<span>``, ``<font>``, ``<center>``, or ``<div>`` still leads the
+    cell (D12). Any other first child (visible text, ``p``, ``th``, a
+    list, ...) disqualifies; an all-empty container returns ``None``.
+    The conservative GFM fallback never drops text.
     """
-    for child in cell.children:
-        if isinstance(child, NavigableString):
-            if _normalize_text(str(child)).strip() != "":
-                return None  # text first: not a label cell
+    node: Tag = cell
+    while True:
+        first: Tag | None = None
+        for child in node.children:
+            if isinstance(child, NavigableString):
+                if _normalize_text(str(child)).strip() != "":
+                    return None  # text first: not a label cell
+                continue
+            if isinstance(child, Tag):
+                first = child
+                break
+            return None  # comments and other nodes disqualify
+        if first is None:
+            return None
+        name = first.name or ""
+        if name in _HEADING:
+            return first
+        if name in _UNWRAP_BLOCK:
+            node = first  # follow the decorative container (D12)
             continue
-        if isinstance(child, Tag):
-            return child if (child.name or "") in _HEADING else None
-        return None  # comments and other nodes disqualify
-    return None
+        return None
 
 
 def _cell_visible(cell: Tag) -> bool:
@@ -370,24 +384,62 @@ def _plain_label(cell: Tag) -> str:
     return _normalize_text(cell.get_text()).strip()
 
 
+def _label_inline_equiv(cell: Tag) -> bool:
+    """D12: the T2 inline guard, relaxed (doc D12).
+
+    Every block-level descendant (per ``_BLOCK``) must be a ``p`` — a
+    ``p``-wrapped inline label renders identically to the bare label; any
+    other block element (heading, list, table, ...) disqualifies. A label
+    with no block descendants is inline-equivalent.
+    """
+    return all(
+        (d.name or "") == "p"
+        for d in cell.descendants
+        if isinstance(d, Tag) and (d.name or "") in _BLOCK
+    )
+
+
+def _rest_children(children, heading: Tag) -> list:
+    """D12: a label cell's content other than ``heading``, in document order.
+
+    Decorative containers (``_UNWRAP_BLOCK``) are unwrapped transparently
+    so a container wrapping the heading contributes its *other* children
+    (text is never dropped); the heading itself is excluded.
+    """
+    out: list = []
+    for node in children:
+        if node is heading:
+            continue
+        if isinstance(node, Tag) and (node.name or "") in _UNWRAP_BLOCK:
+            out.extend(_rest_children(node.children, heading))
+        else:
+            out.append(node)
+    return out
+
+
 def _frame_row_kind(tr: Tag) -> str | None:
     """D8: classify one frame row (doc 2.2).
 
-    ``T1`` — first cell leads with a heading (D5 label); ``T2`` — after
-    stripping invisible spacers exactly two visible inline-only cells remain
-    and the first's plain text is a section mark or a meta label (B6 plain
-    label); ``T3`` — no visible cell (renders nothing); ``None`` — a
-    genuine data row, which disqualifies the whole table.
+    ``T1`` — the first heading-bearing cell leads with a heading
+    (D5∪D12: ``cells[0]`` visibility-agnostic, else the first visible
+    cell; the heading may sit in a decorative container); ``T2`` — after
+    stripping invisible spacers exactly two visible cells remain and the
+    first is an inline-equivalent label (B6 plain label; D12 relaxed
+    guard) whose text is a section mark or a meta label; ``T3`` — no
+    visible cell (renders nothing); ``None`` — a genuine data row, which
+    disqualifies the whole table.
     """
     cells = _cells_of(tr)
     if not cells:
         return None
-    if _layout_heading(cells[0]) is not None:
-        return "T1"
     visible = [c for c in cells if _cell_visible(c)]
     if not visible:
         return "T3"
-    if len(visible) != 2 or _contains_block_el(visible[0]):
+    if _layout_heading(cells[0]) is not None:
+        return "T1"
+    if _layout_heading(visible[0]) is not None:
+        return "T1"
+    if len(visible) != 2 or not _label_inline_equiv(visible[0]):
         return None
     label = _plain_label(visible[0])
     if _SECTION_MARK.match(label) or label in _META_LABELS:
@@ -423,10 +475,13 @@ def _change_date_blocks(body: list[str]) -> list[str]:
 def _render_layout_frame(el: Tag, base_url: str, ns: str) -> str:
     """D8: dissolve a layout frame row by row (doc 2.2).
 
-    T1 — the label cell leads with a heading: emit it at its *native level*
-    (named anchors hoisted first, D6), keep the label cell's non-heading
-    children, then block-render the remaining cells so nested data tables
-    surface as real GFM tables. T2 — a plain-text label (section mark or
+    T1 — the first heading-bearing cell leads with a heading
+    (D5∪D12: ``cells[0]`` visibility-agnostic, else the first visible
+    cell; MRS): emit it at
+    its *native level* (named anchors hoisted first, D6), keep the label
+    cell's non-heading children (D12: decorative containers unwrapped,
+    text never dropped), then block-render the remaining cells so nested
+    data tables surface as real GFM tables. T2 — a plain-text label (section mark or
     meta label): emit ``### `` + the label (anchors hoisted) then
     block-render the content cell. T3 — a row with no visible cell renders
     nothing. B11: a label normalizing exactly to ``Change Date`` renders
@@ -443,32 +498,26 @@ def _render_layout_frame(el: Tag, base_url: str, ns: str) -> str:
         if kind == "T3":
             continue
         if kind == "T1":
-            heading = _layout_heading(cells[0])
+            visible = [c for c in cells if _cell_visible(c)]
+            heading_first = _layout_heading(cells[0])
+            label = cells[0] if heading_first is not None else visible[0]  # D5∪D12 (MRS)
+            heading = _layout_heading(label)
             for m in _collect_named_anchors(heading, base_url, ns):  # D6: hoist
                 blocks.append(m)
             t = _render_inline_children(heading, base_url, ns, anchor_mode="text").strip()
+            rest: list[str] = []
+            for node in _rest_children(label.children, heading):  # D12: keep the rest
+                rest.extend(b for b in _render_block_list([node], base_url, ns) if b != "")
+            for cell in cells:  # D12: all other cells, document order
+                if cell is label:
+                    continue
+                rest.extend(b for b in _render_block_list(cell.children, base_url, ns) if b != "")
             if t == _CHANGE_DATE:  # B11
-                cd_body: list[str] = []
-                for sib in cells[0].children:
-                    if sib is heading:
-                        continue
-                    cd_body.extend(b for b in _render_block_list([sib], base_url, ns) if b != "")
-                for cell in cells[1:]:
-                    cd_body.extend(
-                        b for b in _render_block_list(cell.children, base_url, ns) if b != ""
-                    )
-                blocks.extend(_change_date_blocks(cd_body))
+                blocks.extend(_change_date_blocks(rest))
             else:
                 if t != "":
                     blocks.append("#" * int(heading.name[1]) + " " + t)
-                for sib in cells[0].children:  # D6: keep non-heading label content
-                    if sib is heading:
-                        continue
-                    blocks.extend(b for b in _render_block_list([sib], base_url, ns) if b != "")
-                for cell in cells[1:]:
-                    blocks.extend(
-                        b for b in _render_block_list(cell.children, base_url, ns) if b != ""
-                    )
+                blocks.extend(rest)
         elif kind == "T2":
             visible = [c for c in cells if _cell_visible(c)][:2]
             label, content = visible[0], visible[1]

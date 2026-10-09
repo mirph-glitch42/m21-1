@@ -1,9 +1,10 @@
 """mdconv: rich HTML -> GFM converter (TDD per html-to-markdown-section-extraction.md).
 
-All 64 TESTS cases are transcribed byte-exact from doc section 6 (G11
+All 70 TESTS cases are transcribed byte-exact from doc section 6 (G11
 synthetic inputs shaped like live CMS output), plus the namespaced
 (article_id) group of doc 6 (D6 named anchors; D8 T2 label hoisting;
-D10 raw-space fragment/anchor pair; D11 legacy-host remap cases 63–66).
+D10 raw-space fragment/anchor pair; D11 legacy-host remap cases 63–66;
+D12 container-wrapped label cases 67–72).
 Property tests P1-P4 follow doc 6.1 with the fixed seed 20261002.
 """
 
@@ -18,7 +19,7 @@ from m21_crawl.mdconv import HtmlConversionError, convert
 
 BASE_URL = "https://www.knowva.ebenefits.va.gov"
 
-# (name, input, expected) — doc section 6, cases 1-64, byte-exact expected.
+# (name, input, expected) — doc section 6, cases 1-70, byte-exact expected.
 CASES: list[tuple[str, str, str]] = [
     (
         "case01 minimal paragraph",
@@ -378,6 +379,53 @@ CASES: list[tuple[str, str, str]] = [
         "case64 look-alike host not remapped (D11)",
         '<p><a href="https://vaww.vrm.km.va.gov.evil.example/img/x.png">x</a></p>',
         "[x](https://vaww.vrm.km.va.gov.evil.example/img/x.png)\n",
+    ),
+    (
+        "case65 T2 section-mark label wrapped in p/span (D12)",
+        '<table><tr><td><p><span>II.i.2.B.4.b<a id="4b" name="4b">.</a> '
+        "Determining the Date a Form Becomes Outdated</span></p></td>"
+        "<td></td><td><p>Body text</p></td></tr></table>",
+        '<a id="4b" name="4b"></a>\n\n'
+        "### II.i.2.B.4.b. Determining the Date a Form Becomes Outdated\n\n"
+        "Body text\n",
+    ),
+    (
+        "case66 T2 meta label wrapped in p/strong (D12)",
+        "<table><tr><td><p><strong>In This Section</strong></p></td>"
+        "<td><p>Topics listed below.</p></td></tr></table>",
+        "### In This Section\n\nTopics listed below.\n",
+    ),
+    (
+        "case67 T1 heading wrapped in a div (D12)",
+        '<table><tr><td><div><h3>V.ii.4.A.3.d<a id="3d" name="3d">.</a> '
+        "Title</h3></div></td><td></td><td><p>Body</p></td></tr></table>",
+        '<a id="3d" name="3d"></a>\n\n### V.ii.4.A.3.d. Title\n\nBody\n',
+    ),
+    (
+        "case68 ZWSP-only first cell is invisible (D12)",
+        "<table><tr><td><span>﻿﻿</span></td>"
+        "<td><h3> In This Section</h3></td><td></td>"
+        "<td><p>This section contains the following topics: Topic 1.</p>"
+        "</td></tr></table>",
+        "### In This Section\n\nThis section contains the following topics: Topic 1.\n",
+    ),
+    (
+        "case69 p-wrapped label, no mark or meta: stays GFM (D12 protection)",
+        "<table><tr><td><p>Department of Veterans Affairs</p></td>"
+        "<td><p>Memorandum of Changes</p></td></tr></table>",
+        "| Department of Veterans Affairs | Memorandum of Changes |\n| --- | --- |\n",
+    ),
+    (
+        "case70 label cell containing a nested table: stays GFM (D12 protection)",
+        "<table><tr><td><table><tr><td>x</td></tr></table></td><td>Introduction</td></tr></table>",
+        "| x | Introduction |\n| --- | --- |\n",
+    ),
+    (
+        "case71 invisible heading-first cell dissolves (D5 union, MRS)",
+        '<table><tr><td><h3><span><span><introduction< span="">'
+        "</introduction<></span></span></h3></td><td></td>"
+        "<td><p>Body</p><ul><li>one</li><li>two</li></ul></td></tr></table>",
+        "Body\n\n- one\n- two\n",
     ),
 ]
 

@@ -1118,7 +1118,7 @@ lines; pair = two hr lines ≤4 lines apart; GFM separator rows like
 `| --- |` are not standalone hr lines). Every dropped rule was a
 decorative eGain `<hr>` wrapper — no paragraph text changed.
 
-## B14. 14 residual leaked layout frames (missed format frames) — **open, new 2026-10-07**
+## B14. 14 residual leaked layout frames (missed format frames) — **DONE, closed 2026-10-09**
 
 **User request (verbatim, 2026-10-06, B6 origin):** "There appear to be
 some layout tables that were not removed. we need a way of catching there
@@ -1178,6 +1178,65 @@ label line + content blocks, words verbatim, anchors live where the
 source has them); 0 leaked header-only tables remain (40 protected,
 enumerated, byte-identical); `make gate` + GitHub CI green; text and
 organization unchanged.
+
+**Closeout (2026-10-09, fresh crawl 14,113,700 B, 0 failed articles —
+census verified on that output):**
+
+- **Root cause (verified frame-by-frame from the raw HTML, not
+  guessed):** the 14 label cells failed the strict inline-only test for
+  one of two reasons: (a) inline content wrapped in decorative
+  containers (`p`/`span`/`div`; a heading inside a `div`) —
+  inline-*equivalent* but not literally inline; (b) an **invisible**
+  heading-first cell (the MRS article: lxml repaired malformed markup
+  into an empty `<h3>`) — the label was not in `cells[0]`, and the old
+  T1 test keyed on the first *visible* cell. Neither shape lost text;
+  both now dissolve.
+- **Doc cycle first (algorithm-records-keeper):** **D12** (v0.10.0) — a
+  label cell qualifies when its content is inline-*equivalent* (the
+  decorative wrappers are unwrapped, text never dropped); then the
+  **MRS union** (v0.11.0) — T1 is decided on `cells[0]` *before* the
+  first visible cell, so an invisible heading-first cell still leads
+  with its heading (an empty heading renders no line; the content
+  block-renders). Doc at v0.11.0; `algorithms/INDEX.md` row 10 in sync
+  (0.11.0).
+- **TDD RED→GREEN:** TESTS cases 67–73 added (p/span-wrapped mark
+  label; p/strong-wrapped meta label; div-wrapped T1 heading; ZWSP-only
+  first cell; `p`-wrapped non-mark label stays GFM; nested-table label
+  stays GFM; invisible heading-first MRS shape). Case 71 is the MRS
+  regression: RED on pre-fix code, GREEN post-fix. 204 tests pass;
+  `make gate` green (format, lint, inline indexes, registry, tests,
+  secrets).
+- **The 14 frames now dissolve (fresh line numbers):** L6562
+  `II.i.2.B.4.b`, L6573 `II.i.2.B.4.c`, L7165 `II.i.2.C.6.h`, L12339
+  `II.iii.3.A.3.e`, L28985 `V.ii.4.A.3.d`, L29000 `V.ii.4.A.3.f`, L29020
+  `V.ii.4.A.3.g`, L34769 `V.iii.5.3.g`, L72749 `VIII.iv.2.A.3.c`, L117516
+  `XI.ii.3.C.4.e`, L119115 `XI.iii.1.A.1.a. Definition: Burial`
+  (bold-wrapped) — plus 3 meta-label frames (1 `Introduction`, 2
+  `In This Section`) now `### ` headings identical to the 335
+  `### In This Section` headings the other dissolved frames already
+  produce (TESTS 47/50). Zero `| Introduction |` / `| In This Section |`
+  table rows remain.
+- **Census (fresh output):** **43 header-only GFM tables = 42 protected
+  + 1 (SSA 6.i)**; **0 leaked frames**. Acceptance expected "40
+  protected" (pre-D12, 2026-10-07); the +2 is portal content drift —
+  the Memorandum of Changes cluster now carries 6 date pairs through
+  `2026-03-09`.
+- **SSA 6.i (L84917, 5 cols, first 4 empty, content last): protected by
+  design** — no heading in any cell, so it is neither T1 (needs a
+  heading) nor T2 (needs a mark/meta label); consistent with
+  `_frame_row_kind`. *Agent decision, not user-approved — surfaced
+  here.*
+- **42 protected enumeration (fresh line numbers):** L6519, L8934, L8946,
+  L8958, L24613, L28445, L28454, L38222, L38225, L39408, L39428, L41808,
+  L44054, L67610, L68191, L68242, L72754, L80557, L84949 (SSA 6.k),
+  L84973 (SSA 6.m), L90525, L96573, L96589, L109047, L112272, L112626,
+  L112861, L115129, L125500, L131210 + the 6 two-line Memorandum of
+  Changes tables L143336/39/46/49/56/59/66/69/76/79/86/89 (date pairs
+  `2015-03-24` → `2026-03-09`).
+- **Follow-up (new backlog candidate):** memo templates (SSA 6.i/6.k/6.m,
+  letter) render as header-only tables — cosmetic, content intact
+  (candidate: block-render single-row tables whose cells are
+  inline-only content).
 
 ## B15. Change Date frames not in a quote block (B11 gap) — **open, new 2026-10-07**
 
