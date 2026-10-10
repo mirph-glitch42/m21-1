@@ -1242,7 +1242,7 @@ census verified on that output):**
   `827a8c0…`, conclusion success) —
   <https://github.com/mirph-glitch42/m21-1/actions/runs/37999360788>.
 
-## B15. Change Date frames not in a quote block (B11 gap) — **open, new 2026-10-07**
+## B15. Change Date frames not in a quote block (B11 gap) — **in progress (fix landed, re-crawl pending), new 2026-10-07**
 
 **User request (verbatim, 2026-10-07):** "For backlog: not all change
 dates are in quote blocks." + screenshot (article "M21-1, Part VIII,
@@ -1284,6 +1284,39 @@ did not enumerate, e.g. `<h4>`) falls outside both paths.
 5. Re-census after the fix: expect **0** non-quote-block Change Date frames
    in the regenerated manual; the full population (1,260 + the missed set)
    renders as `> **Change Date**` + verbatim date.
+
+**Progress (2026-10-09) — WI 1–4 done, WI 5 pending:**
+
+- **WI 1 (census on the fresh 14,113,700 B output):** 1,260
+  `> **Change Date**` quote lines (good); **missed population = 218 bold
+  h3 headings** (217 `### **Change Date**` + 1 `### ****Change Date****`,
+  output L11992); 0 other heading levels, table rows, or bold-paragraph
+  labels; 2 legitimate body-text mentions left alone (L12948, L140090).
+  Total 1,480 = 1,260 + 218 + 2 (arithmetic verified).
+- **WI 2 (raw HTML fetched, no guessing):** both corpus shapes verified
+  from source — article `554400000177486`: T1 frame, `<h3><strong><span…>
+  Change Date</span></strong></h3>` + spacer + `<div><span>May 13,
+  2015</span></div>`; article `554400000174880` (output L11992): same
+  shape, one extra nested span (the double-bold `****Change Date****`).
+  **Root cause (traced):** the `_render_layout_frame` T1 branch tests the
+  *rendered* inline string (`**Change Date**`) against `_CHANGE_DATE`, so
+  it falls through to the heading path; the T2 path already used
+  `_plain_label` — which is why case46 (T2 bold) passed while the 218 T1
+  frames leaked.
+- **WI 3–4 (doc cycle + TDD):** doc 0.11.0 → **0.12.0** (B11 carve-out
+  now explicitly emphasis-independent on T1; pseudocode, TESTS row 74,
+  §5.2 row; INDEX row 10 in sync); new test **case72** RED on the old
+  code (exactly the `### **Change Date**` symptom) → **one-line fix** in
+  the T1 branch (`if t == _CHANGE_DATE` →
+  `if _plain_label(heading) == _CHANGE_DATE`) → GREEN (205 pass);
+  article `554400000177486` re-verified end-to-end: raw HTML now
+  converts to `> **Change Date**` / `> May 13, 2015`; `make gate` green.
+  **Scope (agent decision, surfaced at commit):** fix the verified T1
+  frame path only; if any `### **Change Date**` heading survives the
+  re-census it would be a non-frame standalone heading to investigate
+  individually (expected: 0).
+- **WI 5 (pending):** re-crawl → re-census (expect **0** bold headings;
+  **1,478** quote lines) → closeout.
 
 **Blast radius:** the D5 heading carve-out / `_render_layout_frame` in
 `src/m21_crawl/mdconv.py`; the algorithm doc (D5/D8 carve-out);

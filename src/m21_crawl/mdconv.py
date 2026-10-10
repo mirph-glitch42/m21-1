@@ -512,7 +512,7 @@ def _render_layout_frame(el: Tag, base_url: str, ns: str) -> str:
                 if cell is label:
                     continue
                 rest.extend(b for b in _render_block_list(cell.children, base_url, ns) if b != "")
-            if t == _CHANGE_DATE:  # B11
+            if _plain_label(heading) == _CHANGE_DATE:  # B11+B15: plain text
                 blocks.extend(_change_date_blocks(rest))
             else:
                 if t != "":

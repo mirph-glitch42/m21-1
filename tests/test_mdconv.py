@@ -421,6 +421,12 @@ CASES: list[tuple[str, str, str]] = [
         "| x | Introduction |\n| --- | --- |\n",
     ),
     (
+        "case72 T1 Change Date heading wrapped in strong (B15)",
+        "<table><tr><td><h3><strong>Change Date</strong></h3></td><td></td>"
+        "<td><div><span>May 13, 2015</span></div></td></tr></table>",
+        "> **Change Date**\n> May 13, 2015\n",
+    ),
+    (
         "case71 invisible heading-first cell dissolves (D5 union, MRS)",
         '<table><tr><td><h3><span><span><introduction< span="">'
         "</introduction<></span></span></h3></td><td></td>"
