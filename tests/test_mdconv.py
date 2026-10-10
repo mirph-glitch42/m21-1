@@ -1,10 +1,11 @@
 """mdconv: rich HTML -> GFM converter (TDD per html-to-markdown-section-extraction.md).
 
-All 70 TESTS cases are transcribed byte-exact from doc section 6 (G11
+All 74 TESTS cases are transcribed byte-exact from doc section 6 (G11
 synthetic inputs shaped like live CMS output), plus the namespaced
 (article_id) group of doc 6 (D6 named anchors; D8 T2 label hoisting;
 D10 raw-space fragment/anchor pair; D11 legacy-host remap cases 63–66;
-D12 container-wrapped label cases 67–72).
+D12 container-wrapped label cases 67–72; D13/D14 nested-table and
+orphan-part cases 73–74).
 Property tests P1-P4 follow doc 6.1 with the fixed seed 20261002.
 """
 
@@ -19,7 +20,7 @@ from m21_crawl.mdconv import HtmlConversionError, convert
 
 BASE_URL = "https://www.knowva.ebenefits.va.gov"
 
-# (name, input, expected) — doc section 6, cases 1-70, byte-exact expected.
+# (name, input, expected) — doc section 6, cases 1-74, byte-exact expected.
 CASES: list[tuple[str, str, str]] = [
     (
         "case01 minimal paragraph",
@@ -416,9 +417,9 @@ CASES: list[tuple[str, str, str]] = [
         "| Department of Veterans Affairs | Memorandum of Changes |\n| --- | --- |\n",
     ),
     (
-        "case70 label cell containing a nested table: stays GFM (D12 protection)",
+        "case70 nested table in a cell renders padded ASCII (D13)",
         "<table><tr><td><table><tr><td>x</td></tr></table></td><td>Introduction</td></tr></table>",
-        "| x | Introduction |\n| --- | --- |\n",
+        "| \\| x \\|<br>\\| --- \\| | Introduction |\n| --- | --- |\n",
     ),
     (
         "case72 T1 Change Date heading wrapped in strong (B15)",
@@ -432,6 +433,20 @@ CASES: list[tuple[str, str, str]] = [
         "</introduction<></span></span></h3></td><td></td>"
         "<td><p>Body</p><ul><li>one</li><li>two</li></ul></td></tr></table>",
         "Body\n\n- one\n- two\n",
+    ),
+    (
+        "case73 nested 2x2 table in a cell (B16, D13)",
+        "<table><tr><td>Condition</td><td>Action</td></tr>"
+        "<tr><td>If X</td><td><table><tr><th>Step</th><th>What</th></tr>"
+        "<tr><td>1</td><td>Do this</td></tr></table></td></tr></table>",
+        "| Condition | Action |\n| --- | --- |\n"
+        "| If X | \\| Step \\| What    \\|<br>\\| ---- \\| ------- \\|<br>"
+        "\\| 1    \\| Do this \\| |\n",
+    ),
+    (
+        "case74 orphan tbody in block position (B16, D14)",
+        "<tbody><tr><td><h3>Section Title</h3><br><p>Body text here.</p></td></tr></tbody>",
+        "### Section Title\n\nBody text here.\n",
     ),
 ]
 

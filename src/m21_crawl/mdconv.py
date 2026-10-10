@@ -1,6 +1,6 @@
 """mdconv: deterministic rich-HTML -> GFM block converter for eGain article content.
 
-Implements ``algorithms/html-to-markdown-section-extraction.md`` (v0.7.0):
+Implements ``algorithms/html-to-markdown-section-extraction.md`` (v0.13.0):
 
 - total, deterministic two-context (block/inline) tree walk over a lenient
   lxml parse (BeautifulSoup is the parser of record: fragments stay flat);
@@ -12,7 +12,9 @@ Implements ``algorithms/html-to-markdown-section-extraction.md`` (v0.7.0):
   so punctuation never glues to a following word (TESTS case 13);
 - tables are GFM: first row is the header, ragged rows padded (E12),
   literal pipes escaped exactly once (E13); a table inside a cell renders
-  as its rows joined by ``<br>`` (2.6 ``render_table_inline``); a table whose
+  as a padded ASCII table — rows padded to the column width, a ``---``
+  separator always under the first row, rows joined by a bare ``<br>``
+  (D13, ``_render_table_inline``); a table whose
   every row's first cell leads with a heading is a *layout frame* and
   dissolves into real headings at their native level with block-rendered
   content (D5, ``_render_layout_frame``);
@@ -34,6 +36,10 @@ Implements ``algorithms/html-to-markdown-section-extraction.md`` (v0.7.0):
   containers) accumulates into one paragraph run that is flushed at
   block-element boundaries; only containers holding a real block element
   split the run (D7, ``_contains_block_el``);
+- orphan table parts (``caption``/``tbody``/``tfoot``/``thead``/``tr``/
+  ``th``/``td``) in block position unwrap with the same D7 semantics as
+  containers — block content recurses, inline content joins the run — and
+  are never dropped (D14, ``_TABLE_PART``);
 - ``javascript:`` hrefs are dropped (E6); empty-text links use their URL
   (E7); eGain article URLs are canonicalized (query string dropped);
 - output = blocks joined by ``"\\n\\n"`` + exactly one trailing ``"\\n"``.
@@ -54,6 +60,11 @@ _ARTICLE_URL = re.compile(r"^(https?://[^/]+/system/ws/v\d+/ss/article/)(\d+)(\?
 _MARKER = set("*_`~")
 _HEADING = frozenset({"h1", "h2", "h3", "h4", "h5", "h6"})
 _UNWRAP_BLOCK = frozenset({"div", "span", "font", "center"})
+# D14: orphan table parts unwrap in block context with D7 semantics. Kept
+# separate from _UNWRAP_BLOCK: that set also drives D12 frame
+# classification, and adding table parts there would change frame
+# decisions for malformed input.
+_TABLE_PART = frozenset({"caption", "tbody", "tfoot", "th", "thead", "tr", "td"})
 _LIST = frozenset({"ul", "ol"})
 _BLOCK = _HEADING | {"p", "ul", "ol", "table", "blockquote", "pre", "hr"}  # D7: no div
 _INLINE_UNWRAP = _HEADING | {
@@ -184,7 +195,7 @@ def _render_block_list(children, base_url: str, ns: str) -> list[str]:
                 code = child.get_text()  # newlines/indentation preserved verbatim
                 fence = "````" if "```" in code else "```"
                 blocks.append(f"{fence}\n{code}\n{fence}")
-        elif name in _UNWRAP_BLOCK:
+        elif name in _UNWRAP_BLOCK or name in _TABLE_PART:  # D14: table parts
             if _contains_block_el(child):  # D7: real block structure inside
                 flush()
                 blocks.extend(_render_block_list(child.children, base_url, ns))
@@ -535,17 +546,39 @@ def _render_layout_frame(el: Tag, base_url: str, ns: str) -> str:
 
 
 def _render_table_inline(el: Tag, base_url: str, ns: str) -> str:
-    """Nested table (inside a cell): rows joined by ``<br>`` (doc 2.6).
+    """Nested table (inside a cell): padded ASCII (D13, doc 2.6).
+
+    Each row's cells are right-padded to the column width, a ``---``
+    separator row (minimum three dashes) is always emitted under the first
+    row, and the rows are joined with a bare ``<br>`` (no surrounding
+    spaces), so GitHub renders a readable ASCII table inside the cell.
 
     Cell pipes stay raw here; the enclosing :func:`_render_table` escapes
-    every literal pipe in the cell exactly once (E13), so nested separators
-    surface as ``\\|`` in the final output without double escaping.
+    every literal pipe in the cell exactly once (E13), so the nested
+    separators surface as ``\\|`` in the final output without double
+    escaping (D3).
     """
-    parts = []
+    rows: list[list[str]] = []
     for tr in _table_rows(el):
         cells = [_render_cell(c, base_url, ns) for c in _cells_of(tr)]
-        parts.append(" | ".join(cells))
-    return " <br> ".join(parts)
+        if cells:
+            rows.append(cells)
+    if not rows:
+        return ""
+    width = max(len(r) for r in rows)
+    rows = [r + [""] * (width - len(r)) for r in rows]
+    cols = [max(len(r[i]) for r in rows) for i in range(width)]
+
+    def ascii_row(cells: list[str]) -> str:
+        return (
+            "| "
+            + " | ".join(c + " " * (w - len(c)) for c, w in zip(cells, cols, strict=True))
+            + " |"
+        )
+
+    lines = [ascii_row(rows[0]), ascii_row(["-" * max(3, w) for w in cols])]
+    lines.extend(ascii_row(r) for r in rows[1:])
+    return "<br>".join(lines)
 
 
 def _render_cell(cell: Tag, base_url: str, ns: str) -> str:

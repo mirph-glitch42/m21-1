@@ -5,7 +5,7 @@ session can start without re-deriving context: problem (with measured
 evidence), blast radius, the process the governing skills require, open
 decisions, and acceptance criteria.
 
-Order = user priority. Status: **B1, B2, B3, B4, B5, B6, B7, B8, B9, B11, B12, B13 done (B6/B11 in `f48faf9`; B13 in `817a8f3`; B12 in `403550c`; B7/B8/B9 in this session's commit)**; **B10 open — new 2026-10-07, broken image links (36 legacy-host `vaww.vrm.km.va.gov` URLs; live/dead census partial — local DNS outage, re-verify when network recovers)**; **B14 done — closed 2026-10-09 (in `827a8c0` + closeout `cc76aad`)**; **B15 done — closed 2026-10-09 (in `dd54c1e` + closeout this commit)**.
+Order = user priority. Status: **B1–B15 done (B6/B11 in `f48faf9`; B13 in `817a8f3`; B12 in `403550c`; B7/B8/B9 in this session's commit; B10 in `f88004b`, closed 2026-10-08; B14 in `827a8c0` + closeout `cc76aad`; B15 in `dd54c1e` + closeout `a922976`)**; **B16 OPEN — new 2026-10-10: nested-in-cell tables unreadable (262 lines, 108 articles) + 1 leaked multi-section chunk (L12941, orphan `<tbody>`; root cause traced; work items below)**. (B10's status corrected 2026-10-10 — its entry closed 2026-10-08 but this line was never updated.)
 
 ## B1. Replace eGain layout tables with standard Markdown layout — **DONE (2026-10-04)**
 
@@ -1339,6 +1339,185 @@ CI green.
 
 **Ordering:** independent of B7–B14; small standalone cycle. Rides the same
 `mdconv` doc as B6/B11/B13/B14.
+
+## B16. Nested-in-cell tables unreadable + one leaked multi-section chunk — **OPEN, new 2026-10-10**
+
+**User request (verbatim, 2026-10-10):** "Identify all tables embedded
+within tables, and convert them to ascii tables so they are actually
+readable. place all required tasks in the backlog before proceeding with
+the doc+TDD cycle."
+
+**Census (assembled manual 2026-10-10; 14,113,478 B / 143,171 lines):**
+**263** lines contain `<br>` (**913** `<br>` total). Signature: class (a)
+= line starts with `|` and contains `<br>`; class (b) = contains `<br>`
+but does **not** start with `|`:
+
+- **Class (a) = 262 lines** — well-formed GFM data rows whose cell holds a
+  *nested* table rendered as unaligned `<br>`-joined pipe-escaped text:
+  `**Step** \\| **Action** <br> 1 \\| Navigate …`. **108 articles**
+  affected. Top: art `554400000179488` (11 lines), `554400000173969`
+  (10), `554400000014108` (9), `554400000176614` (9). Representative
+  lines: L3011 (art `554400000181476`, Step/Action POA table), L3351
+  (art `554400000181477`, document-field attribute table), L4198
+  (art `554400000181483`, If/Then correspondence table).
+- **Class (b) = exactly 1 line** — **L12941**, art `554400000174883`
+  (title "2. VDC Rating Claims Intake"): a whole multi-section chunk
+  (2.a–2.f, 3, 3.a–3.c, 4, 4.a–4.b …) leaked as ONE plain-text line — no
+  leading `|`, 15 `<br>` joins, source `<hr>`s flattened to ` — `. Only
+  **2** ` — ` lines exist in the whole file, both in/near this one → the
+  leak is singular and isolated.
+
+**Root cause — class (b) (traced from raw HTML, no guessing):** fetched
+the raw eGain HTML of `554400000174883` (91,083 B) and parsed it with
+the same parser `mdconv` uses. The article body's top-level children
+include an **orphan `<tbody>` element** holding the entire leaked
+remainder: orphan `<tbody>` → `<tr>` → a single `<td>` with 97 children
+(alternating `div`/`table`/`div` …) → the section frames. In
+`mdconv.py`, `_render_block_list` dispatches children by tag; `<tbody>`
+is in **neither** `_BLOCK` (`_HEADING | {p,ul,ol,table,blockquote,pre,
+hr}`) **nor** `_UNWRAP_BLOCK` (`{div,span,font,center}`), so it falls to
+the final fallback `run.append(_render_inline_piece(child, …))`, which
+unwraps unknown tags and renders everything (tables, hrs) INLINE into
+one paragraph run → the giant L12941 line.
+
+**Shape — class (a) (traced from raw HTML of `554400000181476`):** the
+outer table is a genuine 2-column data table (condition | action); the
+nested table (Step/Action) sits *inside the action cell*. GFM cannot
+nest tables in cells, so the nested table must render as in-cell ASCII
+text (user-directed).
+
+**Chosen approach (class (a) user-directed; class (b) agent-proposed —
+both flagged for user review):**
+
+- **Class (a):** render each nested in-cell table as an **ASCII pipe
+table** — columns padded to equal widths, a `---` separator row under
+the header, rows `<br>`-joined, pipes escaped (`\\|`) as today. Outer
+stays a real GFM table (it is real data). Bold/links inside cells render
+as they do today. TEXT/ORGANIZATION unchanged.
+- **Class (b):** treat orphan table-part elements (`tbody`/`thead`/
+  `tfoot`/`tr`/`td`/`th`/`caption`) found in *block* position as
+  **transparent wrappers** — unwrap so their children render in block
+  context; the section frames inside then dissolve through the existing
+  D5 path into real headings + GFM tables. Conservative: never drop
+  text; only fires for table parts that are malformed direct children of
+  a block list (legitimate tables render through `_render_table` and are
+  untouched).
+
+**Work items (in order):**
+
+1. **WI 1 (done 2026-10-10):** this backlog entry — census + root-cause
+   trace + work items, written before any doc/code (user-directed
+   ordering).
+2. **WI 2 — doc cycle first** (algorithm-records-keeper): bump
+   `algorithms/html-to-markdown-section-extraction.md` **v0.12.0 →
+   v0.13.0**: extend §2.6 (nested table rendering = padded ASCII pipe
+   table + `---` separator row, `<br>`-joined, pipes escaped) and add the
+   orphan-table-part unwrap rule (new D-rule, or extend D7/D12); regen
+   line index; update the `algorithms/INDEX.md` row (gate-enforced to
+   match the doc version).
+3. **WI 3 — TDD RED→GREEN** in `tests/test_mdconv.py` (72 cases
+   currently): (a) a case reproducing the unreadable nested render
+   (`**Step** \\| **Action** <br> 1 \\| …`) → assert the padded
+   ASCII-pipe + separator form; (b) a case with orphan
+   `<tbody><tr><td><h3>…` → assert it renders as a heading + blocks,
+   NOT one inline line. RED confirmed on the old code first; then
+   implement in `mdconv.py`; `make gate` green.
+4. **WI 4 — atomic commit:** doc + INDEX + tests + code + this entry
+   (explicit paths; **never** `git add -A`); Conventional Commit ≤72
+   chars; push; GitHub CI green.
+5. **WI 5 — re-crawl + re-census:** full manual re-crawl (0 failed
+   articles); re-census on the fresh output: class (b) = **0** (no
+   non-`|` line contains a `<br>` join or a ` — ` hr-flatten); all class
+   (a) lines in the padded ASCII-pipe form; TEXT/ORGANIZATION unchanged.
+6. **WI 6 — closeout:** record commit sha, CI run id, re-crawl size,
+   re-census numbers in this entry (B14/B15 closeout format); flip the
+   status line to done.
+
+**Blast radius:** `_render_block_list` fallback +
+`_render_table_inline`/`_render_cell` in `src/m21_crawl/mdconv.py`; the
+algorithm doc (§2.6 + new D-rule); `tests/test_mdconv.py`.
+
+**Acceptance criteria:** in the regenerated manual — **0** class-(b)
+leaked lines (the L12941 chunk renders as real headings + GFM tables);
+**0** unpadded nested renders (every in-cell table is the padded
+ASCII-pipe form); 0 ` — ` hr-flattened joins; TEXT/ORGANIZATION unchanged
+(goal 1); `make gate` + GitHub CI green.
+
+**Ordering:** after B15 (tip `a922976`); rides the same `mdconv` doc as
+B6/B11/B13/B14/B15.
+
+## B17. Inline images break paragraph readability — **OPEN, new 2026-10-10**
+
+**User request (verbatim, 2026-10-10):** "Images in-line with text makes
+for bad readability. Images should be blocked away from the text to
+maximize readability of the document. This can be either space above and
+below the image, or text wraping around the image. Just not in-line with
+the text."
+
+**Symptom (screenshot, 2026-10-10):** in the assembled manual, screenshots
+sit *inside* paragraphs — e.g. the "Browse Topics" image in the
+"Searching M21-1 Content in KM" article: text flows on the same line
+before **and** after the image ("…drill down to the M21-1. `![…](…)`
+By entering your search word(s) or phrase…"), so renderers wrap the
+paragraph around the inline image and the reading order breaks.
+
+**Mechanism (hypothesis — trace + census in WI 2):** `<img>` renders
+through the inline path (`_render_inline_piece`), so (a) a `<p>` with
+mixed text + `<img>` children emits one Markdown line with the image
+inline, and (b) a top-level `<img>` in block context falls to
+`_render_block_list`'s inline-run fallback (neither `_BLOCK` nor
+`_UNWRAP_BLOCK`), joining the surrounding text run.
+
+**Chosen approach (agent-proposed, within the user's directive):** treat
+`<img>` as block-level in block context: flush the current inline run,
+emit `![alt](src)` on its own line (standard block separation — blank
+line above and below), then start a fresh run for the following text. A
+`<p>` containing an image splits at the image boundary (text before → its
+own paragraph, image on its own line, text after → new paragraph).
+TEXT/ORGANIZATION unchanged (only block layout of the image line).
+
+**Work items (in order):**
+
+1. **WI 1 (done 2026-10-10):** this backlog entry — written before any
+   doc/code (user-directed ordering).
+2. **WI 2 — census + root-cause trace:** census the assembled manual for
+   Markdown lines where `![` shares the line with non-image text
+   (count + top articles); fetch the raw eGain HTML of 2–3
+   representatives and confirm which mechanism fires (`<img>` inside a
+   `<p>` vs. top-level `<img>` in a block list vs. both).
+3. **WI 3 — doc cycle first** (algorithm-records-keeper): bump
+   `algorithms/html-to-markdown-section-extraction.md` **v0.13.0 →
+   v0.14.0**: new D-rule "images are blocks in block context" (or extend
+   D7/§2.6), update the error/edge-case tables, rewrite affected TESTS
+   rows, add new TESTS cases; update the `algorithms/INDEX.md` row
+   (gate-enforced to match the doc version).
+4. **WI 4 — TDD RED→GREEN** in `tests/test_mdconv.py`: (a) `<p>` with
+   text + `<img>` + text → assert three blocks (text paragraph, image
+   line, text paragraph); (b) top-level `<img>` between two text runs →
+   assert the image is on its own line, text runs not joined to it. RED
+   confirmed on the old code first; then implement in `mdconv.py`;
+   `make gate` green.
+5. **WI 5 — atomic commit:** doc + INDEX + tests + code + this entry
+   (explicit paths; **never** `git add -A`); Conventional Commit ≤72
+   chars; push; GitHub CI green.
+6. **WI 6 — re-crawl + re-census:** full manual re-crawl (0 failed
+   articles); re-census: **0** lines where `![` shares a line with
+   non-image text; TEXT/ORGANIZATION unchanged (goal 1).
+7. **WI 7 — closeout:** record commit sha, CI run id, re-crawl size,
+   re-census numbers in this entry (B14/B15/B16 closeout format); flip
+   the status line to done.
+
+**Blast radius:** `_render_block_list` + `_render_inline_piece`/
+`_render_cell` in `src/m21_crawl/mdconv.py`; the algorithm doc (new
+D-rule + TESTS); `tests/test_mdconv.py`.
+
+**Acceptance criteria:** in the regenerated manual — **0** Markdown
+lines where an `![…]` image shares the line with non-image text (every
+image sits on its own line with blank lines above and below);
+TEXT/ORGANIZATION unchanged (goal 1); `make gate` + GitHub CI green.
+
+**Ordering:** after B16; rides the same `mdconv` doc as
+B6/B11/B13/B14/B15/B16.
 
 ## Standing constraints (apply to all items)
 
