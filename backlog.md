@@ -5,7 +5,7 @@ session can start without re-deriving context: problem (with measured
 evidence), blast radius, the process the governing skills require, open
 decisions, and acceptance criteria.
 
-Order = user priority. Status: **B1, B2, B3, B4, B5, B6, B7, B8, B9, B11, B12, B13 done (B6/B11 in `f48faf9`; B13 in `817a8f3`; B12 in `403550c`; B7/B8/B9 in this session's commit)**; **B10 open — new 2026-10-07, broken image links (36 legacy-host `vaww.vrm.km.va.gov` URLs; live/dead census partial — local DNS outage, re-verify when network recovers)**; **B14 open — new 2026-10-07, 14 residual leaked layout frames (enumerated in the B6 closeout; unverified hypothesis: block-level children in the label cell defeat the discriminator)**; **B15 open — new 2026-10-07, Change Date frames not in a quote block (B11 gap; mdconv cycle)**.
+Order = user priority. Status: **B1, B2, B3, B4, B5, B6, B7, B8, B9, B11, B12, B13 done (B6/B11 in `f48faf9`; B13 in `817a8f3`; B12 in `403550c`; B7/B8/B9 in this session's commit)**; **B10 open — new 2026-10-07, broken image links (36 legacy-host `vaww.vrm.km.va.gov` URLs; live/dead census partial — local DNS outage, re-verify when network recovers)**; **B14 done — closed 2026-10-09 (in `827a8c0` + closeout `cc76aad`)**; **B15 done — closed 2026-10-09 (in `dd54c1e` + closeout this commit)**.
 
 ## B1. Replace eGain layout tables with standard Markdown layout — **DONE (2026-10-04)**
 
@@ -1242,7 +1242,7 @@ census verified on that output):**
   `827a8c0…`, conclusion success) —
   <https://github.com/mirph-glitch42/m21-1/actions/runs/37999360788>.
 
-## B15. Change Date frames not in a quote block (B11 gap) — **in progress (fix landed, re-crawl pending), new 2026-10-07**
+## B15. Change Date frames not in a quote block (B11 gap) — **DONE, closed 2026-10-09**
 
 **User request (verbatim, 2026-10-07):** "For backlog: not all change
 dates are in quote blocks." + screenshot (article "M21-1, Part VIII,
@@ -1285,7 +1285,7 @@ did not enumerate, e.g. `<h4>`) falls outside both paths.
    in the regenerated manual; the full population (1,260 + the missed set)
    renders as `> **Change Date**` + verbatim date.
 
-**Progress (2026-10-09) — WI 1–4 done, WI 5 pending:**
+**Progress (2026-10-09) — WI 1–5 done:**
 
 - **WI 1 (census on the fresh 14,113,700 B output):** 1,260
   `> **Change Date**` quote lines (good); **missed population = 218 bold
@@ -1315,8 +1315,17 @@ did not enumerate, e.g. `<h4>`) falls outside both paths.
   frame path only; if any `### **Change Date**` heading survives the
   re-census it would be a non-frame standalone heading to investigate
   individually (expected: 0).
-- **WI 5 (pending):** re-crawl → re-census (expect **0** bold headings;
-  **1,478** quote lines) → closeout.
+- **WI 5 (done 2026-10-09):** full re-crawl (14,113,478 B, 0 failed
+  articles; both completeness gates pass) → re-census: **0** bold
+  `Change Date` headings (checked both `### **Change Date**` and
+  `### ****Change Date****` variants) and **1,478** `> **Change Date**`
+  quote lines = 1,260 (B11) + 218 (this fix); no surviving non-frame
+  bold heading to investigate (the scope decision's expected outcome).
+- **Landed:** commit `dd54c1e` (atomic: doc v0.12.0 + INDEX + tests +
+  code + this entry); GitHub CI run 38020365154 (`head_sha` `dd54c1e`,
+  conclusion success) —
+  <https://github.com/mirph-glitch42/m21-1/actions/runs/38020365154>;
+  re-crawl + this closeout 2026-10-09.
 
 **Blast radius:** the D5 heading carve-out / `_render_layout_frame` in
 `src/m21_crawl/mdconv.py`; the algorithm doc (D5/D8 carve-out);
