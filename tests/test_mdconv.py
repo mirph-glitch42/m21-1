@@ -448,6 +448,21 @@ CASES: list[tuple[str, str, str]] = [
         "<tbody><tr><td><h3>Section Title</h3><br><p>Body text here.</p></td></tr></tbody>",
         "### Section Title\n\nBody text here.\n",
     ),
+    (
+        "case75 malformed block-holding tag unwraps as block wrapper (B19, D15)",
+        '<div<< div=""><div><hr/></div>'
+        '<table><tr><td><h3>VII.i.3.A.4.d<a id="4d" name="4d">.</a>'
+        " Establishing the Age</h3></td><td></td>"
+        "<td><ul><li>one</li><li>two</li></ul></td></tr></table>"
+        "<div><hr/></div><p>Prev | Next</p></div<<>",
+        '<a id="4d" name="4d"></a>\n\n### VII.i.3.A.4.d. Establishing the Age\n\n'
+        "- one\n- two\n\nPrev | Next\n",
+    ),
+    (
+        "case76 malformed inline-only tag keeps inline behavior (B19, D15)",
+        '<p<span style="font-size:14px"><span>inline text</span></p<span>',
+        "inline text\n",
+    ),
 ]
 
 

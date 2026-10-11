@@ -223,8 +223,12 @@ def _render_block_list(children, base_url: str, ns: str) -> list[str]:
                 else:  # E6: no usable href -> plain text
                     run.append(inner)
         else:
-            # Unknown or inline tag in block position: join the run (totality).
-            run.append(_render_inline_piece(child, base_url, ns))
+            # D15: unknown/malformed tag in block position.
+            if _contains_block_el(child):  # block-holding unknown: unwrap as wrapper
+                flush()
+                blocks.extend(_render_block_list(child.children, base_url, ns))
+            else:  # inline-only unknown: keep the run behavior (no regression)
+                run.append(_render_inline_piece(child, base_url, ns))
     flush()
     return blocks
 
