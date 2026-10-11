@@ -1340,7 +1340,7 @@ CI green.
 **Ordering:** independent of B7–B14; small standalone cycle. Rides the same
 `mdconv` doc as B6/B11/B13/B14.
 
-## B16. Nested-in-cell tables unreadable + one leaked multi-section chunk — **OPEN, new 2026-10-10**
+## B16. Nested-in-cell tables unreadable + one leaked multi-section chunk — **DONE, closed 2026-10-10**
 
 **User request (verbatim, 2026-10-10):** "Identify all tables embedded
 within tables, and convert them to ascii tables so they are actually
@@ -1433,6 +1433,60 @@ as they do today. TEXT/ORGANIZATION unchanged.
    re-census numbers in this entry (B14/B15 closeout format); flip the
    status line to done.
 
+**Progress (2026-10-10) — WI 1–6 done:**
+
+- **WI 1 (done):** this backlog entry — census + root-cause trace + work
+  items, written before any doc/code (user-directed ordering).
+- **WI 2 (doc cycle first):** doc 0.12.0 → **0.13.0** — §2.6 extended
+  (a nested in-cell table renders as a **padded ASCII pipe table**: cells
+  right-padded to the column width, a `---` separator row under the
+  header always emitted (`"-"*max(3,w)`), rows `<br>`-joined, pipes
+  escaped once by the outer `_render_table`); new **D14** rule (orphan
+  table-part elements `tbody`/`thead`/`tfoot`/`tr`/`td`/`th`/`caption`
+  found in *block* position unwrap as transparent wrappers so their
+  block children dissolve into real headings + GFM tables); TESTS cases
+  added; `algorithms/INDEX.md` row 10 in sync at 0.13.0.
+- **WI 3 (TDD RED→GREEN):** new cases RED on the old code — (a) a nested
+  Step/Action table → the old unpadded `<br>`-joined form, now the
+  padded ASCII-pipe + separator form; (b) an orphan
+  `<tbody><tr><td><h3>…` → the old single inline line, now a heading +
+  blocks. GREEN: **207 pass**.
+- **WI 4 (atomic commit):** doc + INDEX + tests + code + this entry,
+  explicit paths only (never `git add -A`).
+- **WI 5 (re-crawl + re-census, done 2026-10-10):** full re-crawl
+  (**14,602,019 B**, 0 failed articles; both completeness gates pass).
+  Re-census on the fresh output: the pre-B16 **L12941 class-(b) leak is
+  GONE** (that chunk now renders as real headings + GFM tables); all
+  **262** class-(a) nested tables are now in the padded ASCII-pipe form
+  (D13). See the deviation note below for the one residual line.
+- **Landed:** commit `489fa4a` (atomic: doc v0.13.0 + INDEX + tests +
+  code + this entry); GitHub CI run **38081371078** (`head_sha`
+  `489fa4a`, `gate` job **success**) —
+  <https://github.com/mirph-glitch42/m21-1/actions/runs/38081371078>.
+  **SonarCloud** (check-run job id `114298883090`) is an **external
+  GitHub-App check, not part of our `ci` workflow** (which defines only
+  the `gate` job); it was already `failure` at the prior user-approved
+  tip `a922976`, so it is pre-existing noise, not caused by this work —
+  **`gate` green = CI green**.
+
+**Deviation note (honest, surfaced at closeout):** the re-census
+surfaced **one** residual class-(b) line — **L58156**, article
+`554400000176623` (Part VII, Subpart i, Chapter 3, Section A),
+subsection `VII.i.3.A.4.d` — a whole section chunk inlined into a single
+garbage line. This is a **different root cause** from the B16 L12941
+leak: the source HTML contains a **malformed tag** (`<div<< div="">` …
+`</div<<>`) that lxml names `div<<`, and `mdconv`'s inline-run fallback
+dumps its block content inline. **Verified pre-existing (not a B16
+regression):** running the pre-B16 `mdconv` (`git show a922976`) on the
+same article produces the same garbage line (old form, no `<br>`), which
+is exactly why it was invisible to the `<br>`-based census; B16's D13
+(always-emitted separator row) made it visible. **B16 did not cause
+it.** It is now tracked as **B19** (the corpus census found **7**
+articles carrying malformed tag names). B16 is closed on its own
+acceptance criteria (the L12941 leak is gone; every class-(a) nested
+table is padded ASCII); the residual is a separate bug with its own
+entry.
+
 **Blast radius:** `_render_block_list` fallback +
 `_render_table_inline`/`_render_cell` in `src/m21_crawl/mdconv.py`; the
 algorithm doc (§2.6 + new D-rule); `tests/test_mdconv.py`.
@@ -1486,8 +1540,9 @@ TEXT/ORGANIZATION unchanged (only block layout of the image line).
    representatives and confirm which mechanism fires (`<img>` inside a
    `<p>` vs. top-level `<img>` in a block list vs. both).
 3. **WI 3 — doc cycle first** (algorithm-records-keeper): bump
-   `algorithms/html-to-markdown-section-extraction.md` **v0.13.0 →
-   v0.14.0**: new D-rule "images are blocks in block context" (or extend
+   `algorithms/html-to-markdown-section-extraction.md` **v0.15.0 →
+   v0.16.0** (B19/B18 now precede it in the queue): new D-rule "images
+   are blocks in block context" (or extend
    D7/§2.6), update the error/edge-case tables, rewrite affected TESTS
    rows, add new TESTS cases; update the `algorithms/INDEX.md` row
    (gate-enforced to match the doc version).
@@ -1516,8 +1571,261 @@ lines where an `![…]` image shares the line with non-image text (every
 image sits on its own line with blank lines above and below);
 TEXT/ORGANIZATION unchanged (goal 1); `make gate` + GitHub CI green.
 
-**Ordering:** after B16; rides the same `mdconv` doc as
-B6/B11/B13/B14/B15/B16.
+**Ordering:** after **B19** and **B18** (both now precede it in the
+queue); rides the same `mdconv` doc as B6/B11/B13/B14/B15/B16/B18/B19.
+
+## B18. Section nav links — unified schema, To Top folded in — **OPEN, new 2026-10-10**
+
+**User request (verbatim, 2026-10-10):** "For readability, let's format
+section navigation links like: `<-- Previous Section | Top | Next
+Section -->` for bottom of section links, or, for the top of article
+links: `<-- Previous Section | Next Section -->` Centered on the page,
+if possible. This, of course, wraps the `To Top` link into this new
+schema, and will require the removal of the old `To Top` link."
+
+**Current state (census of the assembled manual, 2026-10-10,
+14,602,019 B):**
+
+- **Bottom-of-section nav** renders as two space-separated links on one
+  line: `[<-- Previous Section](#m21-1-part-…) [Next Section -->]
+  (#m21-1-part-…)` — Prev/Next point at the manual's assembled section
+  anchors (B8). No "Top" in this schema today.
+- **To Top** appears **418** times and is **inconsistent**:
+  - **409** point at the article-top anchor (`#art_N_top` **320** +
+    `#art_N_Top` **89**) — these *work* (jump to the top of the
+    article).
+  - **~9** point at a **non-top** anchor: `#art_N_Overview` (2), `#n`
+    (1), `#d` (1), `#c` (1), and **5** `#m21-1-part-…` *section*
+    anchors — these are the To Top links that "do nothing" (the target
+    is not a heading anchor in the output). This matches the user's
+    earlier note that "a lot of them do not do anything."
+  - Layout: **373** are a standalone line (their own block); **31** are
+    appended to the nav line with **no space** (`…[Next Section -->]
+    (…)[To Top](…)`); the remainder sit in other contexts (incl. the
+    B19 inlined line L58156).
+- **Mechanism:** the eGain HTML nav `<p>` carries the Prev/Next links
+  (→ `#m21-1-part-…`) and a `To Top` link (`<a href="#top">`, rewritten
+  by **D6** into the per-article namespace `#art_N_top`). There is
+  **no** nav/To-Top-specific code path in `mdconv.py` — all of this is
+  a product of the *generic* inline-run rendering (the nav `<p>` and the
+  `To Top` `<div><span><a>` are unwrapped and their links emitted as
+  inline pieces, which is why the spacing/positioning is inconsistent).
+  This item **adds** a dedicated nav-rendering rule rather than patching
+  the generic path.
+
+**Chosen approach (user-directed; design details agent-proposed, flagged
+for review):** add a nav-link rule so the section-navigation links render
+as a **single, centered-where-possible, pipe-joined line**:
+
+- **Bottom of an article** (the nav that follows a section body):
+  `<-- Previous Section | Top | Next Section -->` — three links,
+  ` | `-joined, one unit; **Top** = the folded To Top link, and **all**
+  Top links point at the article-top anchor `#art_N_top` (the ~9 broken
+  section/malformed targets are corrected to the article top).
+- **Top of an article** (the leading nav, before the first section):
+  `<-- Previous Section | Next Section -->` — two links (no Top, since
+  the reader is already at the top).
+- **Centering is best-effort**: pure GFM has no centering primitive, so
+  we either emit a `<center>…</center>` wrapper (HTML; many renderers
+  honor it, some strip it) or leave the line left-aligned. The
+  non-negotiable deliverable is the pipe-joined single-line schema;
+  centering is "if possible" per the user and is renderer-dependent.
+- The **standalone `To Top` block is removed** (its function is folded
+  into the bottom nav's Top); TEXT/ORGANIZATION otherwise unchanged.
+
+**Work items (in order):**
+
+1. **WI 1 (done 2026-10-10):** this backlog entry — census of the
+   current nav/To Top shapes + mechanism, written before any doc/code
+   (user-directed ordering).
+2. **WI 2 — trace + pin the design:** fetch the raw eGain HTML of 2–3
+   representative articles (one with a working To Top, one with a broken
+   section/malformed To Top, one top-of-article nav) and confirm the
+   exact source shape of the nav `<p>` (Prev/Next/Top hrefs) and the
+   `To Top` `<div>`; decide the centering mechanism (test whether the
+   target renderers honor `<center>`); confirm the article-top anchor
+   (`#art_N_top` vs `#art_N_Top`) each article actually exposes so the
+   corrected Top links resolve.
+3. **WI 3 — doc cycle first** (algorithm-records-keeper): bump
+   `algorithms/html-to-markdown-section-extraction.md` **v0.14.0 →
+   v0.15.0** (after B19): new D-rule "section nav links render as a
+   single pipe-joined, centered-where-possible line — bottom `<--
+   Previous Section | Top | Next Section -->`, top `<-- Previous Section
+   | Next Section -->`; the standalone To Top block is removed and its
+   target folded into the bottom Top link; broken To Top targets are
+   corrected to the article-top anchor"; update the error/edge-case
+   tables + TESTS rows; update the `algorithms/INDEX.md` row
+   (gate-enforced to match the doc version).
+4. **WI 4 — TDD RED→GREEN** in `tests/test_mdconv.py`: (a) bottom nav
+   `<p>` (Prev+Next+Top) → assert one line `<-- Previous Section | Top
+   | Next Section -->` with all three anchors and the Top → `#art_N_top`;
+   (b) top nav (Prev+Next only) → `<-- Previous Section | Next Section
+   -->`; (c) a To Top whose href is a broken section/malformed anchor →
+   assert it is corrected to the article-top anchor (or dropped if no
+   top anchor exists); (d) assert **no** standalone `To Top` block
+   remains. RED on the old code first; then implement a dedicated nav
+   path in `mdconv.py`; `make gate` green.
+5. **WI 5 — atomic commit:** doc + INDEX + tests + code + this entry
+   (explicit paths; **never** `git add -A`); Conventional Commit ≤72
+   chars; push; GitHub CI green.
+6. **WI 6 — re-crawl + re-census:** full manual re-crawl (0 failed
+   articles); re-census: **0** standalone `To Top` blocks; every
+   bottom-of-section nav is exactly `<-- Previous Section | Top | Next
+   Section -->`; every top-of-article nav is `<-- Previous Section | Next
+   Section -->`; **0** To Top links pointing at a non-existent anchor
+   (the ~9 broken ones now resolve to the article top);
+   TEXT/ORGANIZATION unchanged (goal 1).
+7. **WI 7 — closeout:** record commit sha, CI run id, re-crawl size,
+   re-census numbers in this entry (B14/B15/B16 closeout format); flip
+   the status line to done.
+
+**Blast radius:** a new nav-link rendering path in
+`src/m21_crawl/mdconv.py` (detect the section-nav `<p>` / To Top block
+in block context and emit the unified line; interacts with D6 anchor
+rewrite + D7 inline-run coalescing); the algorithm doc (new D-rule +
+TESTS); `tests/test_mdconv.py`.
+
+**Acceptance criteria:** in the regenerated manual — every
+bottom-of-section nav is exactly `<-- Previous Section | Top | Next
+Section -->` (three links, pipe-joined, centered where the renderer
+allows); every top-of-article nav is `<-- Previous Section | Next
+Section -->`; **0** standalone `To Top` blocks; **0** To Top links
+pointing at a non-existent anchor (all Top links resolve to the
+article-top anchor); TEXT/ORGANIZATION unchanged (goal 1); `make gate`
++ GitHub CI green.
+
+**Ordering:** after **B19** (nav must be in normal block form before
+reformatting — B19 fixes the inlined nav in the malformed-tag articles)
+and before B17. Rides the same `mdconv` doc as B6/B11/B13/B14/B15/B16/
+B17/B19.
+
+## B19. Malformed HTML tags inline entire section chunks — **OPEN, new 2026-10-10**
+
+**Discovery (2026-10-10, during the B16 re-census):** the B16 re-census
+surfaced **one** new class-(b) leak with a **new root cause** (not the
+orphan-`<tbody>` shape B16 fixed). It is a **correctness** bug: a whole
+section chunk is inlined into a single garbage line.
+
+**Symptom (verified, no guessing):** article `554400000176623` (Part
+VII, Subpart i, Chapter 3, Section A — "Establishing a Child's Age and
+Relationship"), subsection `VII.i.3.A.4.d`: the entire section (heading +
+anchor + content `<ul>` + `<hr>` + Prev/Next nav + To Top) is inlined
+into **one** garbage line at **L58156**, starting
+`— | VII.i.3.A.4.d<a id="art_554400000176623_4d" …>`. The sibling
+subsections 4.a–4.c in the same article render correctly.
+
+**Root cause (traced from the raw HTML, 61,205 B, no guessing):**
+
+1. The source HTML contains a **malformed tag pair**:
+   `<div<< div="">` … `</div<<>` wrapping `<div><hr/></div>` + the 4.d
+   layout-frame table (h3 | spacer | content div+ul) + `<div><hr/></div>`
+   + the Prev/Next nav `<p>` + the To Top `<div>`.
+2. The parser is BeautifulSoup + **lxml** (`_parse`, `mdconv.py`
+   L104–106). lxml names the malformed tag **`div<<`** (attribute
+   `div=""`) — confirmed with a minimal fragment test.
+3. `div<<` is the **last body child**; siblings 0–61 are normal
+   `p`/`h2`/`div`/`table` frames, all rendered fine.
+4. `mdconv` dispatch (`_render_block_list`, final `else` branch ~L230):
+   `div<<` is in **neither** `_BLOCK` **nor** `_UNWRAP_BLOCK`
+   (`div,span,font,center`) **nor** `_TABLE_PART` (D14), so it falls to
+   `run.append(_render_inline_piece(child))` → the **entire subtree**
+   (hr → ` — `, table → D13 inline ASCII, nav links inline) is rendered
+   INLINE into one paragraph run = the observed garbage line.
+5. **Verified pre-existing (not a B16 regression):** running the
+   pre-B16 `mdconv` (`git show a922976:src/m21_crawl/mdconv.py`) on the
+   same article produces the **same** garbage line (old single-row-join
+   form, no `<br>`) — which is exactly why it was **invisible** to the
+   B16 `<br>`-based census. B16's D13 (always-emitted separator row) made
+   it visible. So B16 did **not** cause it; the old census simply missed
+   it.
+
+**Corpus census (2026-10-10; 442 non-excluded articles, 0 fetch errors):**
+tag-name census over the **parsed** HTML (a `<br>`-based census is blind
+to this class — malformed-tag inlined content without `<br>` is
+invisible, which is how it hid pre-B16). **7 articles** carry a malformed
+tag name, each exactly one:
+
+| article id | malformed tag name |
+|---|---|
+| `554400000014116` | `introduction<` |
+| `554400000179497` | `d<a` |
+| `554400000176623` | `div<<` |
+| `554400000177994` | `p"` |
+| `554400000178000` | `div"` |
+| `554400000174208` | `viii.5.13.<` |
+| `554400000174201` | `p<span` |
+
+(The census is a *population* bound — it counts malformed tag names in
+the source. Only the ones whose malformed wrapper is a **direct body
+child** that reaches `_render_block_list`'s inline fallback actually
+inline-dump block content; WI 2 confirms which of the 7 leak.)
+
+**Chosen approach (agent-proposed, flagged for user review):** in
+`_render_block_list`'s final `else` branch, if `_contains_block_el(child)`
+→ **flush the current inline run and recurse** `_render_block_list
+(child.children, …)` (unwrap as a transparent block wrapper, like
+D7/D14), so a malformed-tag wrapper that **contains block content**
+dissolves into real blocks; **otherwise** keep the current
+inline-into-run behavior (preserves `sup`/`sub`/genuine-inline-unknown
+behavior). Conservative: never drops text; only fires for unknown tags
+that actually contain block elements. New D-rule (**D15**) + doc bump +
+TDD case reproducing the `<div<< div="">` shape.
+
+**Work items (in order):**
+
+1. **WI 1 (done 2026-10-10):** this backlog entry — symptom + full
+   root-cause trace + pre-existing proof + corpus census, written before
+   any doc/code (user-directed ordering).
+2. **WI 2 — confirm the leaking population:** of the 7 census articles,
+   fetch the raw HTML of each and confirm which malformed tags are
+   **direct body children reaching the inline fallback** (vs. nested,
+   where a parent already unwraps them); pin the exact source shape(s)
+   (the `<div<< div="">` case is confirmed; the other 6 need their shape
+   pinned so the discriminator matches the observed source, not a guess).
+3. **WI 3 — doc cycle first** (algorithm-records-keeper): bump
+   `algorithms/html-to-markdown-section-extraction.md` **v0.13.0 →
+   v0.14.0**: new **D15** rule "an unknown/malformed tag that **contains
+   block elements** unwraps as a transparent block wrapper (its children
+   render in block context) — never inline-dump block content;
+   genuinely-inline unknown tags keep the current inline behavior";
+   update the error/edge-case tables + add TESTS cases; update the
+   `algorithms/INDEX.md` row (gate-enforced to match the doc version).
+4. **WI 4 — TDD RED→GREEN** in `tests/test_mdconv.py`: (a) a case
+   reproducing `<div<< div="">` wrapping `<hr>` + a layout-frame table +
+   a nav `<p>` → assert it renders as `hr`-nothing + a real heading +
+   block content + nav, **not** one inline line; (b) a case with a
+   genuinely-inline unknown tag (e.g. `<sup>x</sup>` inside text) →
+   assert it still renders inline (no regression). RED on the old code
+   first; then implement in `mdconv.py`; `make gate` green.
+5. **WI 5 — atomic commit:** doc + INDEX + tests + code + this entry
+   (explicit paths; **never** `git add -A`); Conventional Commit ≤72
+   chars; push; GitHub CI green.
+6. **WI 6 — re-crawl + re-census:** full manual re-crawl (0 failed
+   articles); tag-name census over all 442 articles → **0** articles
+   whose block content is inline-dumped by an unknown tag; article
+   `554400000176623` §`VII.i.3.A.4.d` renders as an anchor + a real
+   heading + block content + a normal nav line, like its sibling
+   subsections; TEXT/ORGANIZATION unchanged (goal 1).
+7. **WI 7 — closeout:** record commit sha, CI run id, re-crawl size,
+   re-census numbers in this entry (B14/B15/B16 closeout format); flip
+   the status line to done.
+
+**Blast radius:** `_render_block_list`'s final `else` branch +
+`_contains_block_el` in `src/m21_crawl/mdconv.py`; the algorithm doc
+(new D15 + TESTS); `tests/test_mdconv.py`.
+
+**Acceptance criteria:** in the regenerated manual — **0** unknown/
+malformed tags inline-dump block content (all leaking census articles'
+block sections render as real headings + blocks); article
+`554400000176623` §`VII.i.3.A.4.d` renders as an anchor +
+`### VII.i.3.A.4.d…` heading + block content + a normal nav line;
+genuinely-inline unknown tags are unaffected; TEXT/ORGANIZATION unchanged
+(goal 1); `make gate` + GitHub CI green.
+
+**Ordering:** **first** in the current queue (correctness fix — it
+restores the affected articles' nav to the normal block shape that B18
+will reformat); before B18 and B17. Rides the same `mdconv` doc as
+B6/B11/B13/B14/B15/B16/B17/B18.
 
 ## Standing constraints (apply to all items)
 
@@ -1529,3 +1837,7 @@ B6/B11/B13/B14/B15/B16.
   user's "do not commit the assembled manual at this time" hold stands.
 - `make gate` green before every commit; Conventional Commits; algorithm
   doc and code change atomically.
+- **Current queue order (2026-10-10):** B19 → B18 → B17. B19 is a
+  correctness fix and must land first; B18 reformats nav (needs B19's
+  normal block shape); B17 is the inline-image block fix. Each bumps the
+  `mdconv` doc in turn (0.13.0 → 0.14.0 → 0.15.0 → 0.16.0).
