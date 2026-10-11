@@ -5,7 +5,7 @@ session can start without re-deriving context: problem (with measured
 evidence), blast radius, the process the governing skills require, open
 decisions, and acceptance criteria.
 
-Order = user priority. Status: **B1–B15 done (B6/B11 in `f48faf9`; B13 in `817a8f3`; B12 in `403550c`; B7/B8/B9 in this session's commit; B10 in `f88004b`, closed 2026-10-08; B14 in `827a8c0` + closeout `cc76aad`; B15 in `dd54c1e` + closeout `a922976`)**; **B16 OPEN — new 2026-10-10: nested-in-cell tables unreadable (262 lines, 108 articles) + 1 leaked multi-section chunk (L12941, orphan `<tbody>`; root cause traced; work items below)**. (B10's status corrected 2026-10-10 — its entry closed 2026-10-08 but this line was never updated.)
+Order = user priority. Status: **B1–B19 done (B6/B11 in `f48faf9`; B13 in `817a8f3`; B12 in `403550c`; B7/B8/B9 in this session's commit; B10 in `f88004b`, closed 2026-10-08; B14 in `827a8c0` + closeout `cc76aad`; B15 in `dd54c1e` + closeout `a922976`; B16 in `489fa4a` + closeout `2b21ee9`; B19 in `a2c691b` + closeout below)**; **B17, B18 OPEN — new 2026-10-10 (queue after B19: B18 → B17)**. (B10's status corrected 2026-10-10 — its entry closed 2026-10-08 but this line was never updated; B16's OPEN status corrected 2026-10-10 — its entry closed 2026-10-10 but this line was never updated.)
 
 ## B1. Replace eGain layout tables with standard Markdown layout — **DONE (2026-10-04)**
 
@@ -1699,7 +1699,7 @@ reformatting — B19 fixes the inlined nav in the malformed-tag articles)
 and before B17. Rides the same `mdconv` doc as B6/B11/B13/B14/B15/B16/
 B17/B19.
 
-## B19. Malformed HTML tags inline entire section chunks — **OPEN, new 2026-10-10**
+## B19. Malformed HTML tags inline entire section chunks — **DONE, closed 2026-10-10**
 
 **Discovery (2026-10-10, during the B16 re-census):** the B16 re-census
 surfaced **one** new class-(b) leak with a **new root cause** (not the
@@ -1810,6 +1810,61 @@ TDD case reproducing the `<div<< div="">` shape.
    re-census numbers in this entry (B14/B15/B16 closeout format); flip
    the status line to done.
 
+**Progress (2026-10-10) — WI 1–7 done:**
+
+- **WI 1 (done):** this backlog entry — symptom + full root-cause
+  trace + pre-existing proof + corpus census, written before any
+  doc/code (user-directed ordering).
+- **WI 2 (leaking population confirmed):** fetched all 7 census
+  articles and shaped each malformed tag against the parsed tree:
+  **exactly 1 of 7 leaks** — `554400000176623`'s `div<<` is a **direct
+  body child** whose subtree holds block elements (div+hr, layout-frame
+  table, div+hr, nav `<p>`, To Top div) → `_contains_block_el=True`.
+  The other 6 (`554400000014116` `introduction<`, `554400000179497`
+  `d<a`, `554400000177994` `p"`, `554400000178000` `div"`,
+  `554400000174208` `viii.5.13.<`, `554400000174201` `p<span`) are
+  **inline-position junk nested inside `h3`/`td`/`li`** with **zero**
+  block descendants → D15 correctly leaves them inline (no regression).
+  The `_contains_block_el` discriminator matches the observed source
+  exactly.
+- **WI 3 (doc cycle first):** doc 0.13.0 → **0.14.0** — new **D15**
+  rule (an unknown/malformed tag that **contains block elements**
+  unwraps as a transparent block wrapper — flush the inline run and
+  recurse into block context, exactly like D7 containers / D14 orphan
+  parts — while an inline-only unknown tag keeps the inline-into-run
+  behavior), error-model row, pseudocode final-`else` branch, 4.1
+  walkthrough, two new edge-case rows, TESTS cases 77–78;
+  `algorithms/INDEX.md` row in sync at 0.14.0; line index regenerated
+  (gate-enforced).
+- **WI 4 (TDD RED→GREEN):** test cases 75–76 (doc TESTS 77–78): case
+  75 reproduces the `div<< div="">` shape (hr wrappers + layout-frame
+  table + nav `<p>`); **RED confirmed on the old code** (the exact
+  garbage line `— | VII.i.3.A.4.d… | one; two |`); case 76
+  (inline-only `p<span`) passes before and after (no regression).
+  D15 implemented in `_render_block_list`'s final `else`; **209
+  pass**, `make gate` green.
+- **WI 5 (atomic commit):** doc + INDEX + tests + code, explicit paths
+  only (never `git add -A`); this entry stayed OPEN until the closeout
+  below (B14/B15/B16 two-commit pattern).
+- **WI 6 (re-crawl + re-census, done):** full re-crawl
+  (**14,601,436 B**, **143,358 lines**, 0 failed articles; both
+  completeness gates pass). Re-census on the fresh output: **0**
+  class-(b) lines (no non-`|` line contains a `<br>` join), **0**
+  ` — ` hr-flattened lines in the entire file; article
+  `554400000176623` §`VII.i.3.A.4.d` now renders as the hoisted
+  namespaced anchor + `### VII.i.3.A.4.d…` heading + paragraph/list
+  blocks + a normal Prev/Next + To Top nav (L58156–L58172) — like its
+  sibling subsections; the other 6 census articles' inline junk stays
+  inline (no regression).
+- **WI 7 (closeout, done):** see Landed below; status flipped to done.
+
+**Landed:** commit `a2c691b` (atomic: doc v0.14.0 + INDEX + tests +
+code); GitHub CI run **38105922116** (`head_sha` `a2c691b`, run
+conclusion **success**) —
+<https://github.com/mirph-glitch42/m21-1/actions/runs/38105922116>.
+Re-crawl **14,601,436 B** / **143,358 lines**, 0 failed articles;
+re-census **0** leaks (acceptance met).
+
 **Blast radius:** `_render_block_list`'s final `else` branch +
 `_contains_block_el` in `src/m21_crawl/mdconv.py`; the algorithm doc
 (new D15 + TESTS); `tests/test_mdconv.py`.
@@ -1837,7 +1892,7 @@ B6/B11/B13/B14/B15/B16/B17/B18.
   user's "do not commit the assembled manual at this time" hold stands.
 - `make gate` green before every commit; Conventional Commits; algorithm
   doc and code change atomically.
-- **Current queue order (2026-10-10):** B19 → B18 → B17. B19 is a
-  correctness fix and must land first; B18 reformats nav (needs B19's
-  normal block shape); B17 is the inline-image block fix. Each bumps the
-  `mdconv` doc in turn (0.13.0 → 0.14.0 → 0.15.0 → 0.16.0).
+- **Current queue order (2026-10-10):** **B18 → B17** (B19 landed:
+  `a2c691b` + this closeout). B18 reformats nav (B19 restored its
+  normal block shape); B17 is the inline-image block fix. Each bumps
+  the `mdconv` doc in turn (0.15.0 → 0.16.0).
