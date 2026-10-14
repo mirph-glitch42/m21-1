@@ -74,26 +74,31 @@ class Metadata:
     status: str
 
 
-def _read_lines(path: str) -> list[str]:
+def _resolve_inside(base: str, rel: str) -> str:
+    """Resolve *rel* against *base* and prove the result stays inside *base*.
+
+    Both paths are canonicalised with :func:`os.path.realpath` first, and
+    containment is established with :func:`os.path.commonpath` (not a string
+    prefix), so neither ``..`` sequences nor symlink escapes can leave the
+    algorithms tree. This is the module's single file-path resolver and the
+    one entry point for file access, so a LLM-supplied ``--dir`` argument or
+    a registry ``File`` target cannot read outside the tree.
+    """
+    root = os.path.realpath(base)
+    target = os.path.realpath(os.path.join(root, rel))
+    if os.path.commonpath([root, target]) != root:
+        raise StructuralError(f"refusing path outside the algorithms dir: {rel!r}")
+    return target
+
+
+def _read_lines(base: str, rel: str) -> list[str]:
+    """Read a text file *inside* *base*; escape attempts are structural."""
+    target = _resolve_inside(base, rel)
     try:
-        with open(path, encoding="utf-8") as fh:
+        with open(target, encoding="utf-8") as fh:
             return fh.read().split("\n")
     except OSError as exc:
-        raise StructuralError(f"cannot read {path}: {exc}") from exc
-
-
-def _safe_join(base: str, path: str) -> str:
-    """Join *path* onto *base* and refuse anything that escapes *base*.
-
-    *base* must be a real (symlink-resolved) absolute directory. This is
-    the single entry point for file access in :func:`validate`, so a
-    LLM-supplied ``--dir`` argument or a registry ``File`` target cannot
-    traverse out of the algorithms tree.
-    """
-    target = os.path.realpath(os.path.join(base, path))
-    if target != base and not target.startswith(base + os.sep):
-        raise StructuralError(f"refusing path outside the algorithms dir: {path}")
-    return target
+        raise StructuralError(f"cannot read {target}: {exc}") from exc
 
 
 def _split_row(line: str) -> list[str]:
@@ -194,14 +199,14 @@ def validate(algorithms_dir: str) -> list[str]:
     alg = os.path.realpath(os.path.abspath(algorithms_dir))
     if not os.path.isdir(alg):
         raise StructuralError(f"algorithms dir not found: {alg}")
-    rows = parse_registry(_read_lines(_safe_join(alg, REGISTRY_NAME)))
+    rows = parse_registry(_read_lines(alg, REGISTRY_NAME))
     docs = _list_docs(alg)
 
     errors: list[str] = []
     bound: set[int] = set()
 
     for slug, filename in docs.items():
-        meta = parse_metadata(_read_lines(_safe_join(alg, filename)))
+        meta = parse_metadata(_read_lines(alg, filename))
         matches = [r for r in rows if r.slug == slug or os.path.basename(r.file_target) == filename]
         bound.update(r.line_no for r in matches)
         if not matches:
@@ -230,7 +235,7 @@ def validate(algorithms_dir: str) -> list[str]:
                 f"{filename}: registry File '{row.file_target}' does not point at "
                 f"the document itself (INDEX.md line {row.line_no})"
             )
-        target = _safe_join(alg, row.file_target)
+        target = _resolve_inside(alg, row.file_target)
         if not os.path.isfile(target):
             errors.append(
                 f"{filename}: registry File target '{row.file_target}' does not "

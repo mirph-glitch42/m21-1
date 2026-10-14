@@ -221,6 +221,13 @@ def test_subprocess_structural_exit2(tmp_path) -> None:
 # --- path traversal containment ----------------------------------------------
 
 
+def test_read_lines_refuses_escape(tmp_path) -> None:
+    """The read sink itself rejects escapes, even when the target file exists."""
+    (tmp_path / "outside.md").write_text("secret", encoding="utf-8")
+    with pytest.raises(cix.StructuralError, match="outside the algorithms dir"):
+        cix._read_lines(str(tmp_path), "../outside.md")
+
+
 def test_traversal_file_target_rejected(tmp_path) -> None:
     """A registry ``File`` escaping the tree is structural, even if the target exists."""
     alg = _tree(
