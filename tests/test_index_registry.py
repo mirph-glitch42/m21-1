@@ -216,3 +216,30 @@ def test_subprocess_structural_exit2(tmp_path) -> None:
     (alg / "INDEX.md").write_text("No table.\n", encoding="utf-8")
     res = _run(alg)
     assert res.returncode == 2, res.stdout + res.stderr
+
+
+# --- path traversal containment ----------------------------------------------
+
+
+def test_traversal_file_target_rejected(tmp_path) -> None:
+    """A registry ``File`` escaping the tree is structural, even if the target exists."""
+    alg = _tree(
+        tmp_path,
+        {"alpha": _doc("alpha", "Alpha", "1.0.0", "implemented")},
+        [_row("alpha", "Alpha", "1.0.0", "implemented", "../secret.md")],
+    )
+    (tmp_path / "secret.md").write_text("secret", encoding="utf-8")
+    with pytest.raises(cix.StructuralError, match="outside the algorithms dir"):
+        cix.validate(alg)
+
+
+def test_traversal_file_target_exit2(tmp_path) -> None:
+    alg = _tree(
+        tmp_path,
+        {"alpha": _doc("alpha", "Alpha", "1.0.0", "implemented")},
+        [_row("alpha", "Alpha", "1.0.0", "implemented", "../secret.md")],
+    )
+    (tmp_path / "secret.md").write_text("secret", encoding="utf-8")
+    res = _run(alg)
+    assert res.returncode == 2, res.stdout + res.stderr
+    assert "outside the algorithms dir" in res.stderr

@@ -82,6 +82,20 @@ def _read_lines(path: str) -> list[str]:
         raise StructuralError(f"cannot read {path}: {exc}") from exc
 
 
+def _safe_join(base: str, path: str) -> str:
+    """Join *path* onto *base* and refuse anything that escapes *base*.
+
+    *base* must be a real (symlink-resolved) absolute directory. This is
+    the single entry point for file access in :func:`validate`, so a
+    LLM-supplied ``--dir`` argument or a registry ``File`` target cannot
+    traverse out of the algorithms tree.
+    """
+    target = os.path.realpath(os.path.join(base, path))
+    if target != base and not target.startswith(base + os.sep):
+        raise StructuralError(f"refusing path outside the algorithms dir: {path}")
+    return target
+
+
 def _split_row(line: str) -> list[str]:
     """Split a ``| a | b |`` row into its cells, preserving interior empties."""
     parts = CELL_SPLIT_RE.split(line)
@@ -177,17 +191,17 @@ def validate(algorithms_dir: str) -> list[str]:
     Raises :class:`StructuralError` (exit 2) when the registry or a document
     is malformed.
     """
-    alg = os.path.abspath(algorithms_dir)
+    alg = os.path.realpath(os.path.abspath(algorithms_dir))
     if not os.path.isdir(alg):
         raise StructuralError(f"algorithms dir not found: {alg}")
-    rows = parse_registry(_read_lines(os.path.join(alg, REGISTRY_NAME)))
+    rows = parse_registry(_read_lines(_safe_join(alg, REGISTRY_NAME)))
     docs = _list_docs(alg)
 
     errors: list[str] = []
     bound: set[int] = set()
 
     for slug, filename in docs.items():
-        meta = parse_metadata(_read_lines(os.path.join(alg, filename)))
+        meta = parse_metadata(_read_lines(_safe_join(alg, filename)))
         matches = [r for r in rows if r.slug == slug or os.path.basename(r.file_target) == filename]
         bound.update(r.line_no for r in matches)
         if not matches:
@@ -216,7 +230,8 @@ def validate(algorithms_dir: str) -> list[str]:
                 f"{filename}: registry File '{row.file_target}' does not point at "
                 f"the document itself (INDEX.md line {row.line_no})"
             )
-        if not os.path.isfile(os.path.join(alg, row.file_target)):
+        target = _safe_join(alg, row.file_target)
+        if not os.path.isfile(target):
             errors.append(
                 f"{filename}: registry File target '{row.file_target}' does not "
                 f"exist (INDEX.md line {row.line_no})"
