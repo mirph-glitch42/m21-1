@@ -27,12 +27,31 @@ verbatim text) before writing the file.
 
 from __future__ import annotations
 
+import os
 import re
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FIXTURE = REPO_ROOT / "render-test" / "b20-nested-table.md"
+
+
+def _resolve_fixture(path: Path) -> Path:
+    """Resolve *path* and prove it stays inside the ``render-test/`` tree.
+
+    Both paths are canonicalised with :func:`os.path.realpath` first, and
+    containment is established with :func:`os.path.commonpath` (not a string
+    prefix), so neither ``..`` sequences nor symlink escapes can leave the
+    render-test tree. ``FIXTURE`` is repo-derived, so the guard is a no-op
+    in practice — but the write sink is pinned to ``render-test/`` for any
+    future caller (SonarCloud S2083).
+    """
+    root = os.path.realpath(REPO_ROOT / "render-test")
+    target = os.path.realpath(path)
+    if os.path.commonpath([root, target]) != root:
+        raise ValueError(f"refusing to write outside render-test/: {path!r}")
+    return Path(target)
+
 
 W = 48  # Max action-cell text width, in rendered characters.
 STEP_W = 6  # Step cell width, rendered (1 leading space + <=5 text).
@@ -199,7 +218,8 @@ def main() -> int:
         "change the representation for the specific correspondence | " + INTRO + "<br>" + pre + " |"
     )
 
-    old = FIXTURE.read_text(encoding="utf-8")
+    fixture = _resolve_fixture(FIXTURE)
+    old = fixture.read_text(encoding="utf-8")
     lines = old.split("\n")
     target = "## B. AFTER (proposed B20)"
     idx = next(i for i, line in enumerate(lines) if line.startswith(target))
@@ -212,7 +232,7 @@ def main() -> int:
     )
     first_data_row = lines[data_start]
     new_lines = lines[:data_start] + [first_data_row, new_row]
-    FIXTURE.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+    fixture.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
 
     # Console report (rendered widths per row for review)
     print(f"fixture written: {FIXTURE}")

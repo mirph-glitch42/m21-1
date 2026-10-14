@@ -18,7 +18,8 @@ Wires the pipeline modules together:
 
 Exit codes: ``0`` = every article converted; ``1`` = deliverable written but
 one or more articles recorded as failed (placeholders rendered);
-``2`` = completeness check failed (nothing written).
+``2`` = completeness check failed (nothing written);
+``3`` = ``--out`` escapes the working directory (nothing written).
 """
 
 import argparse
@@ -191,6 +192,23 @@ def crawl_manual(
     return assemble(articles, expected_count=listed - excluded), failures
 
 
+def _resolve_out(path: str) -> str:
+    """Resolve *path* and prove it stays inside the working directory.
+
+    Both paths are canonicalised with :func:`os.path.realpath` first, and
+    containment is established with :func:`os.path.commonpath` (not a string
+    prefix), so neither ``..`` sequences nor symlink escapes can leave the
+    working directory. ``--out`` is user/LLM-supplied, and this resolver is
+    the module's single file-path entry point, so the write sink cannot
+    create or write files outside the project (SonarCloud S8707).
+    """
+    root = os.path.realpath(os.getcwd())
+    target = os.path.realpath(os.path.join(root, path))
+    if os.path.commonpath([root, target]) != root:
+        raise ValueError(f"refusing to write outside the working directory: {path!r}")
+    return target
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Parse args, run the crawl, write the deliverable; return the exit code."""
     parser = argparse.ArgumentParser(
@@ -223,10 +241,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
-    out_dir = os.path.dirname(args.out)
+    try:
+        out_path = _resolve_out(args.out)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 3
+    out_dir = os.path.dirname(out_path)
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
-    with open(args.out, "w", encoding="utf-8") as handle:
+    with open(out_path, "w", encoding="utf-8") as handle:
         handle.write(markdown)
 
     if failures:

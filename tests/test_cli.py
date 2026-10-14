@@ -7,6 +7,7 @@ request for a topic it has no articles for is an AssertionError — this pins
 that topics with no direct articles (e.g. the root) are never queried.
 """
 
+import os
 import re
 
 import pytest
@@ -280,6 +281,7 @@ def test_main_writes_file_and_returns_zero(
     tmp_path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.chdir(tmp_path)
     out = tmp_path / "sub" / "manual.md"
     monkeypatch.setattr(
         cli,
@@ -306,6 +308,7 @@ def test_main_passes_retries_to_client_factory(
         return FakeClient(make_tree_payload(4))
 
     monkeypatch.setattr(cli, "build_client", factory)
+    monkeypatch.chdir(tmp_path)
     rc = cli.main(["--out", str(tmp_path / "manual.md"), "--retries", "7"])
     assert rc == 0
     assert seen["retries"] == 7
@@ -321,6 +324,7 @@ def test_main_returns_one_when_articles_failed(
         "build_client",
         lambda retries: FakeClient(make_tree_payload(4)),
     )
+    monkeypatch.chdir(tmp_path)
     out = tmp_path / "manual.md"
     rc = cli.main(["--out", str(out)])
     assert rc == 1
@@ -457,3 +461,43 @@ def test_completeness_gate_a_survives_skipping() -> None:
         cli.crawl_manual(fake)
     assert excinfo.value.expected == 5
     assert excinfo.value.actual == 4
+
+
+# --- --out path-containment guard (SonarCloud S8707) ----------------------
+
+
+def test_resolve_out_accepts_inside(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    got = cli._resolve_out("output/manual.md")
+    assert os.path.realpath(got) == os.path.realpath(tmp_path / "output" / "manual.md")
+
+
+def test_resolve_out_rejects_dotdot(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(ValueError, match="refusing to write outside"):
+        cli._resolve_out("../escape.md")
+
+
+def test_resolve_out_rejects_absolute(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(ValueError, match="refusing to write outside"):
+        cli._resolve_out("/etc/escape.md")
+
+
+def test_main_refuses_outside_workdir(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """--out escaping the working dir is refused before any write (exit 3)."""
+    project = tmp_path / "project"
+    project.mkdir()
+    monkeypatch.chdir(project)
+    monkeypatch.setattr(cli, "build_client", lambda retries: FakeClient(make_tree_payload(4)))
+    monkeypatch.setattr(cli.time, "sleep", lambda _s: None)
+    escape = tmp_path / "escape.md"
+    rc = cli.main(["--out", str(escape)])
+    err = capsys.readouterr().err
+    assert rc == 3
+    assert "refusing to write outside the working directory" in err
+    assert not escape.exists()

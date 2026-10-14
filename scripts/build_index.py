@@ -24,15 +24,18 @@ Usage:
     python3 build_index.py <doc.md>          # rewrite the index in place
     python3 build_index.py <doc.md> --check  # verify only; exit 1 if stale
 
-Vendored (unmodified) from the algorithm-records-keeper skill so CI can
-enforce the index contract without depending on a local skill directory.
+Vendored from the algorithm-records-keeper skill, with one addition: the
+``_resolve_doc`` path-containment guard (SonarCloud S8707). CI enforces the
+index contract via this copy, independent of any local skill directory.
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
+from pathlib import Path
 
 BEGIN_RE = re.compile(r"^<!--\s*INDEX:BEGIN\b.*?-->\s*$")
 END_RE = re.compile(r"^<!--\s*INDEX:END\s*-->\s*$")
@@ -111,6 +114,25 @@ def render(rows: list[tuple[str, int, int]]) -> list[str]:
     return out
 
 
+def _resolve_doc(path: str) -> str:
+    """Resolve *path* and prove it stays inside the ``algorithms/`` tree.
+
+    Both paths are canonicalised with :func:`os.path.realpath` first, and
+    containment is established with :func:`os.path.commonpath` (not a string
+    prefix), so neither ``..`` sequences nor symlink escapes can leave the
+    algorithms tree. ``doc`` is LLM-supplied, and this resolver is the
+    module's single file-path entry point: neither the read nor the
+    in-place write can touch a file outside ``algorithms/`` (SonarCloud
+    S8707).
+    """
+    cwd = os.path.realpath(os.getcwd())
+    alg = os.path.realpath(Path(__file__).resolve().parent.parent / "algorithms")
+    target = os.path.realpath(os.path.join(cwd, path))
+    if os.path.commonpath([alg, target]) != alg:
+        fail(f"refusing path outside the algorithms dir: {path!r}")
+    return target
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Regenerate the line index of an algorithm document.")
     ap.add_argument("doc", help="path to the algorithm document")
@@ -119,7 +141,8 @@ def main() -> None:
     )
     args = ap.parse_args()
 
-    with open(args.doc, encoding="utf-8") as fh:
+    doc_path = _resolve_doc(args.doc)
+    with open(doc_path, encoding="utf-8") as fh:
         raw = fh.read()
     had_trailing_newline = raw.endswith("\n")
     lines = raw.splitlines()
@@ -141,7 +164,8 @@ def main() -> None:
     out = "\n".join(new_lines)
     if had_trailing_newline:
         out += "\n"
-    with open(args.doc, "w", encoding="utf-8") as fh:
+    doc_path = _resolve_doc(args.doc)
+    with open(doc_path, "w", encoding="utf-8") as fh:
         fh.write(out)
     print(f"{args.doc}: index updated ({len(rows)} entries)")
 
