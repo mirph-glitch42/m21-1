@@ -417,9 +417,9 @@ CASES: list[tuple[str, str, str]] = [
         "| Department of Veterans Affairs | Memorandum of Changes |\n| --- | --- |\n",
     ),
     (
-        "case70 nested table in a cell renders padded ASCII (D13)",
+        "case70 nested table in a cell renders a box-drawing table in a <pre> block (D13, B20)",
         "<table><tr><td><table><tr><td>x</td></tr></table></td><td>Introduction</td></tr></table>",
-        "| \\| x \\|<br>\\| --- \\| | Introduction |\n| --- | --- |\n",
+        "| <pre>┌───┐<br>│ x │<br>├───┤<br>└───┘</pre> | Introduction |\n| --- | --- |\n",
     ),
     (
         "case72 T1 Change Date heading wrapped in strong (B15)",
@@ -435,13 +435,13 @@ CASES: list[tuple[str, str, str]] = [
         "Body\n\n- one\n- two\n",
     ),
     (
-        "case73 nested 2x2 table in a cell (B16, D13)",
+        "case73 nested 2x2 table in a cell (B16, B20, D13)",
         "<table><tr><td>Condition</td><td>Action</td></tr>"
         "<tr><td>If X</td><td><table><tr><th>Step</th><th>What</th></tr>"
         "<tr><td>1</td><td>Do this</td></tr></table></td></tr></table>",
         "| Condition | Action |\n| --- | --- |\n"
-        "| If X | \\| Step \\| What    \\|<br>\\| ---- \\| ------- \\|<br>"
-        "\\| 1    \\| Do this \\| |\n",
+        "| If X | <pre>┌──────┬─────────┐<br>│ Step │ What    │<br>├──────┼─────────┤<br>"
+        "│ 1    │ Do this │<br>└──────┴─────────┘</pre> |\n",
     ),
     (
         "case74 orphan tbody in block position (B16, D14)",
@@ -462,6 +462,36 @@ CASES: list[tuple[str, str, str]] = [
         "case76 malformed inline-only tag keeps inline behavior (B19, D15)",
         '<p<span style="font-size:14px"><span>inline text</span></p<span>',
         "inline text\n",
+    ),
+    (
+        "case77 nested single-column table with two data rows renders the spacer row (B20, D13)",
+        "<table><tr><td>Condition</td><td>Action</td></tr>"
+        "<tr><td>If X</td><td><table><tr><th>Step</th></tr>"
+        "<tr><td>1</td></tr><tr><td>2</td></tr></table></td></tr></table>",
+        "| Condition | Action |\n| --- | --- |\n"
+        "| If X | <pre>┌──────┐<br>│ Step │<br>├──────┤<br>"
+        "│ 1    │<br>│      │<br>│ 2    │<br>└──────┘</pre> |\n",
+    ),
+    (
+        "case78 nested 2-column table with two data rows keeps the spacer separators (B20, D13)",
+        "<table><tr><td>Condition</td><td>Action</td></tr>"
+        "<tr><td>If X</td><td><table><tr><th>Step</th><th>What</th></tr>"
+        "<tr><td>1</td><td>Do this</td></tr><tr><td>2</td><td>Do that</td></tr>"
+        "</table></td></tr></table>",
+        "| Condition | Action |\n| --- | --- |\n"
+        "| If X | <pre>┌──────┬─────────┐<br>│ Step │ What    │<br>"
+        "├──────┼─────────┤<br>│ 1    │ Do this │<br>│      │         │<br>"
+        "│ 2    │ Do that │<br>└──────┴─────────┘</pre> |\n",
+    ),
+    (
+        "case79 three-level nested table keeps inner box lines atomic (B20, D13)",
+        "<table><tr><td>Condition</td><td>Action</td></tr><tr><td>If X</td><td><table><tr><th>"
+        "Step</th><th>What</th></tr><tr><td>1</td><td><table><tr><th>A</th></tr><tr><td>a1</td>"
+        "</tr><tr><td>a2</td></tr></table></td></tr></table></td></tr></table>",
+        "| Condition | Action |\n| --- | --- |\n| If X | <pre>┌──────┬────────┐<br>"
+        "│ Step │ What   │<br>├──────┼────────┤<br>│ 1    │ ┌────┐ │<br>│      │ │ A  │ │<br>"
+        "│      │ ├────┤ │<br>│      │ │ a1 │ │<br>│      │ │    │ │<br>│      │ │ a2 │ │<br>"
+        "│      │ └────┘ │<br>└──────┴────────┘</pre> |\n",
     ),
 ]
 

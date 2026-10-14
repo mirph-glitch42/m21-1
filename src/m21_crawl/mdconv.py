@@ -1,6 +1,6 @@
 """mdconv: deterministic rich-HTML -> GFM block converter for eGain article content.
 
-Implements ``algorithms/html-to-markdown-section-extraction.md`` (v0.13.0):
+Implements ``algorithms/html-to-markdown-section-extraction.md`` (v0.15.0):
 
 - total, deterministic two-context (block/inline) tree walk over a lenient
   lxml parse (BeautifulSoup is the parser of record: fragments stay flat);
@@ -12,9 +12,9 @@ Implements ``algorithms/html-to-markdown-section-extraction.md`` (v0.13.0):
   so punctuation never glues to a following word (TESTS case 13);
 - tables are GFM: first row is the header, ragged rows padded (E12),
   literal pipes escaped exactly once (E13); a table inside a cell renders
-  as a padded ASCII table — rows padded to the column width, a ``---``
-  separator always under the first row, rows joined by a bare ``<br>``
-  (D13, ``_render_table_inline``); a table whose
+  as an aligned box-drawing monospace table in a ``<pre>`` block —
+  cells wrapped at W = 48 rendered columns, one blank spacer row between
+  data rows, box borders are not pipes (D13, B20, ``_render_table_inline``); a table whose
   every row's first cell leads with a heading is a *layout frame* and
   dissolves into real headings at their native level with block-rendered
   content (D5, ``_render_layout_frame``);
@@ -549,18 +549,142 @@ def _render_layout_frame(el: Tag, base_url: str, ns: str) -> str:
     return "\n\n".join(blocks)
 
 
+# --- nested-table box-drawing (D13, B20) ------------------------------------
+
+_NESTED_W = 48  # wrap width for a nested-table cell, in rendered columns
+
+
+def _rendered_width(s: str) -> int:
+    """Rendered display width: markdown inline syntax stripped (D13).
+
+    Image -> alt text, link -> link text, code span -> inner text, and
+    emphasis markers (``*``/``_``) dropped, then count visible chars.
+    The target renderers process markdown inside ``<pre>``, so box
+    borders align on this width, not the source length.
+    """
+    t = re.sub(r"!\[([^\]]*)\]\([^)]*\)", r"\1", s)
+    t = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", t)
+    t = re.sub(r"`([^`]*)`", r"\1", t)
+    t = t.replace("*", "").replace("_", "")
+    return len(t)
+
+
+_TOKEN_RE = re.compile(
+    r"!\[[^\]]*\]\([^)]*\)"  # image
+    r"|\[[^\]]*\]\([^)]*\)"  # link
+    r"|`[^`\n]*`"  # code span
+    r"|[*_]{1,3}[^\s*_][^*_]*[*_]{1,3}"  # emphasis run
+)
+
+
+def _tokenize(md: str) -> list[tuple[str, bool]]:
+    """Split markdown into (unit, sep) pairs (D13).
+
+    Image/link/code/emphasis runs stay atomic; plain text splits into
+    words. ``sep`` is True iff the source had whitespace immediately
+    before the unit, so the joiner never inserts a space where the
+    source had none.
+    """
+    units: list[tuple[str, bool]] = []
+
+    def add_plain(gap: str, first: bool) -> None:
+        frags = gap.split()
+        leading_ws = bool(gap) and gap[0].isspace()
+        for j, frag in enumerate(frags):
+            units.append((frag, True if j > 0 else (not first) and leading_ws))
+
+    pos = 0
+    for m in _TOKEN_RE.finditer(md):
+        add_plain(md[pos : m.start()], first=not units)
+        units.append((m.group(0), m.start() > pos and md[m.start() - 1].isspace()))
+        pos = m.end()
+    add_plain(md[pos:], first=not units)
+    return units
+
+
+def _join_units(units: list[tuple[str, bool]]) -> str:
+    """Rejoin a line's units, inserting a space exactly where ``sep`` was."""
+    out = ""
+    for text, sep in units:
+        if out and sep:
+            out += " "
+        out += text
+    return out
+
+
+def _wrap_cell(md: str, width: int) -> list[str]:
+    """Greedy wrap at *width* rendered columns (D13).
+
+    Atomic units never split; an oversized atomic unit takes its own
+    line.
+    """
+    lines: list[str] = []
+    cur: list[tuple[str, bool]] = []
+    cur_w = 0
+    for text, sep in _tokenize(md):
+        w = _rendered_width(text)
+        join_w = 1 if (cur and sep) else 0
+        if cur and cur_w + join_w + w > width:
+            lines.append(_join_units(cur))
+            cur, cur_w = [(text, False)], w
+        else:
+            cur.append((text, sep))
+            cur_w += join_w + w
+    if cur:
+        lines.append(_join_units(cur))
+    return lines if lines else [""]
+
+
+_BOX_RE = re.compile(r"<pre>(.*?)</pre>", re.S)  # inner box within a cell (B20)
+
+
+def _cell_lines(md: str) -> list[str]:
+    """A cell's lines for the enclosing box: text wraps, boxes stay atomic (D13).
+
+    Plain-text segments wrap at ``_NESTED_W`` as before; a segment that
+    is an inner ``<pre>`` box-drawing table is emitted line-for-line
+    verbatim, because re-wrapping it would shred its borders.
+    Whitespace-only text segments contribute no lines. A cell holding
+    an inner box therefore stretches the outer row and its siblings
+    pad with blanks; each inner box line is an opaque fixed-width line,
+    so recursion keeps arbitrary nesting depth aligned (B20).
+    """
+    lines: list[str] = []
+    pos = 0
+    for m in _BOX_RE.finditer(md):
+        seg = md[pos : m.start()]
+        if seg.strip() != "":
+            lines.extend(_wrap_cell(seg, _NESTED_W))
+        lines.extend(m.group(1).split("<br>"))
+        pos = m.end()
+    tail = md[pos:]
+    if tail.strip() != "":
+        lines.extend(_wrap_cell(tail, _NESTED_W))
+    return lines or [""]
+
+
 def _render_table_inline(el: Tag, base_url: str, ns: str) -> str:
-    """Nested table (inside a cell): padded ASCII (D13, doc 2.6).
+    """Nested table (inside a cell): an aligned box-drawing monospace
+    table in a ``<pre>`` block (D13, B20).
 
-    Each row's cells are right-padded to the column width, a ``---``
-    separator row (minimum three dashes) is always emitted under the first
-    row, and the rows are joined with a bare ``<br>`` (no surrounding
-    spaces), so GitHub renders a readable ASCII table inside the cell.
+    Border set ``┌┬┐│├┼┤└┴┘─``: top border, first (header) row, a
+    separator row always under the first row, one blank spacer row
+    between consecutive data rows, bottom border. Each cell wraps at
+    W = 48 *rendered* columns (:func:`_rendered_width`), except a cell
+    holding an inner box emits that box's lines verbatim as an atomic
+    line-block (:func:`_cell_lines`) and the column widens to the widest
+    such line, sibling cells padded on blank lines. Every box line has
+    an identical rendered width, so the borders align after
+    the renderer strips the markdown. Atomic units (image, link, code
+    span, emphasis run) never split across lines, and no space is
+    inserted where the source had none. Ragged rows pad with empty
+    cells first so column widths are stable; a multi-line cell
+    stretches its row and the other cells pad with blanks.
 
-    Cell pipes stay raw here; the enclosing :func:`_render_table` escapes
-    every literal pipe in the cell exactly once (E13), so the nested
-    separators surface as ``\\|`` in the final output without double
-    escaping (D3).
+    Box characters are not ASCII pipes, so the enclosing
+    :func:`_render_table` escapes every literal pipe in the cell
+    exactly once (E13) and that pass is a no-op on the borders (D3);
+    a literal ``|`` in cell content still escapes exactly once.
     """
     rows: list[list[str]] = []
     for tr in _table_rows(el):
@@ -570,19 +694,37 @@ def _render_table_inline(el: Tag, base_url: str, ns: str) -> str:
     if not rows:
         return ""
     width = max(len(r) for r in rows)
-    rows = [r + [""] * (width - len(r)) for r in rows]
-    cols = [max(len(r[i]) for r in rows) for i in range(width)]
+    rows = [r + [""] * (width - len(r)) for r in rows]  # pad ragged rows
+    wrapped = [[_cell_lines(c) for c in r] for r in rows]  # B20: inner boxes stay atomic
+    col_w = [
+        max(_rendered_width(line) for r in range(len(rows)) for line in wrapped[r][i]) + 2
+        for i in range(width)
+    ]  # +2: leading space + at least one trailing space
 
-    def ascii_row(cells: list[str]) -> str:
-        return (
-            "| "
-            + " | ".join(c + " " * (w - len(c)) for c, w in zip(cells, cols, strict=True))
-            + " |"
-        )
+    def pad(line: str, w: int) -> str:
+        return " " + line + " " * (w - 1 - _rendered_width(line))
 
-    lines = [ascii_row(rows[0]), ascii_row(["-" * max(3, w) for w in cols])]
-    lines.extend(ascii_row(r) for r in rows[1:])
-    return "<br>".join(lines)
+    def rule(left: str, join: str, right: str) -> str:
+        return left + join.join("─" * w for w in col_w) + right
+
+    def emit_row(cell_lines: list[list[str]]) -> list[str]:
+        n = max(len(cl) for cl in cell_lines)
+        return [
+            "│"
+            + "".join(
+                pad(cl[i] if i < len(cl) else "", w) + "│"
+                for cl, w in zip(cell_lines, col_w, strict=True)
+            )
+            for i in range(n)
+        ]
+
+    lines: list[str] = [rule("┌", "┬", "┐"), *emit_row(wrapped[0]), rule("├", "┼", "┤")]
+    for k in range(1, len(wrapped)):
+        lines.extend(emit_row(wrapped[k]))
+        if k < len(wrapped) - 1:
+            lines.append("".join("│" + pad("", w) for w in col_w) + "│")
+    lines.append(rule("└", "┴", "┘"))
+    return "<pre>" + "<br>".join(lines) + "</pre>"
 
 
 def _render_cell(cell: Tag, base_url: str, ns: str) -> str:
