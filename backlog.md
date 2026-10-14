@@ -1,12 +1,55 @@
 # Backlog
 
+<!-- INDEX:BEGIN format=tsv version=1 -->
+id	title	status	start_line	end_line
+INDEX_BLOCK	-	-	3	30
+HEADER	-	-	32	43
+QUEUE	-	-	44	51
+B1	Replace eGain layout tables with standard Markdown layout	DONE	52	113
+B2	Dead intra-article anchors (`#1a`, `#RM`, …)	DONE	114	192
+B3	Slug-dedup robustness (anchor collisions)	DONE	193	262
+B4	Inline emphasis split into standalone paragraphs (goal-1 bug)	DONE	263	396
+B5	GitHub CI gate failure	DONE	397	431
+B6	Layout frames with non-heading label cells escape D5	DONE	432	620
+B7	TOC entries lack internal links	DONE	621	699
+B8	Dead internal links, incl. "To Top"	DONE	700	781
+B9	Raw spaces in link destinations	DONE	782	850
+B10	Broken image links (legacy host)	DONE	851	947
+B11	Change Date frames → quote block (readability deviation)	DONE	948	1036
+B12	CI gate for `algorithms/INDEX.md` staleness	DONE	1037	1106
+B13	Sloppy double horizontal rules around dissolved frames	DONE	1107	1175
+B14	14 residual leaked layout frames (missed format frames)	DONE	1176	1300
+B15	Change Date frames not in a quote block (B11 gap)	DONE	1301	1399
+B16	Nested-in-cell tables unreadable + one leaked multi-section chunk	DONE	1400	1560
+B17	Inline images break paragraph readability	OPEN	1561	1635
+B18	Section nav links — unified schema, To Top folded in	OPEN	1636	1761
+B19	Malformed HTML tags inline entire section chunks	DONE	1762	1945
+B20	Nested in-cell tables → aligned box-drawing tables in pre	IN_PROGRESS	1946	2061
+B21	Missing paragraph breaks — inline-only `<div>` paragraphs coalesce	OPEN	2062	2177
+CONSTRAINTS	-	-	2178	2195
+<!-- INDEX:END -->
+
+<!-- BACKLOG:HEADER -->
+## Status
+
 Deferred work, recorded 2026-10-04. Each item is written so the next
 session can start without re-deriving context: problem (with measured
 evidence), blast radius, the process the governing skills require, open
 decisions, and acceptance criteria.
 
-Order = user priority. Status: **B1–B19 done (B6/B11 in `f48faf9`; B13 in `817a8f3`; B12 in `403550c`; B7/B8/B9 in this session's commit; B10 in `f88004b`, closed 2026-10-08; B14 in `827a8c0` + closeout `cc76aad`; B15 in `dd54c1e` + closeout `a922976`; B16 in `489fa4a` + closeout `2b21ee9`; B19 in `a2c691b` + closeout below)**; **B17, B18 OPEN — new 2026-10-10 (queue after B19: B18 → B17)**. (B10's status corrected 2026-10-10 — its entry closed 2026-10-08 but this line was never updated; B16's OPEN status corrected 2026-10-10 — its entry closed 2026-10-10 but this line was never updated.)
+Order = user priority unless the Queue says otherwise. Status: **B1–B16 and B19 done (B6/B11 in `f48faf9`; B13 in `817a8f3`; B12 in `403550c`; B7/B8/B9 in this session's commit; B10 in `f88004b`, closed 2026-10-08; B14 in `827a8c0` + closeout `cc76aad`; B15 in `dd54c1e` + closeout `a922976`; B16 in `489fa4a` + closeout `2b21ee9`; B19 in `a2c691b` + closeout below)**; **B20 IN PROGRESS — new 2026-10-12**; **B21 OPEN — new 2026-10-13**; **B17, B18 OPEN — new 2026-10-10**. (B10's status corrected 2026-10-10 — its entry closed 2026-10-08 but this line was never updated; B16's OPEN status corrected 2026-10-10 — its entry closed 2026-10-10 but this line was never updated; line re-baselined 2026-10-13 for B20.)
 
+**Queue:** B20 → B21 → B18 → B17 | **In progress:** B20 | **Done:** B1–B16, B19 | **Updated:** 2026-10-13
+
+<!-- BACKLOG:QUEUE -->
+## Queue (execution order)
+
+1. **B20** — nested in-cell tables → aligned box-drawing tables in pre (supersedes D13 padded ASCII; user-approved sample `render-test/b20-nested-table.md` §B) — doc 0.15.0.
+2. **B21** — missing paragraph breaks (inline-only `<div>` paragraphs coalesce) — doc 0.16.0 (new 2026-10-13; agent-placed after B20, user may re-order).
+3. **B18** — section nav links, unified schema; To Top folded in — doc 0.17.0 (re-sequenced 2026-10-13; was 0.16.0 before B21).
+4. **B17** — inline images become block-level — doc 0.18.0 (re-sequenced 2026-10-13; was 0.17.0 before B21).
+
+<!-- BACKLOG:ITEM:B1 -->
 ## B1. Replace eGain layout tables with standard Markdown layout — **DONE (2026-10-04)**
 
 **User goals (verbatim, 2026-10-04):**
@@ -68,6 +111,7 @@ itself was user-approved.
 commit. **Remaining B1-adjacent residue = the 270 nested-in-cell data
 tables**, which is the same surface B2/B3 touch.
 
+<!-- BACKLOG:ITEM:B2 -->
 ## B2. Dead intra-article anchors (`#1a`, `#RM`, …) — **DONE (2026-10-06)**
 
 **Completion note (2026-10-05):** Full algorithm-records-keeper cycle completed — doc bumped to v0.4.0 (D6 named-anchor preservation + per-article `art_{id}_` namespaces), 8 new/rewritten TESTS cases (case 27 + cases 31–36 + 4 namespaced-group tests), `mdconv.py` v0.4.0 (544 L, 136 tests green). `make gate` green. Committed atomically as `540581e`. **Remaining:** eGain network was down (connection refused) at completion time, so the manual could not be regenerated and the dead-fragment census (acceptance criterion: 0 dead intra-article fragments) is **pending network recovery**. Re-run `make crawl` + the census script (`scratchpads/9u/analyze_dead.py`, adapted for `art_{id}_frag` markers) once eGain is reachable.
@@ -146,6 +190,7 @@ codes) whose targets exist nowhere in the source are a **known source-data
 limitation** (dead in the source pre-B2; no converter change can make a
 target exist that isn't in the source). Text and organization unchanged.
 
+<!-- BACKLOG:ITEM:B3 -->
 ## B3. Slug-dedup robustness (anchor collisions) — **DONE (2026-10-06)**
 
 **Completion note (2026-10-06):** Direction = user-approved Option (a) — a
@@ -215,6 +260,7 @@ split observed in B2 (lowercase month targets resolve, capitalized ones
 don't) is evidence the eGain anchor scheme is its own thing, independent
 of heading slugs — B2 and B3 are related but distinct work.
 
+<!-- BACKLOG:ITEM:B4 -->
 ## B4. Inline emphasis split into standalone paragraphs (goal-1 bug) — **DONE (2026-10-07)**
 
 **Symptom (user-reported 2026-10-04, with screenshots):** emphasized or
@@ -348,6 +394,7 @@ Acceptance verified on the regenerated manual:
 - the 2026-10-06 "new lines randomly inserted in the middle of words"
   report (folded into B4 above) is the same population — resolved by D7.
 
+<!-- BACKLOG:ITEM:B5 -->
 ## B5. GitHub CI gate failure — **DONE (2026-10-05)**
 
 **Problem (user-reported 2026-10-05):** the `ci` workflow on `main`
@@ -382,6 +429,7 @@ previously failing `Algorithm doc index check`.
 
 **Acceptance:** met.
 
+<!-- BACKLOG:ITEM:B6 -->
 ## B6. Layout frames with non-heading label cells escape D5 — **DONE (2026-10-07)**
 
 **User report (verbatim, 2026-10-06, with screenshot of the `5. IMOs`
@@ -570,6 +618,7 @@ extraction.md` v0.6.0, D8 generalization + B11 meta-label carve-out):**
   tracked as **B14**. `make gate` green; GitHub CI green; text and
   organization unchanged.
 
+<!-- BACKLOG:ITEM:B7 -->
 ## B7. TOC entries lack internal links — **DONE (2026-10-07)**
 
 **User report (verbatim, 2026-10-06):** "Add internal links to the
@@ -648,6 +697,7 @@ Landed atomically (doc + tests + code + registry) as
 `feat(assemble): link TOC entries to their own anchors (B7)`; the B15
 docs-only entry rides along in the same commit.
 
+<!-- BACKLOG:ITEM:B8 -->
 ## B8. Dead internal links, incl. "To Top" — **DONE (2026-10-08)**
 
 **User report (verbatim, 2026-10-07):** "Some of the 'To Top' links
@@ -729,6 +779,7 @@ Landed atomically (doc + tests + code + registry + backlog) as
 `feat(assemble): resolve dead #fragments to canonical anchors (B8)`;
 `output/` stays untracked.
 
+<!-- BACKLOG:ITEM:B9 -->
 ## B9. Raw spaces in link destinations — **DONE (2026-10-08)**
 
 **Completion (2026-10-08).** Percent-encode spaces at emit time in
@@ -797,6 +848,7 @@ regenerated manual; the 9 space-anchors resolve in both GitHub and a
 case-sensitive local renderer; a sample of external space-URLs opens
 correctly.
 
+<!-- BACKLOG:ITEM:B10 -->
 ## B10. Broken image links (legacy host) — **DONE (2026-10-08)**
 
 **User report (verbatim, 2026-10-07):** "large number of broken image
@@ -893,6 +945,7 @@ manual (14,096,707 B, 0 failed articles): **0** legacy-host
 occurrences, all **106** image refs on knowva (84 distinct `/img/`
 paths = 48 original + 36 remapped, all on verified-live paths) ✓.
 
+<!-- BACKLOG:ITEM:B11 -->
 ## B11. Change Date frames → quote block (readability deviation) — **DONE (2026-10-07)**
 
 **User request (verbatim, 2026-10-07):** "Deviation for readability:
@@ -981,6 +1034,7 @@ path + D5 T1 carve-out; TESTS case 46 expectation rewritten + T1 case);
 `make gate` green; GitHub CI green; text verbatim, organization as the
 approved deviation.
 
+<!-- BACKLOG:ITEM:B12 -->
 ## B12. CI gate for `algorithms/INDEX.md` staleness — **DONE (2026-10-07)**
 
 **User request (verbatim, 2026-10-07):** "Add CI check for Index.md staleness."
@@ -1050,6 +1104,7 @@ stands in for an `algorithms/` document.
 
 Landed atomically (script + tests + Makefile + CI + this closeout).
 
+<!-- BACKLOG:ITEM:B13 -->
 ## B13. Sloppy double horizontal rules around dissolved frames — **DONE (2026-10-07)**
 
 **User request (verbatim, 2026-10-07):** "For Backlog: Sloppy looking
@@ -1118,6 +1173,7 @@ lines; pair = two hr lines ≤4 lines apart; GFM separator rows like
 `| --- |` are not standalone hr lines). Every dropped rule was a
 decorative eGain `<hr>` wrapper — no paragraph text changed.
 
+<!-- BACKLOG:ITEM:B14 -->
 ## B14. 14 residual leaked layout frames (missed format frames) — **DONE, closed 2026-10-09**
 
 **User request (verbatim, 2026-10-06, B6 origin):** "There appear to be
@@ -1242,6 +1298,7 @@ census verified on that output):**
   `827a8c0…`, conclusion success) —
   <https://github.com/mirph-glitch42/m21-1/actions/runs/37999360788>.
 
+<!-- BACKLOG:ITEM:B15 -->
 ## B15. Change Date frames not in a quote block (B11 gap) — **DONE, closed 2026-10-09**
 
 **User request (verbatim, 2026-10-07):** "For backlog: not all change
@@ -1340,6 +1397,7 @@ CI green.
 **Ordering:** independent of B7–B14; small standalone cycle. Rides the same
 `mdconv` doc as B6/B11/B13/B14.
 
+<!-- BACKLOG:ITEM:B16 -->
 ## B16. Nested-in-cell tables unreadable + one leaked multi-section chunk — **DONE, closed 2026-10-10**
 
 **User request (verbatim, 2026-10-10):** "Identify all tables embedded
@@ -1500,6 +1558,7 @@ ASCII-pipe form); 0 ` — ` hr-flattened joins; TEXT/ORGANIZATION unchanged
 **Ordering:** after B15 (tip `a922976`); rides the same `mdconv` doc as
 B6/B11/B13/B14/B15.
 
+<!-- BACKLOG:ITEM:B17 -->
 ## B17. Inline images break paragraph readability — **OPEN, new 2026-10-10**
 
 **User request (verbatim, 2026-10-10):** "Images in-line with text makes
@@ -1571,9 +1630,10 @@ lines where an `![…]` image shares the line with non-image text (every
 image sits on its own line with blank lines above and below);
 TEXT/ORGANIZATION unchanged (goal 1); `make gate` + GitHub CI green.
 
-**Ordering:** after **B19** and **B18** (both now precede it in the
-queue); rides the same `mdconv` doc as B6/B11/B13/B14/B15/B16/B18/B19.
+**Ordering:** after **B19**, **B18**, and **B21** (all now precede it in the
+queue); rides the same `mdconv` doc as B6/B11/B13/B14/B15/B16/B18/B19/B20/B21. Planned doc version re-sequenced 2026-10-13 per G6: **0.18.0** (was 0.16.0 at creation; B20 inserted ahead at 0.15.0, B18 at 0.16.0; B21 inserted ahead at 0.16.0 on 2026-10-13 — B18 shifted to 0.17.0, B17 to 0.18.0).
 
+<!-- BACKLOG:ITEM:B18 -->
 ## B18. Section nav links — unified schema, To Top folded in — **OPEN, new 2026-10-10**
 
 **User request (verbatim, 2026-10-10):** "For readability, let's format
@@ -1696,9 +1756,10 @@ article-top anchor); TEXT/ORGANIZATION unchanged (goal 1); `make gate`
 
 **Ordering:** after **B19** (nav must be in normal block form before
 reformatting — B19 fixes the inlined nav in the malformed-tag articles)
-and before B17. Rides the same `mdconv` doc as B6/B11/B13/B14/B15/B16/
-B17/B19.
+and before B17 (and after **B21** — queue 2026-10-13: B20 → B21 → B18 → B17). Rides the same `mdconv` doc as B6/B11/B13/B14/B15/B16/
+B17/B19/B20/B21. Planned doc version re-sequenced 2026-10-13 per G6: **0.17.0** (was 0.15.0 at creation; B20 inserted ahead at 0.15.0; B21 inserted ahead at 0.16.0 on 2026-10-13 — B18 shifted to 0.17.0, B17 to 0.18.0).
 
+<!-- BACKLOG:ITEM:B19 -->
 ## B19. Malformed HTML tags inline entire section chunks — **DONE, closed 2026-10-10**
 
 **Discovery (2026-10-10, during the B16 re-census):** the B16 re-census
@@ -1882,6 +1943,239 @@ restores the affected articles' nav to the normal block shape that B18
 will reformat); before B18 and B17. Rides the same `mdconv` doc as
 B6/B11/B13/B14/B15/B16/B17/B18.
 
+<!-- BACKLOG:ITEM:B20 -->
+## B20. Nested in-cell tables → aligned box-drawing tables in pre — **IN PROGRESS, new 2026-10-12**
+
+**Source:** user
+
+**Requested:** 2026-10-12
+
+**Request (verbatim):** "this is good. you may proceed with B20" (2026-10-12)
+and "B20 Needs to be added to the backlog before continuing" (2026-10-12).
+The approach itself was approved over the `render-test/` iteration:
+box-drawing table in a `<pre>` block, W=48 wrap, one blank spacer row
+between rows.
+
+**Problem / evidence:** B16 (DONE) renders every nested in-cell table as a
+padded ASCII pipe table (D13) — 262 corpus lines across 108 articles
+(B16 census, 2026-10-10). Two measured defects, article `554400000181476`
+(source `~/.lmstudio/scratchpads/9u/b16/art_554400000181476.html`):
+
+- **Right border misaligned.** D13 pads by *source* string length, but the
+  user's renderers (VMD, GitHub — both verified by the user) process
+  Markdown inside the cell: `***Note***` renders as 4 columns while the
+  source string is 10 — the `***Note***:` row's border sits 2 columns off
+  (diagnosed 2026-10-12 over the render-test iteration).
+- **No wrap; long cells run unbounded wide.** Max-height row padding was
+  tried and rejected: "There should be 1 blank row of space separation,
+  not this large spacing" (2026-10-12).
+
+**Root cause / census:** GFM cannot nest tables inside table cells, so a
+nested table must render as *text* inside the outer cell. D13's padded
+ASCII shape is that text; the misalignment is width computed on the source
+string instead of the rendered string. Population: the same 262 nested
+tables / 108 articles B16 censed (re-census at closeout).
+
+**Chosen approach (user-approved):** box-drawing monospace table inside a
+`<pre>` block:
+
+- Borders `┌┬┐│├┼┤└┴┘─` — box characters, not pipes, so D3's single-escape
+  pass cannot corrupt them.
+- Every cell wrapped at W=48 *rendered* columns (rendered: `***x***`→x,
+  `**x**`→x, `*x*`→x, `[text](url)`→`text`, `` `code` ``→`code`) —
+  alignment uses rendered width because the renderers process Markdown
+  inside `<pre>` (user-verified for VMD and GitHub).
+- Each row padded to its own rendered width; one blank spacer row between
+  rows (user-rejected max-height padding).
+
+Source of truth: `render-test/gen_b20_nested_table.py` (self-verifying;
+`verify()` asserts every row is exactly the table's LINE_W rendered cols —
+59 in the fixture — and that the word multiset/order is preserved) + the
+approved sample `render-test/b20-nested-table.md` (section B: 26 rows × 59
+cols).
+
+**Work items (in order):**
+
+1. **WI 1 (this change, 2026-10-13):** this entry, written in the same
+   change as the migration of `backlog.md` to the backlog-manager format
+   (index block, section markers, Queue section) — the skill's
+   first-opportunity rule.
+2. **WI 2 — doc cycle first** (algorithm-records-keeper): bump
+   `algorithms/html-to-markdown-section-extraction.md` **v0.14.0 →
+   v0.15.0** — D13 rewritten as this box-drawing `<pre>` form (supersedes
+   D13's padded ASCII; the D13 number is kept so D3/TESTS references stay
+   valid, supersession noted in D13's text); D3 note updated (box chars
+   are not pipes — verify the outer `_render_table` escape pass does not
+   corrupt the `<pre>`/box output); `render_table_inline` pseudocode,
+   §4.1 walkthrough, §5.2 edge-case row, TESTS rows 72/75;
+   `algorithms/INDEX.md` bumped in the same change (B12 gate).
+3. **WI 3 — TDD RED→GREEN:** rewrite test cases 70 and 73 in
+   `tests/test_mdconv.py` to pin the box-drawing `<pre>` output; confirm
+   RED on the D13 code; port the verified generator logic
+   (`rendered_width`, tokenizer, `wrap`, `pad`, `build_box`, `verify`)
+   into `_render_table_inline` in `src/m21_crawl/mdconv.py`; GREEN.
+4. **WI 4 — gate:** `make gate` green (format, lint, indexes, tests,
+   secrets).
+5. **WI 5 — re-crawl + re-census:** full manual re-crawl (0 failed
+   articles); re-census: every nested in-cell table is the box-drawing
+   `<pre>` form, **0** padded-ASCII nested renders remain (the 262
+   population); rendered-width alignment spot-checked with the `verify()`
+   oracle; TEXT/ORGANIZATION unchanged (goal 1).
+6. **WI 6 — atomic commit + CI:** doc + INDEX + tests + code + this
+   entry (explicit paths; **never** `git add -A`); Conventional Commit
+   ≤72 chars; push; GitHub CI green.
+7. **WI 7 — closeout:** record commit sha, CI run id, re-crawl size,
+   re-census numbers in this entry (B14/B15/B16 closeout format); flip
+   status to DONE.
+
+**Blast radius:** `_render_table_inline` + the new rendered-width/wrap/box
+helpers in `src/m21_crawl/mdconv.py`; the algorithm doc (D13, D3 note,
+pseudocode, §4.1, §5.2, TESTS 72/75) + `algorithms/INDEX.md`;
+`tests/test_mdconv.py` (cases 70/73). Must NOT change: outer
+`_render_table` (real GFM tables keep D3 single-escape behavior),
+TEXT/ORGANIZATION, all other render paths (D5/D6/D7/D12/D14/D15).
+
+**Acceptance criteria:** in the regenerated manual — every nested
+in-cell table renders as a box-drawing monospace table inside `<pre>`
+with **every row the same rendered width** (the `verify()` oracle passes
+on all 262); cell text verbatim (word multiset/order preserved; no space
+inserted where the source had none — `***Note***:` stays attached); W=48
+wrap; one blank spacer row between rows; **0** padded-ASCII nested
+renders remain; `make gate` green + GitHub CI green.
+
+**Ordering:** **first** in the queue (user-directed 2026-10-12: "you may
+proceed with B20"); before B18 and B17. Planned doc version **0.15.0**
+(G6: B18 re-sequenced to 0.16.0, B17 to 0.17.0 — recorded in their
+Ordering fields and the Queue section, 2026-10-13).
+
+**Progress:**
+
+- 2026-10-12 — user approved the render-test sample ("this is good") and
+  directed "you may proceed with B20" + "B20 Needs to be added to the
+  backlog before continuing".
+- 2026-10-13 — status → IN PROGRESS; WI 1 in flight (this entry +
+  `backlog.md` migration to the backlog-manager format, index
+  regeneration, `--check`).
+
+**Closeout:** (TBD)
+
+<!-- BACKLOG:ITEM:B21 -->
+## B21. Missing paragraph breaks — inline-only `<div>` paragraphs coalesce — **OPEN (2026-10-13)**
+
+**User report (verbatim, 2026-10-13):** "We are missing a large number of
+paragraph separations in the document. The bolded **Example X:** and
+**Analysis:** indicate the start of a new thought, and should be starting
+a new paragraph." … "There should be 4 paragraphs above the first set of
+bullets, but we are only rendering one. This greatly affects readability.
+The conversion needs to be fixed to handle paragraphs. It appears some
+block level decoding is not working correctly." (User note: "Ignore the
+yellow highlighting. This is a search artifact from searching for the
+correct section on the website.")
+
+**Examples (user screenshots, 2026-10-13) — both in article
+`554400000174869` (Part II, Subpart iii, Chapter 1, Section A —
+Applications for Benefits):**
+
+1. §`II.iii.1.A.2.d` (Examples: situations involving additional
+   correspondence…): the portal renders each `***Example N:***` /
+   `***Analysis:***` block as its **own** paragraph; the manual merges
+   them all into **one** giant paragraph.
+2. §`II.iii.1.A.2.f` (Considering Unclaimed Theories of SC): the portal
+   shows **4** paragraphs above the first bullet list; the manual
+   renders **1**.
+
+**Root cause (traced from the live HTML, 2026-10-13, no guessing):**
+
+1. In the source HTML each paragraph is its **own `<div>`** (inline
+   `<span>`s inside), and paragraphs are separated by **empty
+   `<div></div>` spacer divs** — verified in both example sections
+   (shape: `…</div>` + `<div></div>` + `<div><span…>Example 2…`).
+2. `div` is **not** in `_BLOCK` (D7 deliberately excludes containers).
+   In `_render_block_list`, an **inline-only** `div` takes the
+   `_UNWRAP_BLOCK` branch: `_contains_block_el(child)` is False, so its
+   children are appended to the **current inline run** — consecutive
+   paragraph `<div>`s therefore coalesce into **one** paragraph block.
+3. The empty `<div></div>` spacers render to `""` and contribute no
+   separation at all.
+4. Net effect: N portal paragraphs → **1** markdown paragraph. Affects
+   every article that uses this div-paragraph shape (user: "a large
+   number").
+
+**Blast radius:** `_render_block_list` (the `_UNWRAP_BLOCK` inline-only
+branch) in `src/m21_crawl/mdconv.py`; the algorithm doc (new **D16** —
+D15 is the last numbered rule; TESTS rows 81+); `tests/test_mdconv.py`;
+the assembled manual (re-crawl) — paragraph counts change across
+articles. Open risk: inline-only `div`s the portal keeps joined (e.g.
+two divs forming one sentence inside a frame cell) would now split — the
+WI 6 census must confirm the two example sections split correctly and
+the corpus delta is sane.
+
+**Chosen approach (agent-proposed, flagged for user review):** in
+`_render_block_list`, an **inline-only `div` in block position is a
+paragraph boundary** — flush the current inline run and emit the div's
+flattened inline text as its **own block** (browser semantics: `div` is
+block-level; the portal rendering confirms the intent). Inline-only
+`div`s in **inline context** (inside `<p>`, cells, list items) are
+unaffected. New **D16** rule + doc bump + TDD cases.
+
+**Work items (in order):**
+
+1. **WI 1 (done 2026-10-13):** this backlog entry — symptom + verified
+   root-cause trace (live HTML, both example sections) + blast radius +
+   approach, written before any doc/code.
+2. **WI 2 — census (quantify the population):** count inline-only
+   `<div>` sibling groups at block level in the crawled corpus (or,
+   output-side: merged-paragraph signatures in the current manual) so
+   closeout can report before/after paragraph counts for the two example
+   sections + a corpus delta.
+3. **WI 3 — doc cycle first** (algorithm-records-keeper): bump
+   `algorithms/html-to-markdown-section-extraction.md` **0.15.0 →
+   0.16.0** (queue position; B18 → 0.17.0, B17 → 0.18.0 re-sequenced):
+   new **D16** rule "an inline-only `div` in block position is a
+   paragraph boundary — its inline content becomes its own block; empty
+   `div` spacers render nothing; inline-context `div` is unchanged";
+   update the block-model + edge-case sections + TESTS rows; sync
+   `algorithms/INDEX.md` (gate-enforced).
+4. **WI 4 — TDD RED→GREEN** in `tests/test_mdconv.py` (cases 79+):
+   (a) two inline-only `<div>` siblings separated by an empty
+   `<div></div>` → **two** paragraph blocks (RED on current code —
+   currently one merged paragraph); (b) inline-context `div` (inside
+   `<p>`) unchanged (no regression); GREEN; `make gate` green.
+5. **WI 5 — atomic commit** (explicit paths; **never** `git add -A`;
+   `output/` excluded); Conventional Commit subject ≤72 chars; push;
+   GitHub CI green.
+6. **WI 6 — re-crawl + verify:** full manual re-crawl (0 failed
+   articles); §`II.iii.1.A.2.d` renders each `Example N:`/`Analysis:` as
+   its own paragraph; §`II.iii.1.A.2.f` renders **4** paragraphs before
+   the first bullet list (matching the portal); TEXT/ORGANIZATION
+   otherwise unchanged (goal 1); census delta recorded.
+7. **WI 7 — closeout:** record commit sha, CI run, census deltas here
+   (B16/B19 closeout format); flip the status line to DONE; update
+   Queue/header; regenerate the index + `--check`.
+
+**Acceptance criteria:** in the regenerated manual — §`II.iii.1.A.2.d`
+shows each `***Example N:***`/`***Analysis:***` block as its own
+paragraph (as in the portal); §`II.iii.1.A.2.f` shows **4** paragraphs
+above the first bullet list; inline-context `div` behavior unchanged
+(cases 1–78 still pass); TEXT/ORGANIZATION unchanged (goal 1); `make
+gate` green + GitHub CI green.
+
+**Ordering:** **second** in the queue — after **B20** (in progress),
+before B18/B17 (agent placement 2026-10-13, flagged; user may re-order).
+Planned doc version **0.16.0** (B18 re-sequenced 0.16.0 → 0.17.0, B17
+0.17.0 → 0.18.0).
+
+**Progress:**
+
+- 2026-10-13 — WI 1 done (this entry). Root cause verified from live
+  HTML for **both** example sections: paragraphs are individual
+  inline-only `<div>`s separated by empty `<div></div>` spacers; the
+  `_UNWRAP_BLOCK` inline-only branch coalesces them into one run
+  (D7: `div` not in `_BLOCK`).
+
+**Closeout:** (TBD)
+
+<!-- BACKLOG:CONSTRAINTS -->
 ## Standing constraints (apply to all items)
 
 - The manual's TEXT and ORGANIZATION must not change — formatting only
@@ -1896,3 +2190,6 @@ B6/B11/B13/B14/B15/B16/B17/B18.
   `a2c691b` + this closeout). B18 reformats nav (B19 restored its
   normal block shape); B17 is the inline-image block fix. Each bumps
   the `mdconv` doc in turn (0.15.0 → 0.16.0).
+
+- **Current queue order (2026-10-13, supersedes the 2026-10-10 bullet above):** **B20 → B18 → B17** — B20 (box-drawing `<pre>` tables for nested in-cell tables, superseding D13's padded ASCII) lands first at doc 0.15.0, then B18 at 0.16.0, then B17 at 0.17.0 (G6 re-sequencing; B20 requested 2026-10-12).
+- **Current queue order (2026-10-13, supersedes the bullets above):** **B20 → B21 → B18 → B17** — B20 lands at doc 0.15.0, then B21 (paragraph breaks for inline-only `<div>` paragraphs) at 0.16.0, then B18 at 0.17.0, then B17 at 0.18.0 (B21 inserted 2026-10-13 after the user's paragraph-separation report; B21's queue position is agent-placed — user may re-order).
