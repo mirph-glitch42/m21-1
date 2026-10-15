@@ -25,8 +25,9 @@ Usage:
     python3 build_index.py <doc.md> --check  # verify only; exit 1 if stale
 
 Vendored from the algorithm-records-keeper skill, with one addition: the
-``_resolve_doc`` path-containment guard (SonarCloud S8707). CI enforces the
-index contract via this copy, independent of any local skill directory.
+``_resolve_inside`` / ``_read_doc`` / ``_write_doc`` path-containment guards
+(SonarCloud S8707). CI enforces the index contract via this copy, independent
+of any local skill directory.
 """
 
 from __future__ import annotations
@@ -35,12 +36,15 @@ import argparse
 import os
 import re
 import sys
-from pathlib import Path
 
 BEGIN_RE = re.compile(r"^<!--\s*INDEX:BEGIN\b.*?-->\s*$")
 END_RE = re.compile(r"^<!--\s*INDEX:END\s*-->\s*$")
 SECTION_RE = re.compile(r"^<!--\s*SECTION:([A-Z0-9_]+)\s*-->\s*$")
 TSV_HEADER = "id\tstart_line\tend_line"
+
+
+class StructuralError(Exception):
+    """The document path escapes the algorithms tree; validation cannot proceed."""
 
 
 def fail(msg: str) -> None:
@@ -114,8 +118,8 @@ def render(rows: list[tuple[str, int, int]]) -> list[str]:
     return out
 
 
-def _resolve_doc(path: str) -> str:
-    """Resolve *path* and prove it stays inside the ``algorithms/`` tree.
+def _resolve_inside(base: str, rel: str) -> str:
+    """Resolve *rel* against *base* and prove the result stays inside *base*.
 
     Both paths are canonicalised with :func:`os.path.realpath` first, and
     containment is established with :func:`os.path.commonpath` (not a string
@@ -125,12 +129,31 @@ def _resolve_doc(path: str) -> str:
     in-place write can touch a file outside ``algorithms/`` (SonarCloud
     S8707).
     """
-    cwd = os.path.realpath(os.getcwd())
-    alg = os.path.realpath(Path(__file__).resolve().parent.parent / "algorithms")
-    target = os.path.realpath(os.path.join(cwd, path))
-    if os.path.commonpath([alg, target]) != alg:
-        fail(f"refusing path outside the algorithms dir: {path!r}")
+    root = os.path.realpath(base)
+    target = os.path.realpath(os.path.join(root, rel))
+    if os.path.commonpath([root, target]) != root:
+        raise StructuralError(f"refusing path outside the algorithms dir: {rel!r}")
     return target
+
+
+def _read_doc(base: str, rel: str) -> str:
+    """Read a text document *inside* *base*; escape attempts are structural."""
+    target = _resolve_inside(base, rel)
+    try:
+        with open(target, encoding="utf-8") as fh:
+            return fh.read()
+    except OSError as exc:
+        raise StructuralError(f"cannot read {target}: {exc}") from exc
+
+
+def _write_doc(base: str, rel: str, text: str) -> None:
+    """Write a text document *inside* *base*; escape attempts are structural."""
+    target = _resolve_inside(base, rel)
+    try:
+        with open(target, "w", encoding="utf-8") as fh:
+            fh.write(text)
+    except OSError as exc:
+        raise StructuralError(f"cannot write {target}: {exc}") from exc
 
 
 def main() -> None:
@@ -141,9 +164,16 @@ def main() -> None:
     )
     args = ap.parse_args()
 
-    doc_path = _resolve_doc(args.doc)
-    with open(doc_path, encoding="utf-8") as fh:
-        raw = fh.read()
+    base = os.path.realpath(os.path.join(os.getcwd(), "algorithms"))
+    rel = args.doc
+    for prefix in ("algorithms/", "./algorithms/"):
+        if rel.startswith(prefix):
+            rel = rel[len(prefix) :]
+            break
+    try:
+        raw = _read_doc(base, rel)
+    except StructuralError as exc:
+        fail(str(exc))
     had_trailing_newline = raw.endswith("\n")
     lines = raw.splitlines()
     total = len(lines)
@@ -164,9 +194,10 @@ def main() -> None:
     out = "\n".join(new_lines)
     if had_trailing_newline:
         out += "\n"
-    doc_path = _resolve_doc(args.doc)
-    with open(doc_path, "w", encoding="utf-8") as fh:
-        fh.write(out)
+    try:
+        _write_doc(base, rel, out)
+    except StructuralError as exc:
+        fail(str(exc))
     print(f"{args.doc}: index updated ({len(rows)} entries)")
 
 

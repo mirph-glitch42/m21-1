@@ -1,7 +1,9 @@
 """gen_b20: write-sink containment for the fixture path (TDD, SonarCloud S2083).
 
-The guard must accept the repo-derived ``FIXTURE`` path and refuse any
-path that resolves outside ``render-test/`` (``..`` or absolute).
+The guard must accept the fixture name inside the ``render-test/`` base and
+refuse any relative path that resolves outside the tree (``..`` or
+absolute) — the read and write sinks raise ``StructuralError``, nothing
+touched.
 """
 
 import importlib.util
@@ -26,16 +28,23 @@ def _load():
 gb = _load()
 
 
-def test_resolve_fixture_accepts_fixture() -> None:
-    got = gb._resolve_fixture(gb.FIXTURE)
+def test_resolve_inside_accepts_fixture() -> None:
+    base = str(REPO / "render-test")
+    got = gb._resolve_inside(base, "b20-nested-table.md")
     assert os.path.realpath(got) == os.path.realpath(REPO / "render-test" / "b20-nested-table.md")
 
 
-def test_resolve_fixture_rejects_dotdot_escape() -> None:
-    with pytest.raises(ValueError, match="refusing to write outside render-test"):
-        gb._resolve_fixture(REPO / "render-test" / ".." / "evil.md")
+def test_read_fixture_refuses_dotdot_escape(tmp_path: Path) -> None:
+    """The read sink itself rejects escapes, even when the target file exists."""
+    (tmp_path / "evil.md").write_text("secret", encoding="utf-8")
+    with pytest.raises(gb.StructuralError, match="refusing to write outside render-test"):
+        gb._read_fixture(str(tmp_path), "../evil.md")
+    assert (tmp_path / "evil.md").read_text(encoding="utf-8") == "secret"
 
 
-def test_resolve_fixture_rejects_absolute_outside(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="refusing to write outside render-test"):
-        gb._resolve_fixture(tmp_path / "evil.md")
+def test_write_fixture_refuses_absolute_outside(tmp_path: Path) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    with pytest.raises(gb.StructuralError, match="refusing to write outside render-test"):
+        gb._write_fixture(str(outside), str(tmp_path / "evil.md"), "evil")
+    assert not (tmp_path / "evil.md").exists()

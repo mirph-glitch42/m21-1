@@ -466,22 +466,22 @@ def test_completeness_gate_a_survives_skipping() -> None:
 # --- --out path-containment guard (SonarCloud S8707) ----------------------
 
 
-def test_resolve_out_accepts_inside(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.chdir(tmp_path)
-    got = cli._resolve_out("output/manual.md")
+def test_resolve_inside_accepts_inside(tmp_path) -> None:
+    got = cli._resolve_inside(str(tmp_path), "output/manual.md")
     assert os.path.realpath(got) == os.path.realpath(tmp_path / "output" / "manual.md")
 
 
-def test_resolve_out_rejects_dotdot(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.chdir(tmp_path)
-    with pytest.raises(ValueError, match="refusing to write outside"):
-        cli._resolve_out("../escape.md")
+def test_write_deliverable_refuses_dotdot(tmp_path) -> None:
+    """The write sink itself rejects escapes, even when the target file exists."""
+    (tmp_path / "escape.md").write_text("do not touch", encoding="utf-8")
+    with pytest.raises(cli.StructuralError, match="refusing to write outside"):
+        cli._write_deliverable(str(tmp_path), "../escape.md", "evil")
+    assert (tmp_path / "escape.md").read_text(encoding="utf-8") == "do not touch"
 
 
-def test_resolve_out_rejects_absolute(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.chdir(tmp_path)
-    with pytest.raises(ValueError, match="refusing to write outside"):
-        cli._resolve_out("/etc/escape.md")
+def test_write_deliverable_refuses_absolute(tmp_path) -> None:
+    with pytest.raises(cli.StructuralError, match="refusing to write outside"):
+        cli._write_deliverable(str(tmp_path), "/etc/escape.md", "evil")
 
 
 def test_main_refuses_outside_workdir(

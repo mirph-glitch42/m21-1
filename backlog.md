@@ -2,31 +2,32 @@
 
 <!-- INDEX:BEGIN format=tsv version=1 -->
 id	title	status	start_line	end_line
-INDEX_BLOCK	-	-	3	30
-HEADER	-	-	32	43
-QUEUE	-	-	44	51
-B1	Replace eGain layout tables with standard Markdown layout	DONE	52	113
-B2	Dead intra-article anchors (`#1a`, `#RM`, …)	DONE	114	192
-B3	Slug-dedup robustness (anchor collisions)	DONE	193	262
-B4	Inline emphasis split into standalone paragraphs (goal-1 bug)	DONE	263	396
-B5	GitHub CI gate failure	DONE	397	431
-B6	Layout frames with non-heading label cells escape D5	DONE	432	620
-B7	TOC entries lack internal links	DONE	621	699
-B8	Dead internal links, incl. "To Top"	DONE	700	781
-B9	Raw spaces in link destinations	DONE	782	850
-B10	Broken image links (legacy host)	DONE	851	947
-B11	Change Date frames → quote block (readability deviation)	DONE	948	1036
-B12	CI gate for `algorithms/INDEX.md` staleness	DONE	1037	1106
-B13	Sloppy double horizontal rules around dissolved frames	DONE	1107	1175
-B14	14 residual leaked layout frames (missed format frames)	DONE	1176	1300
-B15	Change Date frames not in a quote block (B11 gap)	DONE	1301	1399
-B16	Nested-in-cell tables unreadable + one leaked multi-section chunk	DONE	1400	1560
-B17	Inline images break paragraph readability	OPEN	1561	1635
-B18	Section nav links — unified schema, To Top folded in	OPEN	1636	1761
-B19	Malformed HTML tags inline entire section chunks	DONE	1762	1945
-B20	Nested in-cell tables → aligned box-drawing tables in pre	IN_PROGRESS	1946	2061
-B21	Missing paragraph breaks — inline-only `<div>` paragraphs coalesce	OPEN	2062	2177
-CONSTRAINTS	-	-	2178	2195
+INDEX_BLOCK	-	-	3	31
+HEADER	-	-	33	44
+QUEUE	-	-	45	53
+B1	Replace eGain layout tables with standard Markdown layout	DONE	54	115
+B2	Dead intra-article anchors (`#1a`, `#RM`, …)	DONE	116	194
+B3	Slug-dedup robustness (anchor collisions)	DONE	195	264
+B4	Inline emphasis split into standalone paragraphs (goal-1 bug)	DONE	265	398
+B5	GitHub CI gate failure	DONE	399	433
+B6	Layout frames with non-heading label cells escape D5	DONE	434	622
+B7	TOC entries lack internal links	DONE	623	701
+B8	Dead internal links, incl. "To Top"	DONE	702	783
+B9	Raw spaces in link destinations	DONE	784	852
+B10	Broken image links (legacy host)	DONE	853	949
+B11	Change Date frames → quote block (readability deviation)	DONE	950	1038
+B12	CI gate for `algorithms/INDEX.md` staleness	DONE	1039	1108
+B13	Sloppy double horizontal rules around dissolved frames	DONE	1109	1177
+B14	14 residual leaked layout frames (missed format frames)	DONE	1178	1302
+B15	Change Date frames not in a quote block (B11 gap)	DONE	1303	1401
+B16	Nested-in-cell tables unreadable + one leaked multi-section chunk	DONE	1402	1562
+B17	Inline images break paragraph readability	OPEN	1563	1637
+B18	Section nav links — unified schema, To Top folded in	OPEN	1638	1763
+B19	Malformed HTML tags inline entire section chunks	DONE	1764	1947
+B20	Nested in-cell tables → aligned box-drawing tables in pre	IN_PROGRESS	1948	2063
+B21	Missing paragraph breaks — inline-only `<div>` paragraphs coalesce	OPEN	2064	2179
+B22	GitHub CI gate failing — SonarCloud security issues on new code	OPEN	2180	2224
+CONSTRAINTS	-	-	2225	2243
 <!-- INDEX:END -->
 
 <!-- BACKLOG:HEADER -->
@@ -37,17 +38,18 @@ session can start without re-deriving context: problem (with measured
 evidence), blast radius, the process the governing skills require, open
 decisions, and acceptance criteria.
 
-Order = user priority unless the Queue says otherwise. Status: **B1–B16 and B19 done (B6/B11 in `f48faf9`; B13 in `817a8f3`; B12 in `403550c`; B7/B8/B9 in this session's commit; B10 in `f88004b`, closed 2026-10-08; B14 in `827a8c0` + closeout `cc76aad`; B15 in `dd54c1e` + closeout `a922976`; B16 in `489fa4a` + closeout `2b21ee9`; B19 in `a2c691b` + closeout below)**; **B20 IN PROGRESS — new 2026-10-12**; **B21 OPEN — new 2026-10-13**; **B17, B18 OPEN — new 2026-10-10**. (B10's status corrected 2026-10-10 — its entry closed 2026-10-08 but this line was never updated; B16's OPEN status corrected 2026-10-10 — its entry closed 2026-10-10 but this line was never updated; line re-baselined 2026-10-13 for B20.)
+Order = user priority unless the Queue says otherwise. Status: **B1–B16 and B19 done (B6/B11 in `f48faf9`; B13 in `817a8f3`; B12 in `403550c`; B7/B8/B9 in this session's commit; B10 in `f88004b`, closed 2026-10-08; B14 in `827a8c0` + closeout `cc76aad`; B15 in `dd54c1e` + closeout `a922976`; B16 in `489fa4a` + closeout `2b21ee9`; B19 in `a2c691b` + closeout below)**; **B20 IN PROGRESS — new 2026-10-12**; **B21 OPEN — new 2026-10-13**; **B22 OPEN — new 2026-10-14 (CI gate, blocks pushes)**; **B17, B18 OPEN — new 2026-10-10**. (B10's status corrected 2026-10-10 — its entry closed 2026-10-08 but this line was never updated; B16's OPEN status corrected 2026-10-10 — its entry closed 2026-10-10 but this line was never updated; line re-baselined 2026-10-13 for B20.)
 
-**Queue:** B20 → B21 → B18 → B17 | **In progress:** B20 | **Done:** B1–B16, B19 | **Updated:** 2026-10-13
+**Queue:** B22 (gate, no version) → B20 → B21 → B18 → B17 | **In progress:** B20 | **Done:** B1–B16, B19 | **Updated:** 2026-10-14
 
 <!-- BACKLOG:QUEUE -->
 ## Queue (execution order)
 
-1. **B20** — nested in-cell tables → aligned box-drawing tables in pre (supersedes D13 padded ASCII; user-approved sample `render-test/b20-nested-table.md` §B) — doc 0.15.0.
-2. **B21** — missing paragraph breaks (inline-only `<div>` paragraphs coalesce) — doc 0.16.0 (new 2026-10-13; agent-placed after B20, user may re-order).
-3. **B18** — section nav links, unified schema; To Top folded in — doc 0.17.0 (re-sequenced 2026-10-13; was 0.16.0 before B21).
-4. **B17** — inline images become block-level — doc 0.18.0 (re-sequenced 2026-10-13; was 0.17.0 before B21).
+1. **B22** — GitHub CI gate failing (SonarCloud security gate); blocks all pushes — no version (new 2026-10-14; user: fix before any more pushes).
+2. **B20** — nested in-cell tables → aligned box-drawing tables in pre (supersedes D13 padded ASCII; user-approved sample `render-test/b20-nested-table.md` §B) — doc 0.15.0.
+3. **B21** — missing paragraph breaks (inline-only `<div>` paragraphs coalesce) — doc 0.16.0 (new 2026-10-13; agent-placed after B20, user may re-order).
+4. **B18** — section nav links, unified schema; To Top folded in — doc 0.17.0 (re-sequenced 2026-10-13; was 0.16.0 before B21).
+5. **B17** — inline images become block-level — doc 0.18.0 (re-sequenced 2026-10-13; was 0.17.0 before B21).
 
 <!-- BACKLOG:ITEM:B1 -->
 ## B1. Replace eGain layout tables with standard Markdown layout — **DONE (2026-10-04)**
@@ -2175,6 +2177,51 @@ Planned doc version **0.16.0** (B18 re-sequenced 0.16.0 → 0.17.0, B17
 
 **Closeout:** (TBD)
 
+<!-- BACKLOG:ITEM:B22 -->
+## B22. GitHub CI gate failing — SonarCloud security issues on new code — **OPEN (2026-10-14)**
+
+**Source:** user
+**Requested:** 2026-10-14
+
+**Request (verbatim, 2026-10-14):** "For the backlog: Github CI Gate failing. Fix CI Gate before any more pushes." (Related user messages: "I turned on agent access through GitHub Apps for SonarCube Cloud." / "I had the wrong app installed in github. Agent app now installed" — the SonarCloud public API turned out to be sufficient; no token path used.)
+
+**Problem / evidence (measured 2026-10-14):** commit `f0e1ade` pushed to `main`; CI failed. SonarCloud **Security Rating on New Code** gate red — **7** open issues (all created 2026-10-14T18:33 = f0e1ade analysis; full 42-issue history cached at `/tmp/sonar_all.json`):
+
+- `pythonsecurity:S2083` BLOCKER — `render-test/gen_b20_nested_table.py:235` (`fixture.write_text`)
+- `pythonsecurity:S8707` MAJOR ×2 — `scripts/build_index.py:145` (read open), `:168` (write open)
+- `pythonsecurity:S8707` MAJOR ×2 — `src/m21_crawl/cli.py:251` (makedirs), `:252` (open)
+- `githubactions:S8541` MAJOR — `.github/workflows/ci.yml:36` — pip upgrade line missing `--only-binary :all:`
+- `githubactions:S8544` MAJOR — `.github/workflows/ci.yml:37` — pip install needs `--require-hashes` + per-req sha256 hashes in `requirements.lock`
+
+**Root cause / census (issue-history analysis, complete 2026-10-14):** Sonar's 42-issue history (incl. resolved) shows `scripts/check_index_registry.py` was flagged S8707 (2026-10-08) and is now **RESOLVED** — its guard shape **was credited**. Identical-intent guards in the other 3 files were **not** credited (build_index/cli re-opened 2026-10-14 at new lines; gen_b20 re-flagged at L235). ci.yml S8541/S8544 open since 2026-10-03 — the pip pin alone did not fix them. Credited shape (`check_index_registry.py` L82-101, L263-272): 2-arg `_resolve_inside(base, rel)` with `os.path.join(root, rel)` + `commonpath` check; module-local `StructuralError`; **guard call + sink in ONE helper** (`_read_lines`); caller passes the base; `main()` catches the custom exception → exit 2. Rejected shapes differ in: 1-arg guard, base computed inside the guard, built-in `ValueError` or `fail()`/`sys.exit`, and/or sinks outside the protected scope.
+
+**Chosen approach (agent design, flagged for user review 2026-10-14):** mirror the credited shape exactly in the 3 rejected files — 2-arg `(base, rel)` guard, module-local `StructuralError` per file, one helper per sink pair that resolves then opens/writes, `main()` computes the base and catches the custom exception (cli keeps exit 3, build_index keeps exit 2). ci.yml: add `--only-binary :all:` to the pip upgrade line; add `--require-hashes` and sha256 hash continuations for all 15 pinned packages in `requirements.lock` (hashes fetched from the PyPI JSON API — never guessed).
+
+**Work items (in order):**
+
+1. **WI 1 (done 2026-10-14):** this backlog entry + guard-shape census (credited vs rejected) + hash plan, all before any code.
+2. **WI 2 — guard rewrites:** `scripts/build_index.py`, `src/m21_crawl/cli.py`, `render-test/gen_b20_nested_table.py` to the credited shape; update `tests/test_cli.py`, `tests/test_build_index_guard.py`, `tests/test_gen_b20_guard.py` expectations (2-arg calls, `StructuralError`); `make gate` green.
+3. **WI 3 — CI pinning:** ci.yml L36/L37 fix; generate `requirements.lock` hash continuations from the PyPI JSON API (`files[].digests.sha256`, all wheels).
+4. **WI 4 — commit + push (gated):** explicit path list (**never** `git add -A`; `output/` stays untracked); Conventional Commit subject ≤72 chars; `make gate` green first; push; poll check-runs — **both** the `ci` and the SonarCloud checks must be green.
+5. **WI 5 — fallback (only if still red):** ONE further shape iteration; if still red, ask the user before any `# nosem` suppression (user approval required).
+6. **WI 6 — closeout:** record commit sha + both CI runs + before/after issue counts here; flip status to DONE; update Queue/header; regenerate the index + `--check`; then resume the queue (B20 closeout push).
+
+**Blast radius:** `scripts/build_index.py`, `src/m21_crawl/cli.py`, `render-test/gen_b20_nested_table.py`, the three guard test files, `.github/workflows/ci.yml`, `requirements.lock`. Must NOT change: `scripts/check_index_registry.py` (credited template — untouched), documented exit codes (cli 0/1/2/3, build_index 2), the `output/` exclusion, and the manual's TEXT/ORGANIZATION (no crawl changes here).
+
+**Acceptance criteria:** on the commit that lands this work — GitHub `ci` check green **and** SonarCloud check green; all **7** issues resolved in SonarCloud (or a user-approved suppression recorded in this entry); `make gate` green locally; no `output/` in the commit; the gate no longer blocks the next push (B20 closeout push lands CI-green).
+
+**Ordering:** hard prerequisite for the next push (user: "Fix CI Gate before any more pushes") — queue position 1, ahead of B20's closeout push; **no version** (pure infrastructure, no doc bump). B20 stays IN PROGRESS locally; its closeout push is gated on this item landing.
+
+**Progress:**
+
+- 2026-10-14 — WI 1 done (this entry). Guard-shape census complete: credited template identified in `check_index_registry.py`; 7-issue list with line numbers captured from the public SonarCloud API.
+
+**Closeout:** (TBD)
+
+
+
+
+
 <!-- BACKLOG:CONSTRAINTS -->
 ## Standing constraints (apply to all items)
 
@@ -2193,3 +2240,4 @@ Planned doc version **0.16.0** (B18 re-sequenced 0.16.0 → 0.17.0, B17
 
 - **Current queue order (2026-10-13, supersedes the 2026-10-10 bullet above):** **B20 → B18 → B17** — B20 (box-drawing `<pre>` tables for nested in-cell tables, superseding D13's padded ASCII) lands first at doc 0.15.0, then B18 at 0.16.0, then B17 at 0.17.0 (G6 re-sequencing; B20 requested 2026-10-12).
 - **Current queue order (2026-10-13, supersedes the bullets above):** **B20 → B21 → B18 → B17** — B20 lands at doc 0.15.0, then B21 (paragraph breaks for inline-only `<div>` paragraphs) at 0.16.0, then B18 at 0.17.0, then B17 at 0.18.0 (B21 inserted 2026-10-13 after the user's paragraph-separation report; B21's queue position is agent-placed — user may re-order).
+- **Current queue order (2026-10-14, supersedes the bullets above):** **B22 → B20 → B21 → B18 → B17** — B22 (CI gate fix, no version, blocks all pushes) lands first; B20's closeout push is gated on it. Doc versions unchanged: B20 0.15.0, B21 0.16.0, B18 0.17.0, B17 0.18.0.

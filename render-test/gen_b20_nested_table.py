@@ -33,24 +33,48 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-FIXTURE = REPO_ROOT / "render-test" / "b20-nested-table.md"
+FIXTURE_NAME = "b20-nested-table.md"
 
 
-def _resolve_fixture(path: Path) -> Path:
-    """Resolve *path* and prove it stays inside the ``render-test/`` tree.
+class StructuralError(Exception):
+    """The fixture path escapes the render-test tree; the write cannot proceed."""
+
+
+def _resolve_inside(base: str, rel: str) -> str:
+    """Resolve *rel* against *base* and prove the result stays inside *base*.
 
     Both paths are canonicalised with :func:`os.path.realpath` first, and
     containment is established with :func:`os.path.commonpath` (not a string
     prefix), so neither ``..`` sequences nor symlink escapes can leave the
-    render-test tree. ``FIXTURE`` is repo-derived, so the guard is a no-op
-    in practice — but the write sink is pinned to ``render-test/`` for any
-    future caller (SonarCloud S2083).
+    render-test tree. This is the module's single file-path resolver and the
+    one entry point for file access, so a LLM-supplied path cannot read or
+    write outside ``render-test/`` (SonarCloud S2083).
     """
-    root = os.path.realpath(REPO_ROOT / "render-test")
-    target = os.path.realpath(path)
+    root = os.path.realpath(base)
+    target = os.path.realpath(os.path.join(root, rel))
     if os.path.commonpath([root, target]) != root:
-        raise ValueError(f"refusing to write outside render-test/: {path!r}")
-    return Path(target)
+        raise StructuralError(f"refusing to write outside render-test/: {rel!r}")
+    return target
+
+
+def _read_fixture(base: str, rel: str) -> str:
+    """Read the fixture *inside* *base*; escape attempts are structural."""
+    target = _resolve_inside(base, rel)
+    try:
+        with open(target, encoding="utf-8") as fh:
+            return fh.read()
+    except OSError as exc:
+        raise StructuralError(f"cannot read {target}: {exc}") from exc
+
+
+def _write_fixture(base: str, rel: str, text: str) -> None:
+    """Write the fixture *inside* *base*; escape attempts are structural."""
+    target = _resolve_inside(base, rel)
+    try:
+        with open(target, "w", encoding="utf-8") as fh:
+            fh.write(text)
+    except OSError as exc:
+        raise StructuralError(f"cannot write {target}: {exc}") from exc
 
 
 W = 48  # Max action-cell text width, in rendered characters.
@@ -218,8 +242,12 @@ def main() -> int:
         "change the representation for the specific correspondence | " + INTRO + "<br>" + pre + " |"
     )
 
-    fixture = _resolve_fixture(FIXTURE)
-    old = fixture.read_text(encoding="utf-8")
+    base = os.path.realpath(str(REPO_ROOT / "render-test"))
+    try:
+        old = _read_fixture(base, FIXTURE_NAME)
+    except StructuralError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
     lines = old.split("\n")
     target = "## B. AFTER (proposed B20)"
     idx = next(i for i, line in enumerate(lines) if line.startswith(target))
@@ -232,10 +260,14 @@ def main() -> int:
     )
     first_data_row = lines[data_start]
     new_lines = lines[:data_start] + [first_data_row, new_row]
-    fixture.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+    try:
+        _write_fixture(base, FIXTURE_NAME, "\n".join(new_lines) + "\n")
+    except StructuralError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
 
     # Console report (rendered widths per row for review)
-    print(f"fixture written: {FIXTURE}")
+    print(f"fixture written: {REPO_ROOT / 'render-test' / FIXTURE_NAME}")
     print(f"pre-block lines: {len(box.splitlines())}, rendered line width: {LINE_W}")
     wrapped = {step: wrap(action, W) for step, action in ROWS}
     for step, act in wrapped.items():

@@ -192,21 +192,38 @@ def crawl_manual(
     return assemble(articles, expected_count=listed - excluded), failures
 
 
-def _resolve_out(path: str) -> str:
-    """Resolve *path* and prove it stays inside the working directory.
+class StructuralError(Exception):
+    """The output path escapes the working directory; the write cannot proceed."""
+
+
+def _resolve_inside(base: str, rel: str) -> str:
+    """Resolve *rel* against *base* and prove the result stays inside *base*.
 
     Both paths are canonicalised with :func:`os.path.realpath` first, and
     containment is established with :func:`os.path.commonpath` (not a string
     prefix), so neither ``..`` sequences nor symlink escapes can leave the
-    working directory. ``--out`` is user/LLM-supplied, and this resolver is
-    the module's single file-path entry point, so the write sink cannot
-    create or write files outside the project (SonarCloud S8707).
+    working directory. This is the module's single file-path resolver and the
+    one entry point for file access, so a LLM-supplied ``--out`` argument
+    cannot write outside the project (SonarCloud S8707).
     """
-    root = os.path.realpath(os.getcwd())
-    target = os.path.realpath(os.path.join(root, path))
+    root = os.path.realpath(base)
+    target = os.path.realpath(os.path.join(root, rel))
     if os.path.commonpath([root, target]) != root:
-        raise ValueError(f"refusing to write outside the working directory: {path!r}")
+        raise StructuralError(f"refusing to write outside the working directory: {rel!r}")
     return target
+
+
+def _write_deliverable(base: str, rel: str, markdown: str) -> None:
+    """Write the deliverable *inside* *base*; escape attempts are structural."""
+    target = _resolve_inside(base, rel)
+    out_dir = os.path.dirname(target)
+    try:
+        if out_dir:
+            os.makedirs(out_dir, exist_ok=True)
+        with open(target, "w", encoding="utf-8") as handle:
+            handle.write(markdown)
+    except OSError as exc:
+        raise StructuralError(f"cannot write {target}: {exc}") from exc
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -241,16 +258,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
+    root = os.path.realpath(os.getcwd())
     try:
-        out_path = _resolve_out(args.out)
-    except ValueError as exc:
+        _write_deliverable(root, args.out, markdown)
+    except StructuralError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 3
-    out_dir = os.path.dirname(out_path)
-    if out_dir:
-        os.makedirs(out_dir, exist_ok=True)
-    with open(out_path, "w", encoding="utf-8") as handle:
-        handle.write(markdown)
 
     if failures:
         print(f"warning: {failures} article(s) could not be converted", file=sys.stderr)

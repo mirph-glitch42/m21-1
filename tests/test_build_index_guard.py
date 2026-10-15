@@ -28,26 +28,27 @@ def _load():
 bi = _load()
 
 
-def test_resolve_doc_accepts_algorithm_doc(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.chdir(REPO)
-    got = bi._resolve_doc("algorithms/html-to-markdown-section-extraction.md")
+def test_resolve_inside_accepts_algorithm_doc() -> None:
+    base = str(REPO / "algorithms")
+    got = bi._resolve_inside(base, "html-to-markdown-section-extraction.md")
     assert os.path.realpath(got) == os.path.realpath(
         REPO / "algorithms" / "html-to-markdown-section-extraction.md"
     )
 
 
-def test_resolve_doc_rejects_dotdot_escape() -> None:
-    with pytest.raises(SystemExit) as excinfo:
-        bi._resolve_doc("../backlog.md")
-    assert excinfo.value.code == 2
+def test_read_doc_refuses_escape(tmp_path: Path) -> None:
+    """The read sink itself rejects escapes, even when the target file exists."""
+    (tmp_path / "outside.md").write_text("secret", encoding="utf-8")
+    with pytest.raises(bi.StructuralError, match="outside the algorithms dir"):
+        bi._read_doc(str(tmp_path), "../outside.md")
 
 
-def test_resolve_doc_rejects_absolute_outside() -> None:
-    with pytest.raises(SystemExit) as excinfo:
-        bi._resolve_doc("/etc/hostname")
-    assert excinfo.value.code == 2
+def test_write_doc_refuses_escape(tmp_path: Path) -> None:
+    """The write sink itself rejects escapes, even when the target exists."""
+    (tmp_path / "outside.md").write_text("do not touch", encoding="utf-8")
+    with pytest.raises(bi.StructuralError, match="outside the algorithms dir"):
+        bi._write_doc(str(tmp_path), "../outside.md", "evil")
+    assert (tmp_path / "outside.md").read_text(encoding="utf-8") == "do not touch"
 
 
 def test_cli_refuses_escape_before_any_io(tmp_path: Path) -> None:
