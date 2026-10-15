@@ -24,11 +24,11 @@ B16	Nested-in-cell tables unreadable + one leaked multi-section chunk	DONE	1403	
 B17	Inline images break paragraph readability	OPEN	1564	1638
 B18	Section nav links — unified schema, To Top folded in	OPEN	1639	1764
 B19	Malformed HTML tags inline entire section chunks	DONE	1765	1948
-B20	Nested in-cell tables → aligned box-drawing tables in pre	IN_PROGRESS	1949	2064
-B21	Missing paragraph breaks — inline-only `<div>` paragraphs coalesce	OPEN	2065	2180
-B22	GitHub CI gate failing — SonarCloud security issues on new code	DONE	2181	2227
-B23	SonarCloud Reliability rating to A (new code)	OPEN	2228	2257
-CONSTRAINTS	-	-	2258	2277
+B20	Nested in-cell tables → aligned box-drawing tables in pre	DONE	1949	2089
+B21	Missing paragraph breaks — inline-only `<div>` paragraphs coalesce	OPEN	2090	2205
+B22	GitHub CI gate failing — SonarCloud security issues on new code	DONE	2206	2252
+B23	SonarCloud Reliability rating to A (new code)	OPEN	2253	2282
+CONSTRAINTS	-	-	2283	2303
 <!-- INDEX:END -->
 
 <!-- BACKLOG:HEADER -->
@@ -39,9 +39,9 @@ session can start without re-deriving context: problem (with measured
 evidence), blast radius, the process the governing skills require, open
 decisions, and acceptance criteria.
 
-Order = user priority unless the Queue says otherwise. Status: **B1–B16 and B19 done (B6/B11 in `f48faf9`; B13 in `817a8f3`; B12 in `403550c`; B7/B8/B9 in this session's commit; B10 in `f88004b`, closed 2026-10-08; B14 in `827a8c0` + closeout `cc76aad`; B15 in `dd54c1e` + closeout `a922976`; B16 in `489fa4a` + closeout `2b21ee9`; B19 in `a2c691b` + closeout below)**; **B20 IN PROGRESS — new 2026-10-12**; **B21 OPEN — new 2026-10-13**; **B22 done 2026-10-15 (in `aa4362b`)**; **B17, B18 OPEN — new 2026-10-10**; **B23 OPEN — new 2026-10-15 (low priority, end of queue)**. (B10's status corrected 2026-10-10 — its entry closed 2026-10-08 but this line was never updated; B16's OPEN status corrected 2026-10-10 — its entry closed 2026-10-10 but this line was never updated; line re-baselined 2026-10-13 for B20.)
+Order = user priority unless the Queue says otherwise. Status: **B1–B16 and B19 done (B6/B11 in `f48faf9`; B13 in `817a8f3`; B12 in `403550c`; B7/B8/B9 in this session's commit; B10 in `f88004b`, closed 2026-10-08; B14 in `827a8c0` + closeout `cc76aad`; B15 in `dd54c1e` + closeout `a922976`; B16 in `489fa4a` + closeout `2b21ee9`; B19 in `a2c691b` + closeout below)**; **B20 done 2026-10-15 (in `5611151`/`2ddb718`; closeout in its entry)**; **B21 OPEN — new 2026-10-13**; **B22 done 2026-10-15 (in `aa4362b`)**; **B17, B18 OPEN — new 2026-10-10**; **B23 OPEN — new 2026-10-15 (low priority, end of queue)**. (B10's status corrected 2026-10-10 — its entry closed 2026-10-08 but this line was never updated; B16's OPEN status corrected 2026-10-10 — its entry closed 2026-10-10 but this line was never updated; line re-baselined 2026-10-13 for B20.)
 
-**Queue:** B20 → B21 → B18 → B17 → B23 (low) | **In progress:** B20 | **Done:** B1–B16, B19, B22 | **Updated:** 2026-10-15
+**Queue:** B21 → B18 → B17 → B23 (low) | **In progress:** — | **Done:** B1–B20, B22 | **Updated:** 2026-10-15
 
 <!-- BACKLOG:QUEUE -->
 ## Queue (execution order)
@@ -1947,7 +1947,7 @@ will reformat); before B18 and B17. Rides the same `mdconv` doc as
 B6/B11/B13/B14/B15/B16/B17/B18.
 
 <!-- BACKLOG:ITEM:B20 -->
-## B20. Nested in-cell tables → aligned box-drawing tables in pre — **IN PROGRESS, new 2026-10-12**
+## B20. Nested in-cell tables → aligned box-drawing tables in pre — **DONE (2026-10-15)**
 
 **Source:** user
 
@@ -2056,11 +2056,36 @@ Ordering fields and the Queue section, 2026-10-13).
 - 2026-10-12 — user approved the render-test sample ("this is good") and
   directed "you may proceed with B20" + "B20 Needs to be added to the
   backlog before continuing".
-- 2026-10-13 — status → IN PROGRESS; WI 1 in flight (this entry +
-  `backlog.md` migration to the backlog-manager format, index
-  regeneration, `--check`).
+- 2026-10-14 — code complete: box-drawing `<pre>` renderer,
+  rendered-width wrap, `verify()` oracle; final fix `2ddb718`
+  (3-level nested box lines kept atomic); 230 tests green.
+- 2026-10-15 — re-crawl + full acceptance verification green (below);
+  status → DONE.
 
-**Closeout:** (TBD)
+**Closeout (2026-10-15, fresh crawl 14,759,857 B, 0 failed articles —
+census verified on that output):**
+
+- **Code:** `5611151` (review fixture) + `2ddb718` (final wrap fix —
+  3-level nested box lines kept atomic).
+- **CI (verified green on `c1aa95d`, the push carrying this closeout):**
+  `SonarCloud Code Analysis` success, `Analyze (python)` success,
+  `Analyze (actions)` success, `gate` success.
+- **Re-census (2026-10-15):** **269** box-drawing tables in **107**
+  articles (B16 baseline: 262 / 108 — delta is live-site churn: new
+  XIII.i.8.B NCA Burial Eligibility article added 10/14/2026; XIV.2.C
+  SSN Verification content updated 10/14/2026).
+- **Acceptance verified on the 2026-10-15 output:** every box row in all
+  269 tables has an identical rendered width (`_rendered_width` oracle —
+  0 failures); **0** pipe/padded-ASCII nested renders remain; the one box
+  whose rendering changed vs the pre-fix baseline (article
+  `554400000173313`, XIV.4.C) is word-for-word identical (1103 words,
+  same order) — a pure re-wrap at W=48.
+- **Diff vs the 2026-10-14 05:32 backup fully explained:** (a) the
+  `2ddb718` re-wrap in `554400000173313`; (b) live-site changes after
+  the backup — new XIII.i.8.B article (`554400000335065`) + its TOC
+  entry, XIII.i.8.A Next-Section link retarget, XIV.2.C date/reference
+  update, two new 10/14/2026 changelog rows. No unexplained rendering
+  drift.
 
 <!-- BACKLOG:ITEM:B21 -->
 ## B21. Missing paragraph breaks — inline-only `<div>` paragraphs coalesce — **OPEN (2026-10-13)**
@@ -2273,5 +2298,6 @@ Planned doc version **0.16.0** (B18 re-sequenced 0.16.0 → 0.17.0, B17
 
 - **Current queue order (2026-10-13, supersedes the 2026-10-10 bullet above):** **B20 → B18 → B17** — B20 (box-drawing `<pre>` tables for nested in-cell tables, superseding D13's padded ASCII) lands first at doc 0.15.0, then B18 at 0.16.0, then B17 at 0.17.0 (G6 re-sequencing; B20 requested 2026-10-12).
 - **Current queue order (2026-10-13, supersedes the bullets above):** **B20 → B21 → B18 → B17** — B20 lands at doc 0.15.0, then B21 (paragraph breaks for inline-only `<div>` paragraphs) at 0.16.0, then B18 at 0.17.0, then B17 at 0.18.0 (B21 inserted 2026-10-13 after the user's paragraph-separation report; B21's queue position is agent-placed — user may re-order).
+- **Current queue order (2026-10-15, supersedes the bullets above):** **B21 → B18 → B17 → B23 (low)** — B20 closed 2026-10-15 (code `5611151`/`2ddb718`, closeout in its entry), so B21 (paragraph breaks) is next at doc 0.16.0, then B18 at 0.17.0, then B17 at 0.18.0, then B23 (SonarQube reliability, low) last.
 - **Current queue order (2026-10-14, supersedes the bullets above):** **B22 → B20 → B21 → B18 → B17** — B22 (CI gate fix, no version, blocks all pushes) lands first; B20's closeout push is gated on it. Doc versions unchanged: B20 0.15.0, B21 0.16.0, B18 0.17.0, B17 0.18.0.
 - **Current queue order (2026-10-15, supersedes the bullets above):** **B20 → B21 → B18 → B17 → B23 (low priority)** — B22 closed 2026-10-15 (`aa4362b`); B23 (SonarCloud Reliability to A) appended at the end per user, low priority, no version. Doc versions unchanged: B20 0.15.0, B21 0.16.0, B18 0.17.0, B17 0.18.0.
