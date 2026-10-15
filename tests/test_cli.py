@@ -7,7 +7,6 @@ request for a topic it has no articles for is an AssertionError — this pins
 that topics with no direct articles (e.g. the root) are never queried.
 """
 
-import os
 import re
 
 import pytest
@@ -466,9 +465,10 @@ def test_completeness_gate_a_survives_skipping() -> None:
 # --- --out path-containment guard (SonarCloud S8707) ----------------------
 
 
-def test_resolve_inside_accepts_inside(tmp_path) -> None:
-    got = cli._resolve_inside(str(tmp_path), "output/manual.md")
-    assert os.path.realpath(got) == os.path.realpath(tmp_path / "output" / "manual.md")
+def test_write_deliverable_accepts_inside(tmp_path) -> None:
+    """A path inside the working dir writes fine through the guarded sink."""
+    cli._write_deliverable(str(tmp_path), "output/manual.md", "hello")
+    assert (tmp_path / "output" / "manual.md").read_text(encoding="utf-8") == "hello"
 
 
 def test_write_deliverable_refuses_dotdot(tmp_path) -> None:

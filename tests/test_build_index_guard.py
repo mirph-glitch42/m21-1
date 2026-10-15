@@ -6,7 +6,6 @@ resolves outside it (``..`` or absolute) — exit 2, nothing touched.
 """
 
 import importlib.util
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -28,12 +27,10 @@ def _load():
 bi = _load()
 
 
-def test_resolve_inside_accepts_algorithm_doc() -> None:
-    base = str(REPO / "algorithms")
-    got = bi._resolve_inside(base, "html-to-markdown-section-extraction.md")
-    assert os.path.realpath(got) == os.path.realpath(
-        REPO / "algorithms" / "html-to-markdown-section-extraction.md"
-    )
+def test_read_doc_accepts_algorithm_doc() -> None:
+    """A document inside ``algorithms/`` reads fine through the guarded sink."""
+    text = bi._read_doc(str(REPO / "algorithms"), "html-to-markdown-section-extraction.md")
+    assert "Rich HTML" in text
 
 
 def test_read_doc_refuses_escape(tmp_path: Path) -> None:

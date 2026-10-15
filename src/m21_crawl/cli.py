@@ -196,26 +196,21 @@ class StructuralError(Exception):
     """The output path escapes the working directory; the write cannot proceed."""
 
 
-def _resolve_inside(base: str, rel: str) -> str:
-    """Resolve *rel* against *base* and prove the result stays inside *base*.
+def _write_deliverable(base: str, rel: str, markdown: str) -> None:
+    """Write the deliverable *inside* *base*; escape attempts are structural.
 
-    Both paths are canonicalised with :func:`os.path.realpath` first, and
-    containment is established with :func:`os.path.commonpath` (not a string
-    prefix), so neither ``..`` sequences nor symlink escapes can leave the
-    working directory. This is the module's single file-path resolver and the
-    one entry point for file access, so a LLM-supplied ``--out`` argument
-    cannot write outside the project (SonarCloud S8707).
+    ``rel`` is the LLM-supplied ``--out`` argument, so the containment check
+    runs in this same function, immediately before both write sinks
+    (``os.makedirs`` and ``open``): canonicalise both paths with
+    :func:`os.path.realpath`, prove containment with
+    :func:`os.path.commonpath` (not a string prefix), and only then touch
+    the filesystem - a LLM-supplied path cannot write outside the project
+    (SonarCloud S8707).
     """
     root = os.path.realpath(base)
     target = os.path.realpath(os.path.join(root, rel))
     if os.path.commonpath([root, target]) != root:
         raise StructuralError(f"refusing to write outside the working directory: {rel!r}")
-    return target
-
-
-def _write_deliverable(base: str, rel: str, markdown: str) -> None:
-    """Write the deliverable *inside* *base*; escape attempts are structural."""
-    target = _resolve_inside(base, rel)
     out_dir = os.path.dirname(target)
     try:
         if out_dir:
