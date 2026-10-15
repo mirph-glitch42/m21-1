@@ -196,21 +196,30 @@ class StructuralError(Exception):
     """The output path escapes the working directory; the write cannot proceed."""
 
 
+def _resolve_inside(base: str, rel: str) -> str:
+    """Resolve ``rel`` against ``base`` and prove it stays inside ``base``.
+
+    Mirrors the compliant pattern for SonarCloud pythonsecurity:S8707:
+    canonicalise both sides with :func:`os.path.realpath`, then prove
+    containment by equality-or-``startswith`` with an explicit trailing
+    separator, so the guard is credited as a sanitizer and the LLM-supplied
+    ``--out`` path cannot write outside the project (symlinks or ``..``).
+    """
+    resolved = os.path.realpath(os.path.join(base, rel))
+    base_dir = os.path.realpath(base)
+    if resolved != base_dir and not resolved.startswith(base_dir + os.sep):
+        raise StructuralError(f"refusing to write outside the working directory: {rel!r}")
+    return resolved
+
+
 def _write_deliverable(base: str, rel: str, markdown: str) -> None:
     """Write the deliverable *inside* *base*; escape attempts are structural.
 
-    ``rel`` is the LLM-supplied ``--out`` argument, so the containment check
-    runs in this same function, immediately before both write sinks
-    (``os.makedirs`` and ``open``): canonicalise both paths with
-    :func:`os.path.realpath`, prove containment with
-    :func:`os.path.commonpath` (not a string prefix), and only then touch
-    the filesystem - a LLM-supplied path cannot write outside the project
-    (SonarCloud S8707).
+    :func:`_resolve_inside` proves the LLM-supplied ``rel`` resolves inside
+    the working directory before either write sink (``os.makedirs``,
+    ``open``) is touched (SonarCloud S8707).
     """
-    root = os.path.realpath(base)
-    target = os.path.realpath(os.path.join(root, rel))
-    if os.path.commonpath([root, target]) != root:
-        raise StructuralError(f"refusing to write outside the working directory: {rel!r}")
+    target = _resolve_inside(base, rel)
     out_dir = os.path.dirname(target)
     try:
         if out_dir:

@@ -501,3 +501,13 @@ def test_main_refuses_outside_workdir(
     assert rc == 3
     assert "refusing to write outside the working directory" in err
     assert not escape.exists()
+
+
+def test_resolve_inside_accepts_nested(tmp_path) -> None:
+    expected = str(tmp_path / "output" / "manual.md")
+    assert cli._resolve_inside(str(tmp_path), "output/manual.md") == expected
+
+
+def test_resolve_inside_refuses_dotdot(tmp_path) -> None:
+    with pytest.raises(cli.StructuralError, match="outside the working directory"):
+        cli._resolve_inside(str(tmp_path), "../etc/passwd")

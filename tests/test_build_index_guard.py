@@ -59,3 +59,16 @@ def test_cli_refuses_escape_before_any_io(tmp_path: Path) -> None:
     assert proc.returncode == 2
     assert "refusing path outside the algorithms dir" in proc.stderr
     assert outside.read_text(encoding="utf-8") == "do not touch"
+
+
+def test_resolve_inside_accepts_document(tmp_path: Path) -> None:
+    base = tmp_path / "algorithms"
+    base.mkdir()
+    assert bi._resolve_inside(str(base), "A22.md") == str(base / "A22.md")
+
+
+def test_resolve_inside_refuses_sibling(tmp_path: Path) -> None:
+    base = tmp_path / "algorithms"
+    base.mkdir()
+    with pytest.raises(bi.StructuralError, match="outside the algorithms dir"):
+        bi._resolve_inside(str(base), "../secrets.md")

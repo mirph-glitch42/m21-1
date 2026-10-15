@@ -119,20 +119,29 @@ def render(rows: list[tuple[str, int, int]]) -> list[str]:
     return out
 
 
+def _resolve_inside(base: str, rel: str) -> str:
+    """Resolve ``rel`` against ``base`` and prove it stays inside ``base``.
+
+    Mirrors the compliant pattern for SonarCloud pythonsecurity:S8707:
+    canonicalise both sides with :func:`os.path.realpath`, then prove
+    containment by equality-or-``startswith`` with an explicit trailing
+    separator, so the guard is credited as a sanitizer and an LLM-supplied
+    ``rel`` cannot leave the algorithms tree (``..`` sequences or symlinks).
+    """
+    resolved = os.path.realpath(os.path.join(base, rel))
+    base_dir = os.path.realpath(base)
+    if resolved != base_dir and not resolved.startswith(base_dir + os.sep):
+        raise StructuralError(f"refusing path outside the algorithms dir: {rel!r}")
+    return resolved
+
+
 def _read_doc(base: str, rel: str) -> str:
     """Read a text document *inside* *base*; escape attempts are structural.
 
-    ``rel`` is LLM-supplied, so the containment check runs in this same
-    function, immediately before the read sink: canonicalise both paths
-    with :func:`os.path.realpath`, prove containment with
-    :func:`os.path.commonpath` (not a string prefix), and only then touch
-    the filesystem - neither ``..`` sequences nor symlink escapes can leave
-    the algorithms tree (SonarCloud S8707).
+    :func:`_resolve_inside` proves the LLM-supplied ``rel`` resolves inside
+    the algorithms tree before the read sink is touched (SonarCloud S8707).
     """
-    root = os.path.realpath(base)
-    target = os.path.realpath(os.path.join(root, rel))
-    if os.path.commonpath([root, target]) != root:
-        raise StructuralError(f"refusing path outside the algorithms dir: {rel!r}")
+    target = _resolve_inside(base, rel)
     try:
         with open(target, encoding="utf-8") as fh:
             return fh.read()
@@ -143,14 +152,10 @@ def _read_doc(base: str, rel: str) -> str:
 def _write_doc(base: str, rel: str, text: str) -> None:
     """Write a text document *inside* *base*; escape attempts are structural.
 
-    The containment check dominates the write sink inside this function, so
-    an LLM-supplied ``rel`` cannot be coerced into a path outside the
-    algorithms tree (``..`` sequences or symlinks) - SonarCloud S8707.
+    :func:`_resolve_inside` proves the LLM-supplied ``rel`` resolves inside
+    the algorithms tree before the write sink is touched (SonarCloud S8707).
     """
-    root = os.path.realpath(base)
-    target = os.path.realpath(os.path.join(root, rel))
-    if os.path.commonpath([root, target]) != root:
-        raise StructuralError(f"refusing path outside the algorithms dir: {rel!r}")
+    target = _resolve_inside(base, rel)
     try:
         with open(target, "w", encoding="utf-8") as fh:
             fh.write(text)
