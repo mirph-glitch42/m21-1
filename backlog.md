@@ -2,32 +2,33 @@
 
 <!-- INDEX:BEGIN format=tsv version=1 -->
 id	title	status	start_line	end_line
-INDEX_BLOCK	-	-	3	31
-HEADER	-	-	33	44
-QUEUE	-	-	45	53
-B1	Replace eGain layout tables with standard Markdown layout	DONE	54	115
-B2	Dead intra-article anchors (`#1a`, `#RM`, …)	DONE	116	194
-B3	Slug-dedup robustness (anchor collisions)	DONE	195	264
-B4	Inline emphasis split into standalone paragraphs (goal-1 bug)	DONE	265	398
-B5	GitHub CI gate failure	DONE	399	433
-B6	Layout frames with non-heading label cells escape D5	DONE	434	622
-B7	TOC entries lack internal links	DONE	623	701
-B8	Dead internal links, incl. "To Top"	DONE	702	783
-B9	Raw spaces in link destinations	DONE	784	852
-B10	Broken image links (legacy host)	DONE	853	949
-B11	Change Date frames → quote block (readability deviation)	DONE	950	1038
-B12	CI gate for `algorithms/INDEX.md` staleness	DONE	1039	1108
-B13	Sloppy double horizontal rules around dissolved frames	DONE	1109	1177
-B14	14 residual leaked layout frames (missed format frames)	DONE	1178	1302
-B15	Change Date frames not in a quote block (B11 gap)	DONE	1303	1401
-B16	Nested-in-cell tables unreadable + one leaked multi-section chunk	DONE	1402	1562
-B17	Inline images break paragraph readability	OPEN	1563	1637
-B18	Section nav links — unified schema, To Top folded in	OPEN	1638	1763
-B19	Malformed HTML tags inline entire section chunks	DONE	1764	1947
-B20	Nested in-cell tables → aligned box-drawing tables in pre	IN_PROGRESS	1948	2063
-B21	Missing paragraph breaks — inline-only `<div>` paragraphs coalesce	OPEN	2064	2179
-B22	GitHub CI gate failing — SonarCloud security issues on new code	OPEN	2180	2224
-CONSTRAINTS	-	-	2225	2243
+INDEX_BLOCK	-	-	3	32
+HEADER	-	-	34	45
+QUEUE	-	-	46	54
+B1	Replace eGain layout tables with standard Markdown layout	DONE	55	116
+B2	Dead intra-article anchors (`#1a`, `#RM`, …)	DONE	117	195
+B3	Slug-dedup robustness (anchor collisions)	DONE	196	265
+B4	Inline emphasis split into standalone paragraphs (goal-1 bug)	DONE	266	399
+B5	GitHub CI gate failure	DONE	400	434
+B6	Layout frames with non-heading label cells escape D5	DONE	435	623
+B7	TOC entries lack internal links	DONE	624	702
+B8	Dead internal links, incl. "To Top"	DONE	703	784
+B9	Raw spaces in link destinations	DONE	785	853
+B10	Broken image links (legacy host)	DONE	854	950
+B11	Change Date frames → quote block (readability deviation)	DONE	951	1039
+B12	CI gate for `algorithms/INDEX.md` staleness	DONE	1040	1109
+B13	Sloppy double horizontal rules around dissolved frames	DONE	1110	1178
+B14	14 residual leaked layout frames (missed format frames)	DONE	1179	1303
+B15	Change Date frames not in a quote block (B11 gap)	DONE	1304	1402
+B16	Nested-in-cell tables unreadable + one leaked multi-section chunk	DONE	1403	1563
+B17	Inline images break paragraph readability	OPEN	1564	1638
+B18	Section nav links — unified schema, To Top folded in	OPEN	1639	1764
+B19	Malformed HTML tags inline entire section chunks	DONE	1765	1948
+B20	Nested in-cell tables → aligned box-drawing tables in pre	IN_PROGRESS	1949	2064
+B21	Missing paragraph breaks — inline-only `<div>` paragraphs coalesce	OPEN	2065	2180
+B22	GitHub CI gate failing — SonarCloud security issues on new code	DONE	2181	2227
+B23	SonarCloud Reliability rating to A (new code)	OPEN	2228	2257
+CONSTRAINTS	-	-	2258	2277
 <!-- INDEX:END -->
 
 <!-- BACKLOG:HEADER -->
@@ -38,18 +39,18 @@ session can start without re-deriving context: problem (with measured
 evidence), blast radius, the process the governing skills require, open
 decisions, and acceptance criteria.
 
-Order = user priority unless the Queue says otherwise. Status: **B1–B16 and B19 done (B6/B11 in `f48faf9`; B13 in `817a8f3`; B12 in `403550c`; B7/B8/B9 in this session's commit; B10 in `f88004b`, closed 2026-10-08; B14 in `827a8c0` + closeout `cc76aad`; B15 in `dd54c1e` + closeout `a922976`; B16 in `489fa4a` + closeout `2b21ee9`; B19 in `a2c691b` + closeout below)**; **B20 IN PROGRESS — new 2026-10-12**; **B21 OPEN — new 2026-10-13**; **B22 OPEN — new 2026-10-14 (CI gate, blocks pushes)**; **B17, B18 OPEN — new 2026-10-10**. (B10's status corrected 2026-10-10 — its entry closed 2026-10-08 but this line was never updated; B16's OPEN status corrected 2026-10-10 — its entry closed 2026-10-10 but this line was never updated; line re-baselined 2026-10-13 for B20.)
+Order = user priority unless the Queue says otherwise. Status: **B1–B16 and B19 done (B6/B11 in `f48faf9`; B13 in `817a8f3`; B12 in `403550c`; B7/B8/B9 in this session's commit; B10 in `f88004b`, closed 2026-10-08; B14 in `827a8c0` + closeout `cc76aad`; B15 in `dd54c1e` + closeout `a922976`; B16 in `489fa4a` + closeout `2b21ee9`; B19 in `a2c691b` + closeout below)**; **B20 IN PROGRESS — new 2026-10-12**; **B21 OPEN — new 2026-10-13**; **B22 done 2026-10-15 (in `aa4362b`)**; **B17, B18 OPEN — new 2026-10-10**; **B23 OPEN — new 2026-10-15 (low priority, end of queue)**. (B10's status corrected 2026-10-10 — its entry closed 2026-10-08 but this line was never updated; B16's OPEN status corrected 2026-10-10 — its entry closed 2026-10-10 but this line was never updated; line re-baselined 2026-10-13 for B20.)
 
-**Queue:** B22 (gate, no version) → B20 → B21 → B18 → B17 | **In progress:** B20 | **Done:** B1–B16, B19 | **Updated:** 2026-10-14
+**Queue:** B20 → B21 → B18 → B17 → B23 (low) | **In progress:** B20 | **Done:** B1–B16, B19, B22 | **Updated:** 2026-10-15
 
 <!-- BACKLOG:QUEUE -->
 ## Queue (execution order)
 
-1. **B22** — GitHub CI gate failing (SonarCloud security gate); blocks all pushes — no version (new 2026-10-14; user: fix before any more pushes).
-2. **B20** — nested in-cell tables → aligned box-drawing tables in pre (supersedes D13 padded ASCII; user-approved sample `render-test/b20-nested-table.md` §B) — doc 0.15.0.
-3. **B21** — missing paragraph breaks (inline-only `<div>` paragraphs coalesce) — doc 0.16.0 (new 2026-10-13; agent-placed after B20, user may re-order).
-4. **B18** — section nav links, unified schema; To Top folded in — doc 0.17.0 (re-sequenced 2026-10-13; was 0.16.0 before B21).
-5. **B17** — inline images become block-level — doc 0.18.0 (re-sequenced 2026-10-13; was 0.17.0 before B21).
+1. **B20** — nested in-cell tables → aligned box-drawing tables in pre (supersedes D13 padded ASCII; user-approved sample `render-test/b20-nested-table.md` §B) — doc 0.15.0.
+2. **B21** — missing paragraph breaks (inline-only `<div>` paragraphs coalesce) — doc 0.16.0 (new 2026-10-13; agent-placed after B20, user may re-order).
+3. **B18** — section nav links, unified schema; To Top folded in — doc 0.17.0 (re-sequenced 2026-10-13; was 0.16.0 before B21).
+4. **B17** — inline images become block-level — doc 0.18.0 (re-sequenced 2026-10-13; was 0.17.0 before B21).
+5. **B23** — SonarCloud Reliability rating to A — no version (new 2026-10-15; user: low priority, end of queue).
 
 <!-- BACKLOG:ITEM:B1 -->
 ## B1. Replace eGain layout tables with standard Markdown layout — **DONE (2026-10-04)**
@@ -2178,7 +2179,7 @@ Planned doc version **0.16.0** (B18 re-sequenced 0.16.0 → 0.17.0, B17
 **Closeout:** (TBD)
 
 <!-- BACKLOG:ITEM:B22 -->
-## B22. GitHub CI gate failing — SonarCloud security issues on new code — **OPEN (2026-10-14)**
+## B22. GitHub CI gate failing — SonarCloud security issues on new code — **DONE (2026-10-15)**
 
 **Source:** user
 **Requested:** 2026-10-14
@@ -2215,12 +2216,44 @@ Planned doc version **0.16.0** (B18 re-sequenced 0.16.0 → 0.17.0, B17
 **Progress:**
 
 - 2026-10-14 — WI 1 done (this entry). Guard-shape census complete: credited template identified in `check_index_registry.py`; 7-issue list with line numbers captured from the public SonarCloud API.
+- 2026-10-14 — WI 2/WI 3 done across `a3c8fcd` → `ed02751`; SonarCloud re-flagged the 4 S8707 sinks each time — the `commonpath` guard was not credited in helper or inline form (see `LLT-0001`).
+- 2026-10-15 — final shape iteration (per WI 5): fetched the full rule description (`api/rules/show pythonsecurity:S8707`); its Compliant solution is a `realpath` + equality-or-`startswith(base + os.sep)` helper — replicated verbatim in `build_index.py` and `cli.py` (+ 4 resolver-level tests); `make gate` green (230 passed); WI 4: commit `aa4362b`, push, all 4 check runs green.
+
+**Closeout (2026-10-15):** commit `aa4362b` — check runs: `SonarCloud Code Analysis` success, `Analyze (python)` success, `Analyze (actions)` success, `gate` success. SonarCloud state: **0 open security issues**; all 11 `pythonsecurity:S8707` issues FIXED (the 4 gate-blocking sinks in `build_index.py`/`cli.py` included); S2083/S8541/S8544 from the 7-issue list not among the 23 open. Before/after: 7 open (2026-10-14) → 0 security open (2026-10-15). The 23 remaining open issues are Reliability/Maintainability (S3776 ×10, S9409 ×4, S8786 ×3, S5863 ×3, S5778, S8513, S9073) — tracked separately as **B23** (low priority). No `# nosem` used.
+
+
+
+
+
+<!-- BACKLOG:ITEM:B23 -->
+## B23. SonarCloud Reliability rating to A (new code) — **OPEN (2026-10-15)**
+
+**Source:** user
+**Requested:** 2026-10-15
+
+**Request (verbatim, 2026-10-15):** "add reliability sonarqube items to bring reliability to A, priority low (end of queue)"
+
+**Problem / evidence (measured 2026-10-15, commit `aa4362b`):** security is clean (0 open after B22), but **23 open Reliability/Maintainability issues** hold the Reliability rating below A: `python:S3776` CRITICAL ×10 (cognitive complexity — `mdconv.py`, `check_index_registry.py`), `python:S9409` MINOR ×4, `python:S8786` MAJOR ×3, `python:S5863` MAJOR ×3, `python:S5778` MAJOR ×1, `python:S8513` MAJOR ×1, `python:S9073` MAJOR ×1.
+
+**Chosen approach (TBD at start):** per-rule remediation in Doc→Test→Code cycles — behavior-preserving extraction for S3776 where possible, targeted fixes elsewhere; each push verified against the SonarCloud API. Behavior must stay identical (test suite + `make gate`); the manual's TEXT/ORGANIZATION constraint is not affected (no crawl-output changes expected).
+
+**Work items (in order):**
+
+1. **WI 1 (done 2026-10-15):** this entry + open-issue census captured from the SonarCloud API at `aa4362b` (see Problem).
+2. **WI 2 — remediation:** fix in severity order (S3776 → S8786/S5863 → S5778/S8513/S9073 → S9409), each with the test suite kept green; `make gate` green before every commit.
+3. **WI 3 — closeout:** record sha + CI runs + before/after issue counts here; flip status to DONE; update Queue/header; regenerate the index + `--check`.
+
+**Blast radius:** the flagged Python files and their tests only; no workflow/config changes unless a rule demands one; no `# nosem` without explicit user approval (B22 lesson).
+
+**Acceptance criteria:** at the landing commit — SonarCloud open-issue count 0 (Reliability rating A) **or** a user-approved residual recorded here; `ci` + SonarCloud check runs green; `make gate` green; test suite unchanged in behavior.
+
+**Ordering:** low priority — end of queue (after B17), per user (2026-10-15); **no version** (infrastructure/quality).
+
+**Progress:**
+
+- 2026-10-15 — WI 1 done (this entry); baseline census: 23 open at `aa4362b`.
 
 **Closeout:** (TBD)
-
-
-
-
 
 <!-- BACKLOG:CONSTRAINTS -->
 ## Standing constraints (apply to all items)
@@ -2241,3 +2274,4 @@ Planned doc version **0.16.0** (B18 re-sequenced 0.16.0 → 0.17.0, B17
 - **Current queue order (2026-10-13, supersedes the 2026-10-10 bullet above):** **B20 → B18 → B17** — B20 (box-drawing `<pre>` tables for nested in-cell tables, superseding D13's padded ASCII) lands first at doc 0.15.0, then B18 at 0.16.0, then B17 at 0.17.0 (G6 re-sequencing; B20 requested 2026-10-12).
 - **Current queue order (2026-10-13, supersedes the bullets above):** **B20 → B21 → B18 → B17** — B20 lands at doc 0.15.0, then B21 (paragraph breaks for inline-only `<div>` paragraphs) at 0.16.0, then B18 at 0.17.0, then B17 at 0.18.0 (B21 inserted 2026-10-13 after the user's paragraph-separation report; B21's queue position is agent-placed — user may re-order).
 - **Current queue order (2026-10-14, supersedes the bullets above):** **B22 → B20 → B21 → B18 → B17** — B22 (CI gate fix, no version, blocks all pushes) lands first; B20's closeout push is gated on it. Doc versions unchanged: B20 0.15.0, B21 0.16.0, B18 0.17.0, B17 0.18.0.
+- **Current queue order (2026-10-15, supersedes the bullets above):** **B20 → B21 → B18 → B17 → B23 (low priority)** — B22 closed 2026-10-15 (`aa4362b`); B23 (SonarCloud Reliability to A) appended at the end per user, low priority, no version. Doc versions unchanged: B20 0.15.0, B21 0.16.0, B18 0.17.0, B17 0.18.0.
