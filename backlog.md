@@ -1,35 +1,36 @@
 # Backlog
 
 <!-- INDEX:BEGIN format=tsv version=1 -->
-id	title	status	start_line	end_line
-INDEX_BLOCK	-	-	3	33
-HEADER	-	-	35	46
-QUEUE	-	-	47	56
-B1	Replace eGain layout tables with standard Markdown layout	DONE	57	118
-B2	Dead intra-article anchors (`#1a`, `#RM`, …)	DONE	119	197
-B3	Slug-dedup robustness (anchor collisions)	DONE	198	267
-B4	Inline emphasis split into standalone paragraphs (goal-1 bug)	DONE	268	401
-B5	GitHub CI gate failure	DONE	402	436
-B6	Layout frames with non-heading label cells escape D5	DONE	437	625
-B7	TOC entries lack internal links	DONE	626	704
-B8	Dead internal links, incl. "To Top"	DONE	705	786
-B9	Raw spaces in link destinations	DONE	787	855
-B10	Broken image links (legacy host)	DONE	856	952
-B11	Change Date frames → quote block (readability deviation)	DONE	953	1041
-B12	CI gate for `algorithms/INDEX.md` staleness	DONE	1042	1111
-B13	Sloppy double horizontal rules around dissolved frames	DONE	1112	1180
-B14	14 residual leaked layout frames (missed format frames)	DONE	1181	1305
-B15	Change Date frames not in a quote block (B11 gap)	DONE	1306	1404
-B16	Nested-in-cell tables unreadable + one leaked multi-section chunk	DONE	1405	1565
-B17	Inline images break paragraph readability	OPEN	1566	1640
-B18	Section nav links — unified schema, To Top folded in	OPEN	1641	1766
-B19	Malformed HTML tags inline entire section chunks	DONE	1767	1950
-B20	Nested in-cell tables → aligned box-drawing tables in pre	DONE	1951	2091
-B21	Missing paragraph breaks — inline-only `<div>` paragraphs coalesce	OPEN	2092	2207
-B22	GitHub CI gate failing — SonarCloud security issues on new code	DONE	2208	2254
-B23	SonarCloud Reliability rating to A (new code)	OPEN	2255	2285
-B24	Wrap must not split a word from its attached punctuation	OPEN	2286	2316
-CONSTRAINTS	-	-	2317	2338
+id	title	status	priority	start_line	end_line
+INDEX_BLOCK	-	-	-	3	34
+HEADER	-	-	-	36	51
+QUEUE	-	-	-	52	67
+B1	Replace eGain layout tables with standard Markdown layout	DONE	Medium	68	130
+B2	Dead intra-article anchors (`#1a`, `#RM`, …)	DONE	Medium	131	210
+B3	Slug-dedup robustness (anchor collisions)	DONE	Medium	211	281
+B4	Inline emphasis split into standalone paragraphs (goal-1 bug)	DONE	Medium	282	416
+B5	GitHub CI gate failure	DONE	Medium	417	452
+B6	Layout frames with non-heading label cells escape D5	DONE	Medium	453	642
+B7	TOC entries lack internal links	DONE	Medium	643	722
+B8	Dead internal links, incl. "To Top"	DONE	Medium	723	805
+B9	Raw spaces in link destinations	DONE	Medium	806	875
+B10	Broken image links (legacy host)	DONE	Medium	876	973
+B11	Change Date frames → quote block (readability deviation)	DONE	Medium	974	1063
+B12	CI gate for `algorithms/INDEX.md` staleness	DONE	Medium	1064	1134
+B13	Sloppy double horizontal rules around dissolved frames	DONE	Medium	1135	1204
+B14	14 residual leaked layout frames (missed format frames)	DONE	Medium	1205	1330
+B15	Change Date frames not in a quote block (B11 gap)	DONE	Medium	1331	1430
+B16	Nested-in-cell tables unreadable + one leaked multi-section chunk	DONE	Medium	1431	1592
+B17	Inline images break paragraph readability	OPEN	Medium	1593	1673
+B18	Section nav links — unified schema, To Top folded in	OPEN	Medium	1674	1805
+B19	Malformed HTML tags inline entire section chunks	DONE	Medium	1806	1990
+B20	Nested in-cell tables → aligned box-drawing tables in pre	DONE	Medium	1991	2130
+B21	Missing paragraph breaks — inline-only `<div>` paragraphs coalesce	DONE	Medium	2131	2266
+B22	GitHub CI gate failing — SonarCloud security issues on new code	DONE	Medium	2267	2314
+B23	SonarCloud Reliability rating to A (new code)	OPEN	Low	2315	2348
+B24	Wrap must not split a word from its attached punctuation	OPEN	Medium	2349	2382
+B25	Nested `<ul>`/`<ol>` in a table cell duplicates sub-items	OPEN	Medium	2383	2415
+CONSTRAINTS	-	-	-	2416	2438
 <!-- INDEX:END -->
 
 <!-- BACKLOG:HEADER -->
@@ -40,22 +41,33 @@ session can start without re-deriving context: problem (with measured
 evidence), blast radius, the process the governing skills require, open
 decisions, and acceptance criteria.
 
-Order = user priority unless the Queue says otherwise. Status: **B1–B16 and B19 done (B6/B11 in `f48faf9`; B13 in `817a8f3`; B12 in `403550c`; B7/B8/B9 in this session's commit; B10 in `f88004b`, closed 2026-10-08; B14 in `827a8c0` + closeout `cc76aad`; B15 in `dd54c1e` + closeout `a922976`; B16 in `489fa4a` + closeout `2b21ee9`; B19 in `a2c691b` + closeout below)**; **B20 done 2026-10-15 (in `5611151`/`2ddb718`; closeout in its entry)**; **B21 OPEN — new 2026-10-13**; **B22 done 2026-10-15 (in `aa4362b`)**; **B17, B18 OPEN — new 2026-10-10**; **B23 OPEN — new 2026-10-15 (low priority, end of queue)**; **B24 OPEN — new 2026-10-15**. (B10's status corrected 2026-10-10 — its entry closed 2026-10-08 but this line was never updated; B16's OPEN status corrected 2026-10-10 — its entry closed 2026-10-10 but this line was never updated; line re-baselined 2026-10-13 for B20.)
+Order = all High, then Medium, then Low; within a tier in `B<n>` arrival order (G9).
 
-**Queue:** B21 → B18 → B17 → B24 → B23 (low) | **In progress:** — | **Done:** B1–B20, B22 | **Updated:** 2026-10-15
+**Migration (2026-10-16):** backlog moved to the priority scheme — every item declares Priority (default **Medium**; **B23** = **Low** per its own notes; **B25** = **Medium**, flagged — goal-1 ORGANIZATION violation, may warrant **High**, user to confirm); planned version tokens stripped from Ordering fields and the Queue (G6); the Queue is now priority-derived. Per-item migration Progress lines are on the active OPEN items (B17, B18, B23, B24, B25); DONE items are recorded by this note.
+
+Status: **B1–B22 done** (shas in each closeout — B6/B11 `f48faf9`; B13 `817a8f3`; B12 `403550c`; B7/B8/B9 this session's commit; B10 `f88004b` closed 2026-10-08; B14 `827a8c0` + `cc76aad`; B15 `dd54c1e` + `a922976`; B16 `489fa4a` + `2b21ee9`; B19 `a2c691b`; B20 `5611151`/`2ddb718`; B21 `d1e03ca`/`33c02f4` closed 2026-10-16; B22 `aa4362b` closed 2026-10-15) | **B17, B18 OPEN** (new 2026-10-10) | **B23 OPEN** (new 2026-10-15, Low) | **B24 OPEN** (new 2026-10-15) | **B25 OPEN** (new 2026-10-16, user-reported table-organization bug) | **In progress:** —
+
+**Queue:** B17 → B18 → B24 → B25 | B23 (low) | **In progress:** — | **Done:** B1–B22 | **Updated:** 2026-10-16
 
 <!-- BACKLOG:QUEUE -->
 ## Queue (execution order)
 
-1. **B20** — nested in-cell tables → aligned box-drawing tables in pre (supersedes D13 padded ASCII; user-approved sample `render-test/b20-nested-table.md` §B) — doc 0.15.0.
-2. **B21** — missing paragraph breaks (inline-only `<div>` paragraphs coalesce) — doc 0.16.0 (new 2026-10-13; agent-placed after B20, user may re-order).
-3. **B18** — section nav links, unified schema; To Top folded in — doc 0.17.0 (re-sequenced 2026-10-13; was 0.16.0 before B21).
-4. **B17** — inline images become block-level — doc 0.18.0 (re-sequenced 2026-10-13; was 0.17.0 before B21).
-5. **B23** — SonarCloud Reliability rating to A — no version (new 2026-10-15; user: low priority, end of queue).
-6. **B24** — wrap never begins a line with closing punctuation (glue stray punctuation fragment to its word) — doc 0.19.0 (new 2026-10-15).
+Order = all High, then Medium, then Low; within a tier in `B<n>` arrival order (G9). No version numbers — versions are assigned at completion only (G6). Done items (B1–B22) are not listed.
+
+**Medium** (B# order):
+
+1. **B17** — inline images become block-level (readability).
+2. **B18** — section nav links, unified schema; To Top folded in.
+3. **B24** — wrap never begins a line with a closing punctuation fragment (glue it to its word).
+4. **B25** — nested `<ul>`/`<ol>` in a table cell duplicates sub-items (fix `_render_list_inline`).
+
+**Low** (B# order):
+
+1. **B23** — SonarCloud Reliability rating to A (new code).
 
 <!-- BACKLOG:ITEM:B1 -->
 ## B1. Replace eGain layout tables with standard Markdown layout — **DONE (2026-10-04)**
+**Priority:** Medium
 
 **User goals (verbatim, 2026-10-04):**
 
@@ -118,6 +130,7 @@ tables**, which is the same surface B2/B3 touch.
 
 <!-- BACKLOG:ITEM:B2 -->
 ## B2. Dead intra-article anchors (`#1a`, `#RM`, …) — **DONE (2026-10-06)**
+**Priority:** Medium
 
 **Completion note (2026-10-05):** Full algorithm-records-keeper cycle completed — doc bumped to v0.4.0 (D6 named-anchor preservation + per-article `art_{id}_` namespaces), 8 new/rewritten TESTS cases (case 27 + cases 31–36 + 4 namespaced-group tests), `mdconv.py` v0.4.0 (544 L, 136 tests green). `make gate` green. Committed atomically as `540581e`. **Remaining:** eGain network was down (connection refused) at completion time, so the manual could not be regenerated and the dead-fragment census (acceptance criterion: 0 dead intra-article fragments) is **pending network recovery**. Re-run `make crawl` + the census script (`scratchpads/9u/analyze_dead.py`, adapted for `art_{id}_frag` markers) once eGain is reachable.
 
@@ -197,6 +210,7 @@ target exist that isn't in the source). Text and organization unchanged.
 
 <!-- BACKLOG:ITEM:B3 -->
 ## B3. Slug-dedup robustness (anchor collisions) — **DONE (2026-10-06)**
+**Priority:** Medium
 
 **Completion note (2026-10-06):** Direction = user-approved Option (a) — a
 renderer-equivalent walk (github-slugger occurrence replica), not Option (b)
@@ -267,6 +281,7 @@ of heading slugs — B2 and B3 are related but distinct work.
 
 <!-- BACKLOG:ITEM:B4 -->
 ## B4. Inline emphasis split into standalone paragraphs (goal-1 bug) — **DONE (2026-10-07)**
+**Priority:** Medium
 
 **Symptom (user-reported 2026-10-04, with screenshots):** emphasized or
 bold inline text inside a sentence renders as its *own paragraph* with a
@@ -401,6 +416,7 @@ Acceptance verified on the regenerated manual:
 
 <!-- BACKLOG:ITEM:B5 -->
 ## B5. GitHub CI gate failure — **DONE (2026-10-05)**
+**Priority:** Medium
 
 **Problem (user-reported 2026-10-05):** the `ci` workflow on `main`
 fails even though the local gate is fully green (format ✓, lint ✓,
@@ -436,6 +452,7 @@ previously failing `Algorithm doc index check`.
 
 <!-- BACKLOG:ITEM:B6 -->
 ## B6. Layout frames with non-heading label cells escape D5 — **DONE (2026-10-07)**
+**Priority:** Medium
 
 **User report (verbatim, 2026-10-06, with screenshot of the `5. IMOs`
 section):** "There appear to be some layout tables that were not removed.
@@ -625,6 +642,7 @@ extraction.md` v0.6.0, D8 generalization + B11 meta-label carve-out):**
 
 <!-- BACKLOG:ITEM:B7 -->
 ## B7. TOC entries lack internal links — **DONE (2026-10-07)**
+**Priority:** Medium
 
 **User report (verbatim, 2026-10-06):** "Add internal links to the
 generated TOC at the beginning of the document."
@@ -704,6 +722,7 @@ docs-only entry rides along in the same commit.
 
 <!-- BACKLOG:ITEM:B8 -->
 ## B8. Dead internal links, incl. "To Top" — **DONE (2026-10-08)**
+**Priority:** Medium
 
 **User report (verbatim, 2026-10-07):** "Some of the 'To Top' links
 work (goes to the top of the article that it follows), but a lot of
@@ -786,6 +805,7 @@ Landed atomically (doc + tests + code + registry + backlog) as
 
 <!-- BACKLOG:ITEM:B9 -->
 ## B9. Raw spaces in link destinations — **DONE (2026-10-08)**
+**Priority:** Medium
 
 **Completion (2026-10-08).** Percent-encode spaces at emit time in
 `_rewrite_url` — the single choke point for link and image destinations
@@ -855,6 +875,7 @@ correctly.
 
 <!-- BACKLOG:ITEM:B10 -->
 ## B10. Broken image links (legacy host) — **DONE (2026-10-08)**
+**Priority:** Medium
 
 **User report (verbatim, 2026-10-07):** "large number of broken image
 links. need to verify that the links are working in online manual, and
@@ -952,6 +973,7 @@ paths = 48 original + 36 remapped, all on verified-live paths) ✓.
 
 <!-- BACKLOG:ITEM:B11 -->
 ## B11. Change Date frames → quote block (readability deviation) — **DONE (2026-10-07)**
+**Priority:** Medium
 
 **User request (verbatim, 2026-10-07):** "Deviation for readability:
 Change Date markers and the date should be in a quote block."
@@ -1041,6 +1063,7 @@ approved deviation.
 
 <!-- BACKLOG:ITEM:B12 -->
 ## B12. CI gate for `algorithms/INDEX.md` staleness — **DONE (2026-10-07)**
+**Priority:** Medium
 
 **User request (verbatim, 2026-10-07):** "Add CI check for Index.md staleness."
 
@@ -1111,6 +1134,7 @@ Landed atomically (script + tests + Makefile + CI + this closeout).
 
 <!-- BACKLOG:ITEM:B13 -->
 ## B13. Sloppy double horizontal rules around dissolved frames — **DONE (2026-10-07)**
+**Priority:** Medium
 
 **User request (verbatim, 2026-10-07):** "For Backlog: Sloppy looking
 double horizontal rules." + screenshot (a heading/label flanked by two
@@ -1180,6 +1204,7 @@ decorative eGain `<hr>` wrapper — no paragraph text changed.
 
 <!-- BACKLOG:ITEM:B14 -->
 ## B14. 14 residual leaked layout frames (missed format frames) — **DONE, closed 2026-10-09**
+**Priority:** Medium
 
 **User request (verbatim, 2026-10-06, B6 origin):** "There appear to be
 some layout tables that were not removed. we need a way of catching there
@@ -1305,6 +1330,7 @@ census verified on that output):**
 
 <!-- BACKLOG:ITEM:B15 -->
 ## B15. Change Date frames not in a quote block (B11 gap) — **DONE, closed 2026-10-09**
+**Priority:** Medium
 
 **User request (verbatim, 2026-10-07):** "For backlog: not all change
 dates are in quote blocks." + screenshot (article "M21-1, Part VIII,
@@ -1404,6 +1430,7 @@ CI green.
 
 <!-- BACKLOG:ITEM:B16 -->
 ## B16. Nested-in-cell tables unreadable + one leaked multi-section chunk — **DONE, closed 2026-10-10**
+**Priority:** Medium
 
 **User request (verbatim, 2026-10-10):** "Identify all tables embedded
 within tables, and convert them to ascii tables so they are actually
@@ -1565,6 +1592,7 @@ B6/B11/B13/B14/B15.
 
 <!-- BACKLOG:ITEM:B17 -->
 ## B17. Inline images break paragraph readability — **OPEN, new 2026-10-10**
+**Priority:** Medium
 
 **User request (verbatim, 2026-10-10):** "Images in-line with text makes
 for bad readability. Images should be blocked away from the text to
@@ -1636,10 +1664,16 @@ image sits on its own line with blank lines above and below);
 TEXT/ORGANIZATION unchanged (goal 1); `make gate` + GitHub CI green.
 
 **Ordering:** after **B19**, **B18**, and **B21** (all now precede it in the
-queue); rides the same `mdconv` doc as B6/B11/B13/B14/B15/B16/B18/B19/B20/B21. Planned doc version re-sequenced 2026-10-13 per G6: **0.18.0** (was 0.16.0 at creation; B20 inserted ahead at 0.15.0, B18 at 0.16.0; B21 inserted ahead at 0.16.0 on 2026-10-13 — B18 shifted to 0.17.0, B17 to 0.18.0).
+queue); rides the same `mdconv` doc as B6/B11/B13/B14/B15/B16/B18/B19/B20/B21.
+
+**Progress:**
+
+- 2026-10-16 — migrated to the priority scheme (G9): priority = **Medium**
+  (migration default).
 
 <!-- BACKLOG:ITEM:B18 -->
 ## B18. Section nav links — unified schema, To Top folded in — **OPEN, new 2026-10-10**
+**Priority:** Medium
 
 **User request (verbatim, 2026-10-10):** "For readability, let's format
 section navigation links like: `<-- Previous Section | Top | Next
@@ -1762,10 +1796,16 @@ article-top anchor); TEXT/ORGANIZATION unchanged (goal 1); `make gate`
 **Ordering:** after **B19** (nav must be in normal block form before
 reformatting — B19 fixes the inlined nav in the malformed-tag articles)
 and before B17 (and after **B21** — queue 2026-10-13: B20 → B21 → B18 → B17). Rides the same `mdconv` doc as B6/B11/B13/B14/B15/B16/
-B17/B19/B20/B21. Planned doc version re-sequenced 2026-10-13 per G6: **0.17.0** (was 0.15.0 at creation; B20 inserted ahead at 0.15.0; B21 inserted ahead at 0.16.0 on 2026-10-13 — B18 shifted to 0.17.0, B17 to 0.18.0).
+B17/B19/B20/B21.
+
+**Progress:**
+
+- 2026-10-16 — migrated to the priority scheme (G9): priority = **Medium**
+  (migration default).
 
 <!-- BACKLOG:ITEM:B19 -->
 ## B19. Malformed HTML tags inline entire section chunks — **DONE, closed 2026-10-10**
+**Priority:** Medium
 
 **Discovery (2026-10-10, during the B16 re-census):** the B16 re-census
 surfaced **one** new class-(b) leak with a **new root cause** (not the
@@ -1954,6 +1994,7 @@ B6/B11/B13/B14/B15/B16/B17/B18.
 **Source:** user
 
 **Requested:** 2026-10-12
+**Priority:** Medium
 
 **Request (verbatim):** "this is good. you may proceed with B20" (2026-10-12)
 and "B20 Needs to be added to the backlog before continuing" (2026-10-12).
@@ -2049,9 +2090,7 @@ wrap; one blank spacer row between rows; **0** padded-ASCII nested
 renders remain; `make gate` green + GitHub CI green.
 
 **Ordering:** **first** in the queue (user-directed 2026-10-12: "you may
-proceed with B20"); before B18 and B17. Planned doc version **0.15.0**
-(G6: B18 re-sequenced to 0.16.0, B17 to 0.17.0 — recorded in their
-Ordering fields and the Queue section, 2026-10-13).
+proceed with B20"); before B18 and B17.
 
 **Progress:**
 
@@ -2090,7 +2129,8 @@ census verified on that output):**
   drift.
 
 <!-- BACKLOG:ITEM:B21 -->
-## B21. Missing paragraph breaks — inline-only `<div>` paragraphs coalesce — **OPEN (2026-10-13)**
+## B21. Missing paragraph breaks — inline-only `<div>` paragraphs coalesce — **DONE (2026-10-16)**
+**Priority:** Medium
 
 **User report (verbatim, 2026-10-13):** "We are missing a large number of
 paragraph separations in the document. The bolded **Example X:** and
@@ -2192,8 +2232,6 @@ gate` green + GitHub CI green.
 
 **Ordering:** **second** in the queue — after **B20** (in progress),
 before B18/B17 (agent placement 2026-10-13, flagged; user may re-order).
-Planned doc version **0.16.0** (B18 re-sequenced 0.16.0 → 0.17.0, B17
-0.17.0 → 0.18.0).
 
 **Progress:**
 
@@ -2202,14 +2240,36 @@ Planned doc version **0.16.0** (B18 re-sequenced 0.16.0 → 0.17.0, B17
   inline-only `<div>`s separated by empty `<div></div>` spacers; the
   `_UNWRAP_BLOCK` inline-only branch coalesces them into one run
   (D7: `div` not in `_BLOCK`).
+- 2026-10-16 — closed (see Closeout). Migrated to the priority scheme
+  (G9): priority = **Medium** (migration default).
 
-**Closeout:** (TBD)
+**Closeout (2026-10-16, verified on the same-day output):**
+
+- **Code:** `d1e03ca` (D16 — an inline-only `div` in block position is a
+  paragraph boundary) + `33c02f4` (refinement — a `div` grouping child
+  `div`s recurses so each child `div` is its own paragraph).
+- **CI (verified green on `33c02f4`):** `SonarCloud Code Analysis`
+  success, `Analyze (python)` success, `Analyze (actions)` success, `gate`
+  success — 4/4.
+- **Version landed:** algorithm `html-to-markdown-section-extraction`
+  **0.16.1** (D16 refined; TESTS rows 82–83 / test cases 80–81);
+  `algorithms/INDEX.md` synced (gate-enforced).
+- **Census (2026-10-16 output):** **645** `***Example***`, **64**
+  `***Analysis***`, and **458** `***Exception***` markers each on their
+  own paragraph (line-start).
+- **Acceptance verified (2026-10-16 output):** §`II.iii.1.A.2.d` renders
+  each `***Example N:***`/`***Analysis:***` as its own paragraph (L10391);
+  §`II.iii.1.A.2.f` renders **4** paragraphs before the first bullet list
+  (L10429) — both match the portal; inline-context `div` behavior
+  unchanged (test cases 1–78 pass); TEXT/ORGANIZATION otherwise unchanged
+  (goal 1); `make gate` green.
 
 <!-- BACKLOG:ITEM:B22 -->
 ## B22. GitHub CI gate failing — SonarCloud security issues on new code — **DONE (2026-10-15)**
 
 **Source:** user
 **Requested:** 2026-10-14
+**Priority:** Medium
 
 **Request (verbatim, 2026-10-14):** "For the backlog: Github CI Gate failing. Fix CI Gate before any more pushes." (Related user messages: "I turned on agent access through GitHub Apps for SonarCube Cloud." / "I had the wrong app installed in github. Agent app now installed" — the SonarCloud public API turned out to be sufficient; no token path used.)
 
@@ -2257,6 +2317,7 @@ Planned doc version **0.16.0** (B18 re-sequenced 0.16.0 → 0.17.0, B17
 
 **Source:** user
 **Requested:** 2026-10-15
+**Priority:** Low
 
 **Request (verbatim, 2026-10-15):** "add reliability sonarqube items to bring reliability to A, priority low (end of queue)"
 
@@ -2279,6 +2340,8 @@ Planned doc version **0.16.0** (B18 re-sequenced 0.16.0 → 0.17.0, B17
 **Progress:**
 
 - 2026-10-15 — WI 1 done (this entry); baseline census: 23 open at `aa4362b`.
+- 2026-10-16 — migrated to the priority scheme (G9): priority = **Low**
+  (per the item's own notes — "low priority, end of queue").
 
 **Closeout:** (TBD)
 
@@ -2288,6 +2351,7 @@ Planned doc version **0.16.0** (B18 re-sequenced 0.16.0 → 0.17.0, B17
 
 **Source:** user
 **Requested:** 2026-10-15
+**Priority:** Medium
 
 **Request (verbatim, 2026-10-15):** "split during wrap does not adhere to punctuation rules when wrapping. this screen shot sows that the line split between word and the comma. instead of including the comma with the attached word." (screenshot of a wrapped box-drawing table cell where one line ends on a word and the next line begins with a stray comma).
 
@@ -2306,11 +2370,46 @@ Planned doc version **0.16.0** (B18 re-sequenced 0.16.0 → 0.17.0, B17
 
 **Acceptance criteria:** at the landing commit — no wrapped box-drawing cell line begins with a closing punctuation fragment; a punctuation-only fragment always renders attached to its preceding word; existing wrap tests unchanged in behavior; `make gate` green; CI + SonarCloud check runs green.
 
-**Ordering:** normal priority — after B17 in the mdconv queue, before B23 (low); **doc 0.19.0** (B21 0.16.0, B18 0.17.0, B17 0.18.0 already taken).
+**Ordering:** normal priority — after B17 in the mdconv queue, before B23 (low). No version (assigned at completion, G6).
 
 **Progress:**
 
 - 2026-10-15 — WI 1 done (this entry); root cause confirmed (space-before-comma → stray comma unit pushed to the next line by `_wrap_cell`).
+- 2026-10-16 — migrated to the priority scheme (G9): priority = **Medium**
+  (migration default).
+
+**Closeout:** (TBD)
+
+<!-- BACKLOG:ITEM:B25 -->
+## B25. Nested `<ul>`/`<ol>` in a table cell duplicates sub-items — **OPEN (2026-10-16)**
+
+**Source:** user
+**Requested:** 2026-10-16
+**Priority:** Medium
+
+**Request (verbatim, 2026-10-16):** "New Backlog: Counter to requirements, structure/organization of the document is being changed within tables. See following screenshots comparing web site and md." (screenshots: the portal renders a nested sub-list inside a table cell; the Markdown output duplicates the sub-items.)
+
+**Problem / evidence (measured 2026-10-16):** in article `554400000174881` §`II.iii.3.A.1.d` (Step 2), a table cell contains a nested `<ul>` inside a `<li>` plus inline-only `<div><span>` text. The Markdown output **duplicates** the nested sub-items — each sub-bullet is emitted both in place and again as a separate block, changing ORGANIZATION (goal-1 violation). Root cause traced from the code: `_render_list_inline` (`src/m21_crawl/mdconv.py:754`) both (a) iterates `find_all("li")` (which already descends into the nested `<ul>`) **and** (b) recursively renders the nested `<ul>`, so each sub-bullet is emitted twice. (Contrast: the block-level `_render_list` at `mdconv.py:801` handles nesting correctly and is not affected.)
+
+**Chosen approach (agent-proposed, flagged for user review):** render a real nested `<ul>`/`<ol>` inside a cell as an indented sub-list; if the target renderer (GitHub / VMD) will not render a nested `<ul>` inside a GFM table cell, fall back to `<br>`-indented literal bullets. Decision deferred to the doc cycle (algorithm-records-keeper) and the TDD RED test.
+
+**Work items (in order):**
+
+1. **WI 1 (done 2026-10-16):** this entry + root cause traced to the `_render_list_inline` double-render.
+2. **WI 2 — census:** confirm the population of nested-list-in-cell occurrences across the corpus (output-side: duplicated sub-bullet signatures) so closeout can report before/after.
+3. **WI 3 — doc cycle first (algorithm-records-keeper):** decide nested-`<ul>` vs `<br>`-indented fallback; add the rule; bump the algorithm doc version (assigned at completion, G6); sync `algorithms/INDEX.md` (gate-enforced via `make doc-index-check`).
+4. **WI 4 — TDD RED→GREEN in `tests/test_mdconv.py`:** (a) a cell with a nested `<ul>` inside a `<li>` renders each sub-item **once** (RED on current code — currently duplicated); (b) a flat in-cell list unchanged (no regression); GREEN; `make gate` green.
+5. **WI 5 — closeout:** record sha + CI runs + before/after census; flip status DONE; update Queue/header; regenerate the index + `--check`.
+
+**Blast radius:** `_render_list_inline` (`src/m21_crawl/mdconv.py:754`) + the algorithm doc + `tests/test_mdconv.py` + the assembled manual (re-crawl). Must NOT change: `_render_list` (block-level, already correct); other cell rendering; TEXT of the manual (only the duplication is removed).
+
+**Acceptance criteria:** at the landing commit — no table cell in the regenerated manual duplicates a nested list item (census: 0 duplicated sub-bullet signatures, vs the B25 baseline); article `554400000174881` §`II.iii.3.A.1.d` Step 2 renders each nested sub-item exactly once (matching the portal); flat in-cell lists unchanged (existing tests pass); TEXT/ORGANIZATION otherwise unchanged (goal 1); `make gate` green + GitHub CI green.
+
+**Ordering:** normal priority — after B24 in the mdconv queue (all four are `mdconv` rendering fixes), before B23 (low). No version (assigned at completion, G6).
+
+**Progress:**
+
+- 2026-10-16 — WI 1 done (this entry); root cause traced to the `_render_list_inline` double-render; priority = **Medium** (migration default; **flag: goal-1 ORGANIZATION violation — may warrant High, user to confirm**).
 
 **Closeout:** (TBD)
 
@@ -2336,3 +2435,4 @@ Planned doc version **0.16.0** (B18 re-sequenced 0.16.0 → 0.17.0, B17
 - **Current queue order (2026-10-14, supersedes the bullets above):** **B22 → B20 → B21 → B18 → B17** — B22 (CI gate fix, no version, blocks all pushes) lands first; B20's closeout push is gated on it. Doc versions unchanged: B20 0.15.0, B21 0.16.0, B18 0.17.0, B17 0.18.0.
 - **Current queue order (2026-10-15, supersedes the bullets above):** **B20 → B21 → B18 → B17 → B23 (low priority)** — B22 closed 2026-10-15 (`aa4362b`); B23 (SonarCloud Reliability to A) appended at the end per user, low priority, no version. Doc versions unchanged: B20 0.15.0, B21 0.16.0, B18 0.17.0, B17 0.18.0.
 - **Current queue order (2026-10-15, supersedes the bullets above):** **B21 → B18 → B17 → B24 → B23 (low priority)** — B20 closed 2026-10-15 (`5611151`/`2ddb718`); B24 (wrap punctuation rule) appended 2026-10-15 (normal, after B17, before B23-low); B21 (paragraph breaks) next at doc 0.16.0, then B18 at 0.17.0, B17 at 0.18.0, B24 at 0.19.0, B23 (low, no version) last.
+
