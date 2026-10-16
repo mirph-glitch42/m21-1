@@ -2,33 +2,34 @@
 
 <!-- INDEX:BEGIN format=tsv version=1 -->
 id	title	status	start_line	end_line
-INDEX_BLOCK	-	-	3	32
-HEADER	-	-	34	45
-QUEUE	-	-	46	54
-B1	Replace eGain layout tables with standard Markdown layout	DONE	55	116
-B2	Dead intra-article anchors (`#1a`, `#RM`, …)	DONE	117	195
-B3	Slug-dedup robustness (anchor collisions)	DONE	196	265
-B4	Inline emphasis split into standalone paragraphs (goal-1 bug)	DONE	266	399
-B5	GitHub CI gate failure	DONE	400	434
-B6	Layout frames with non-heading label cells escape D5	DONE	435	623
-B7	TOC entries lack internal links	DONE	624	702
-B8	Dead internal links, incl. "To Top"	DONE	703	784
-B9	Raw spaces in link destinations	DONE	785	853
-B10	Broken image links (legacy host)	DONE	854	950
-B11	Change Date frames → quote block (readability deviation)	DONE	951	1039
-B12	CI gate for `algorithms/INDEX.md` staleness	DONE	1040	1109
-B13	Sloppy double horizontal rules around dissolved frames	DONE	1110	1178
-B14	14 residual leaked layout frames (missed format frames)	DONE	1179	1303
-B15	Change Date frames not in a quote block (B11 gap)	DONE	1304	1402
-B16	Nested-in-cell tables unreadable + one leaked multi-section chunk	DONE	1403	1563
-B17	Inline images break paragraph readability	OPEN	1564	1638
-B18	Section nav links — unified schema, To Top folded in	OPEN	1639	1764
-B19	Malformed HTML tags inline entire section chunks	DONE	1765	1948
-B20	Nested in-cell tables → aligned box-drawing tables in pre	DONE	1949	2089
-B21	Missing paragraph breaks — inline-only `<div>` paragraphs coalesce	OPEN	2090	2205
-B22	GitHub CI gate failing — SonarCloud security issues on new code	DONE	2206	2252
-B23	SonarCloud Reliability rating to A (new code)	OPEN	2253	2282
-CONSTRAINTS	-	-	2283	2303
+INDEX_BLOCK	-	-	3	33
+HEADER	-	-	35	46
+QUEUE	-	-	47	56
+B1	Replace eGain layout tables with standard Markdown layout	DONE	57	118
+B2	Dead intra-article anchors (`#1a`, `#RM`, …)	DONE	119	197
+B3	Slug-dedup robustness (anchor collisions)	DONE	198	267
+B4	Inline emphasis split into standalone paragraphs (goal-1 bug)	DONE	268	401
+B5	GitHub CI gate failure	DONE	402	436
+B6	Layout frames with non-heading label cells escape D5	DONE	437	625
+B7	TOC entries lack internal links	DONE	626	704
+B8	Dead internal links, incl. "To Top"	DONE	705	786
+B9	Raw spaces in link destinations	DONE	787	855
+B10	Broken image links (legacy host)	DONE	856	952
+B11	Change Date frames → quote block (readability deviation)	DONE	953	1041
+B12	CI gate for `algorithms/INDEX.md` staleness	DONE	1042	1111
+B13	Sloppy double horizontal rules around dissolved frames	DONE	1112	1180
+B14	14 residual leaked layout frames (missed format frames)	DONE	1181	1305
+B15	Change Date frames not in a quote block (B11 gap)	DONE	1306	1404
+B16	Nested-in-cell tables unreadable + one leaked multi-section chunk	DONE	1405	1565
+B17	Inline images break paragraph readability	OPEN	1566	1640
+B18	Section nav links — unified schema, To Top folded in	OPEN	1641	1766
+B19	Malformed HTML tags inline entire section chunks	DONE	1767	1950
+B20	Nested in-cell tables → aligned box-drawing tables in pre	DONE	1951	2091
+B21	Missing paragraph breaks — inline-only `<div>` paragraphs coalesce	OPEN	2092	2207
+B22	GitHub CI gate failing — SonarCloud security issues on new code	DONE	2208	2254
+B23	SonarCloud Reliability rating to A (new code)	OPEN	2255	2285
+B24	Wrap must not split a word from its attached punctuation	OPEN	2286	2316
+CONSTRAINTS	-	-	2317	2338
 <!-- INDEX:END -->
 
 <!-- BACKLOG:HEADER -->
@@ -39,9 +40,9 @@ session can start without re-deriving context: problem (with measured
 evidence), blast radius, the process the governing skills require, open
 decisions, and acceptance criteria.
 
-Order = user priority unless the Queue says otherwise. Status: **B1–B16 and B19 done (B6/B11 in `f48faf9`; B13 in `817a8f3`; B12 in `403550c`; B7/B8/B9 in this session's commit; B10 in `f88004b`, closed 2026-10-08; B14 in `827a8c0` + closeout `cc76aad`; B15 in `dd54c1e` + closeout `a922976`; B16 in `489fa4a` + closeout `2b21ee9`; B19 in `a2c691b` + closeout below)**; **B20 done 2026-10-15 (in `5611151`/`2ddb718`; closeout in its entry)**; **B21 OPEN — new 2026-10-13**; **B22 done 2026-10-15 (in `aa4362b`)**; **B17, B18 OPEN — new 2026-10-10**; **B23 OPEN — new 2026-10-15 (low priority, end of queue)**. (B10's status corrected 2026-10-10 — its entry closed 2026-10-08 but this line was never updated; B16's OPEN status corrected 2026-10-10 — its entry closed 2026-10-10 but this line was never updated; line re-baselined 2026-10-13 for B20.)
+Order = user priority unless the Queue says otherwise. Status: **B1–B16 and B19 done (B6/B11 in `f48faf9`; B13 in `817a8f3`; B12 in `403550c`; B7/B8/B9 in this session's commit; B10 in `f88004b`, closed 2026-10-08; B14 in `827a8c0` + closeout `cc76aad`; B15 in `dd54c1e` + closeout `a922976`; B16 in `489fa4a` + closeout `2b21ee9`; B19 in `a2c691b` + closeout below)**; **B20 done 2026-10-15 (in `5611151`/`2ddb718`; closeout in its entry)**; **B21 OPEN — new 2026-10-13**; **B22 done 2026-10-15 (in `aa4362b`)**; **B17, B18 OPEN — new 2026-10-10**; **B23 OPEN — new 2026-10-15 (low priority, end of queue)**; **B24 OPEN — new 2026-10-15**. (B10's status corrected 2026-10-10 — its entry closed 2026-10-08 but this line was never updated; B16's OPEN status corrected 2026-10-10 — its entry closed 2026-10-10 but this line was never updated; line re-baselined 2026-10-13 for B20.)
 
-**Queue:** B21 → B18 → B17 → B23 (low) | **In progress:** — | **Done:** B1–B20, B22 | **Updated:** 2026-10-15
+**Queue:** B21 → B18 → B17 → B24 → B23 (low) | **In progress:** — | **Done:** B1–B20, B22 | **Updated:** 2026-10-15
 
 <!-- BACKLOG:QUEUE -->
 ## Queue (execution order)
@@ -51,6 +52,7 @@ Order = user priority unless the Queue says otherwise. Status: **B1–B16 and B1
 3. **B18** — section nav links, unified schema; To Top folded in — doc 0.17.0 (re-sequenced 2026-10-13; was 0.16.0 before B21).
 4. **B17** — inline images become block-level — doc 0.18.0 (re-sequenced 2026-10-13; was 0.17.0 before B21).
 5. **B23** — SonarCloud Reliability rating to A — no version (new 2026-10-15; user: low priority, end of queue).
+6. **B24** — wrap never begins a line with closing punctuation (glue stray punctuation fragment to its word) — doc 0.19.0 (new 2026-10-15).
 
 <!-- BACKLOG:ITEM:B1 -->
 ## B1. Replace eGain layout tables with standard Markdown layout — **DONE (2026-10-04)**
@@ -2280,6 +2282,38 @@ Planned doc version **0.16.0** (B18 re-sequenced 0.16.0 → 0.17.0, B17
 
 **Closeout:** (TBD)
 
+
+<!-- BACKLOG:ITEM:B24 -->
+## B24. Wrap must not split a word from its attached punctuation — **OPEN (2026-10-15)**
+
+**Source:** user
+**Requested:** 2026-10-15
+
+**Request (verbatim, 2026-10-15):** "split during wrap does not adhere to punctuation rules when wrapping. this screen shot sows that the line split between word and the comma. instead of including the comma with the attached word." (screenshot of a wrapped box-drawing table cell where one line ends on a word and the next line begins with a stray comma).
+
+**Problem / evidence (measured 2026-10-15):** in box-drawing wrapped cells (the D13/B20 wrap code in `mdconv.py`), a wrapped line can end on a word while the **next** line begins with a punctuation-only fragment (e.g. a comma) that belongs to that word. Root cause confirmed empirically (`PYTHONPATH=src .venv/bin/python`): the VA source text contains a **space before the comma** (e.g. `"If no , make"`). `_tokenize` (mdconv.py:566) splits gaps with `gap.split()`, so `no` and `,` become **two independent atomic units** (`,` is its own unit, `sep=True`). `_wrap_cell` (mdconv.py:615) is a greedy wrap that breaks the line when `cur_w + join_w + w > width`; when the width boundary falls immediately after `no`, the lone `,` unit is pushed to the next line, producing a line that *starts* with a stray comma. Control test: `"no, make"` (no space) tokenizes as a single unit `no,` and wraps correctly. Note the manual contains several such data quirks (`"and;"`, `"table.;"`) that expose the same rule.
+
+**Chosen approach (agent-proposed, flagged for user review):** enforce the standard typesetting rule "no line begins with closing punctuation" inside the wrap. When `_tokenize` yields a punctuation-only unit (a run of `.`, `,`, `;`, `:`, `!`, `?`, `)`, `]`, `"` and similar trailing marks) that is separated from the previous unit by whitespace only, **glue it to the preceding unit** so the pair moves atomically and can never be the first unit of a new line. Implement as a small post-pass over the token list (or inside `_wrap_cell`) so the rest of `_tokenize`'s atomic units are unchanged. Behavior for already-correct text (no space before the punctuation) is identical.
+
+**Work items (in order):**
+
+1. **WI 1 (done 2026-10-15):** this entry + root cause confirmed empirically (see Problem).
+2. **WI 2 — doc cycle first (algorithm-records-keeper):** bump `algorithms/html-to-markdown-section-extraction.md` **0.18.0 → 0.19.0**; add **D17** rule "wrap never begins a line with a closing punctuation fragment; a punctuation-only fragment separated from its word by whitespace is glued to the preceding word as one atomic unit"; update the D13 wrap edge-case + TESTS rows; sync `algorithms/INDEX.md` (gate-enforced via `make doc-index-check`).
+3. **WI 3 — TDD RED→GREEN in `tests/test_mdconv.py`:** (a) `"If no , make …"` wrapped narrow → the comma stays attached to its word and no wrapped line begins with `,` (RED on current code); (b) `"no, make"` (no space) unchanged; (c) a `;` / `.` variant. `make gate` green.
+4. **WI 4 — closeout:** record sha + CI runs + before/after here; flip status DONE; update Queue/header; regenerate the index + `--check`.
+
+**Blast radius:** `_tokenize` / `_wrap_cell` / `_join_units` in `mdconv.py` (D13/B20 wrap path) + new TESTS row + new test cases only; no crawl-scope or exclusion changes; TEXT/ORGANIZATION constraint unaffected (same words, punctuation re-attached to its word).
+
+**Acceptance criteria:** at the landing commit — no wrapped box-drawing cell line begins with a closing punctuation fragment; a punctuation-only fragment always renders attached to its preceding word; existing wrap tests unchanged in behavior; `make gate` green; CI + SonarCloud check runs green.
+
+**Ordering:** normal priority — after B17 in the mdconv queue, before B23 (low); **doc 0.19.0** (B21 0.16.0, B18 0.17.0, B17 0.18.0 already taken).
+
+**Progress:**
+
+- 2026-10-15 — WI 1 done (this entry); root cause confirmed (space-before-comma → stray comma unit pushed to the next line by `_wrap_cell`).
+
+**Closeout:** (TBD)
+
 <!-- BACKLOG:CONSTRAINTS -->
 ## Standing constraints (apply to all items)
 
@@ -2301,3 +2335,4 @@ Planned doc version **0.16.0** (B18 re-sequenced 0.16.0 → 0.17.0, B17
 - **Current queue order (2026-10-15, supersedes the bullets above):** **B21 → B18 → B17 → B23 (low)** — B20 closed 2026-10-15 (code `5611151`/`2ddb718`, closeout in its entry), so B21 (paragraph breaks) is next at doc 0.16.0, then B18 at 0.17.0, then B17 at 0.18.0, then B23 (SonarQube reliability, low) last.
 - **Current queue order (2026-10-14, supersedes the bullets above):** **B22 → B20 → B21 → B18 → B17** — B22 (CI gate fix, no version, blocks all pushes) lands first; B20's closeout push is gated on it. Doc versions unchanged: B20 0.15.0, B21 0.16.0, B18 0.17.0, B17 0.18.0.
 - **Current queue order (2026-10-15, supersedes the bullets above):** **B20 → B21 → B18 → B17 → B23 (low priority)** — B22 closed 2026-10-15 (`aa4362b`); B23 (SonarCloud Reliability to A) appended at the end per user, low priority, no version. Doc versions unchanged: B20 0.15.0, B21 0.16.0, B18 0.17.0, B17 0.18.0.
+- **Current queue order (2026-10-15, supersedes the bullets above):** **B21 → B18 → B17 → B24 → B23 (low priority)** — B20 closed 2026-10-15 (`5611151`/`2ddb718`); B24 (wrap punctuation rule) appended 2026-10-15 (normal, after B17, before B23-low); B21 (paragraph breaks) next at doc 0.16.0, then B18 at 0.17.0, B17 at 0.18.0, B24 at 0.19.0, B23 (low, no version) last.
