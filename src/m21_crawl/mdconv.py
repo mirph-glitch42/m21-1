@@ -195,6 +195,15 @@ def _render_block_list(children, base_url: str, ns: str) -> list[str]:
                 code = child.get_text()  # newlines/indentation preserved verbatim
                 fence = "````" if "```" in code else "```"
                 blocks.append(f"{fence}\n{code}\n{fence}")
+        elif name == "div":  # D16 (B21): an inline-only div is a paragraph boundary
+            if _contains_block_el(child):  # D7: real block structure inside (unchanged)
+                flush()
+                blocks.extend(_render_block_list(child.children, base_url, ns))
+            else:  # D16: inline-only div -> its inline content becomes its own block
+                flush()
+                t = _render_inline_children(child, base_url, ns).strip()
+                if t:
+                    blocks.append(t)
         elif name in _UNWRAP_BLOCK or name in _TABLE_PART:  # D14: table parts
             if _contains_block_el(child):  # D7: real block structure inside
                 flush()

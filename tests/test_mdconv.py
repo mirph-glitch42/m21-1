@@ -493,6 +493,12 @@ CASES: list[tuple[str, str, str]] = [
         "│      │ ├────┤ │<br>│      │ │ a1 │ │<br>│      │ │    │ │<br>│      │ │ a2 │ │<br>"
         "│      │ └────┘ │<br>└──────┴────────┘</pre> |\n",
     ),
+    (
+        "case80 two inline-only divs in block position become two paragraph blocks (B21, D16)",
+        "<div><em>Example 1:</em> text one.</div><div></div>"
+        "<div><em>Analysis:</em> text two.</div>",
+        "*Example 1:* text one.\n\n*Analysis:* text two.\n",
+    ),
 ]
 
 
