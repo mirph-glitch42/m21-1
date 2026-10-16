@@ -196,7 +196,7 @@ def _render_block_list(children, base_url: str, ns: str) -> list[str]:
                 fence = "````" if "```" in code else "```"
                 blocks.append(f"{fence}\n{code}\n{fence}")
         elif name == "div":  # D16 (B21): an inline-only div is a paragraph boundary
-            if _contains_block_el(child):  # D7: real block structure inside (unchanged)
+            if _contains_block_el(child) or _contains_div(child):  # D16: block or child-div group
                 flush()
                 blocks.extend(_render_block_list(child.children, base_url, ns))
             else:  # D16: inline-only div -> its inline content becomes its own block
@@ -250,6 +250,17 @@ def _contains_block_el(el: Tag) -> bool:
     and coalesces into the current run instead of splitting it.
     """
     return any(isinstance(d, Tag) and (d.name or "") in _BLOCK for d in el.descendants)
+
+
+def _contains_div(el: Tag) -> bool:
+    """D16 (B21): True if ``el`` has a descendant ``<div>``.
+
+    A ``<div>`` that groups child ``<div>``s (e.g. the §II.iii.1.A.2.d Example
+    and Analysis blocks, each in its own inner ``<div>``) is a paragraph
+    container: it recurses so each child ``<div>`` becomes its own paragraph
+    instead of the whole group flattening into one merged paragraph.
+    """
+    return any(isinstance(d, Tag) and (d.name or "") == "div" for d in el.descendants)
 
 
 # --- inline context ----------------------------------------------------------

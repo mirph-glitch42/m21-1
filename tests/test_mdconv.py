@@ -499,6 +499,12 @@ CASES: list[tuple[str, str, str]] = [
         "<div><em>Analysis:</em> text two.</div>",
         "*Example 1:* text one.\n\n*Analysis:* text two.\n",
     ),
+    (
+        "case81 nested div container: each inner div is its own paragraph (B21, D16)",
+        "<div><div><b><i>Example 1</i></b>: A</div><div></div>"
+        "<div><b><i>Analysis</i></b>: B</div></div>",
+        "***Example 1***: A\n\n***Analysis***: B\n",
+    ),
 ]
 
 
