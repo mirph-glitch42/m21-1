@@ -2,35 +2,36 @@
 
 <!-- INDEX:BEGIN format=tsv version=1 -->
 id	title	status	priority	start_line	end_line
-INDEX_BLOCK	-	-	-	3	34
-HEADER	-	-	-	36	51
-QUEUE	-	-	-	52	67
-B1	Replace eGain layout tables with standard Markdown layout	DONE	Medium	68	130
-B2	Dead intra-article anchors (`#1a`, `#RM`, …)	DONE	Medium	131	210
-B3	Slug-dedup robustness (anchor collisions)	DONE	Medium	211	281
-B4	Inline emphasis split into standalone paragraphs (goal-1 bug)	DONE	Medium	282	416
-B5	GitHub CI gate failure	DONE	Medium	417	452
-B6	Layout frames with non-heading label cells escape D5	DONE	Medium	453	642
-B7	TOC entries lack internal links	DONE	Medium	643	722
-B8	Dead internal links, incl. "To Top"	DONE	Medium	723	805
-B9	Raw spaces in link destinations	DONE	Medium	806	875
-B10	Broken image links (legacy host)	DONE	Medium	876	973
-B11	Change Date frames → quote block (readability deviation)	DONE	Medium	974	1063
-B12	CI gate for `algorithms/INDEX.md` staleness	DONE	Medium	1064	1134
-B13	Sloppy double horizontal rules around dissolved frames	DONE	Medium	1135	1204
-B14	14 residual leaked layout frames (missed format frames)	DONE	Medium	1205	1330
-B15	Change Date frames not in a quote block (B11 gap)	DONE	Medium	1331	1430
-B16	Nested-in-cell tables unreadable + one leaked multi-section chunk	DONE	Medium	1431	1592
-B17	Inline images break paragraph readability	OPEN	Medium	1593	1673
-B18	Section nav links — unified schema, To Top folded in	OPEN	Medium	1674	1805
-B19	Malformed HTML tags inline entire section chunks	DONE	Medium	1806	1990
-B20	Nested in-cell tables → aligned box-drawing tables in pre	DONE	Medium	1991	2130
-B21	Missing paragraph breaks — inline-only `<div>` paragraphs coalesce	DONE	Medium	2131	2266
-B22	GitHub CI gate failing — SonarCloud security issues on new code	DONE	Medium	2267	2314
-B23	SonarCloud Reliability rating to A (new code)	OPEN	Low	2315	2348
-B24	Wrap must not split a word from its attached punctuation	OPEN	Medium	2349	2382
-B25	Nested `<ul>`/`<ol>` in a table cell duplicates sub-items	OPEN	Medium	2383	2415
-CONSTRAINTS	-	-	-	2416	2438
+INDEX_BLOCK	-	-	-	3	35
+HEADER	-	-	-	37	52
+QUEUE	-	-	-	53	72
+B1	Replace eGain layout tables with standard Markdown layout	DONE	Medium	73	135
+B2	Dead intra-article anchors (`#1a`, `#RM`, …)	DONE	Medium	136	215
+B3	Slug-dedup robustness (anchor collisions)	DONE	Medium	216	286
+B4	Inline emphasis split into standalone paragraphs (goal-1 bug)	DONE	Medium	287	421
+B5	GitHub CI gate failure	DONE	Medium	422	457
+B6	Layout frames with non-heading label cells escape D5	DONE	Medium	458	647
+B7	TOC entries lack internal links	DONE	Medium	648	727
+B8	Dead internal links, incl. "To Top"	DONE	Medium	728	810
+B9	Raw spaces in link destinations	DONE	Medium	811	880
+B10	Broken image links (legacy host)	DONE	Medium	881	978
+B11	Change Date frames → quote block (readability deviation)	DONE	Medium	979	1068
+B12	CI gate for `algorithms/INDEX.md` staleness	DONE	Medium	1069	1139
+B13	Sloppy double horizontal rules around dissolved frames	DONE	Medium	1140	1209
+B14	14 residual leaked layout frames (missed format frames)	DONE	Medium	1210	1335
+B15	Change Date frames not in a quote block (B11 gap)	DONE	Medium	1336	1435
+B16	Nested-in-cell tables unreadable + one leaked multi-section chunk	DONE	Medium	1436	1597
+B17	Inline images break paragraph readability	OPEN	Medium	1598	1678
+B18	Section nav links — unified schema, To Top folded in	OPEN	Medium	1679	1810
+B19	Malformed HTML tags inline entire section chunks	DONE	Medium	1811	1995
+B20	Nested in-cell tables → aligned box-drawing tables in pre	DONE	Medium	1996	2135
+B21	Missing paragraph breaks — inline-only `<div>` paragraphs coalesce	DONE	Medium	2136	2271
+B22	GitHub CI gate failing — SonarCloud security issues on new code	DONE	Medium	2272	2319
+B23	SonarCloud Reliability rating to A (new code)	OPEN	Low	2320	2353
+B24	Wrap must not split a word from its attached punctuation	OPEN	Medium	2354	2387
+B25	Nested `<ul>`/`<ol>` in a table cell duplicates sub-items	OPEN	High	2388	2421
+B26	Flat in-cell `<ul>`/`<ol>` flattened to `;`-joined text	OPEN	High	2422	2454
+CONSTRAINTS	-	-	-	2455	2478
 <!-- INDEX:END -->
 
 <!-- BACKLOG:HEADER -->
@@ -43,23 +44,27 @@ decisions, and acceptance criteria.
 
 Order = all High, then Medium, then Low; within a tier in `B<n>` arrival order (G9).
 
-**Migration (2026-10-16):** backlog moved to the priority scheme — every item declares Priority (default **Medium**; **B23** = **Low** per its own notes; **B25** = **Medium**, flagged — goal-1 ORGANIZATION violation, may warrant **High**, user to confirm); planned version tokens stripped from Ordering fields and the Queue (G6); the Queue is now priority-derived. Per-item migration Progress lines are on the active OPEN items (B17, B18, B23, B24, B25); DONE items are recorded by this note.
+**Migration (2026-10-16):** backlog moved to the priority scheme — every item declares Priority (default **Medium**; **B23** = **Low** per its own notes; **B25** = **High** (user-approved 2026-10-16); **B26** = **High** (new 2026-10-16, in-cell list flattening)); planned version tokens stripped from Ordering fields and the Queue (G6); the Queue is now priority-derived. Per-item migration Progress lines are on the active OPEN items (B17, B18, B23, B24, B25); DONE items are recorded by this note.
 
-Status: **B1–B22 done** (shas in each closeout — B6/B11 `f48faf9`; B13 `817a8f3`; B12 `403550c`; B7/B8/B9 this session's commit; B10 `f88004b` closed 2026-10-08; B14 `827a8c0` + `cc76aad`; B15 `dd54c1e` + `a922976`; B16 `489fa4a` + `2b21ee9`; B19 `a2c691b`; B20 `5611151`/`2ddb718`; B21 `d1e03ca`/`33c02f4` closed 2026-10-16; B22 `aa4362b` closed 2026-10-15) | **B17, B18 OPEN** (new 2026-10-10) | **B23 OPEN** (new 2026-10-15, Low) | **B24 OPEN** (new 2026-10-15) | **B25 OPEN** (new 2026-10-16, user-reported table-organization bug) | **In progress:** —
+Status: **B1–B22 done** (shas in each closeout — B6/B11 `f48faf9`; B13 `817a8f3`; B12 `403550c`; B7/B8/B9 this session's commit; B10 `f88004b` closed 2026-10-08; B14 `827a8c0` + `cc76aad`; B15 `dd54c1e` + `a922976`; B16 `489fa4a` + `2b21ee9`; B19 `a2c691b`; B20 `5611151`/`2ddb718`; B21 `d1e03ca`/`33c02f4` closed 2026-10-16; B22 `aa4362b` closed 2026-10-15) | **B17, B18 OPEN** (new 2026-10-10) | **B23 OPEN** (new 2026-10-15, Low) | **B24 OPEN** (new 2026-10-15) | **B25 OPEN** (new 2026-10-16, nested-list duplication; **High**) | **B26 OPEN** (new 2026-10-16, in-cell list flattening; **High**) | **In progress:** —
 
-**Queue:** B17 → B18 → B24 → B25 | B23 (low) | **In progress:** — | **Done:** B1–B22 | **Updated:** 2026-10-16
+**Queue:** B25 → B26 | B17 → B18 → B24 | B23 (low) | **In progress:** — | **Done:** B1–B22 | **Updated:** 2026-10-16
 
 <!-- BACKLOG:QUEUE -->
 ## Queue (execution order)
 
 Order = all High, then Medium, then Low; within a tier in `B<n>` arrival order (G9). No version numbers — versions are assigned at completion only (G6). Done items (B1–B22) are not listed.
 
+**High** (B# order):
+
+1. **B25** — nested `<ul>`/`<ol>` in a table cell duplicates sub-items (fix `_render_list_inline`).
+2. **B26** — flat in-cell `<ul>`/`<ol>` flattened to `;`-joined text (same root function; unflatten, close with B25).
+
 **Medium** (B# order):
 
 1. **B17** — inline images become block-level (readability).
 2. **B18** — section nav links, unified schema; To Top folded in.
 3. **B24** — wrap never begins a line with a closing punctuation fragment (glue it to its word).
-4. **B25** — nested `<ul>`/`<ol>` in a table cell duplicates sub-items (fix `_render_list_inline`).
 
 **Low** (B# order):
 
@@ -2385,7 +2390,7 @@ before B18/B17 (agent placement 2026-10-13, flagged; user may re-order).
 
 **Source:** user
 **Requested:** 2026-10-16
-**Priority:** Medium
+**Priority:** High
 
 **Request (verbatim, 2026-10-16):** "New Backlog: Counter to requirements, structure/organization of the document is being changed within tables. See following screenshots comparing web site and md." (screenshots: the portal renders a nested sub-list inside a table cell; the Markdown output duplicates the sub-items.)
 
@@ -2410,6 +2415,40 @@ before B18/B17 (agent placement 2026-10-13, flagged; user may re-order).
 **Progress:**
 
 - 2026-10-16 — WI 1 done (this entry); root cause traced to the `_render_list_inline` double-render; priority = **Medium** (migration default; **flag: goal-1 ORGANIZATION violation — may warrant High, user to confirm**).
+- 2026-10-16 — priority → **High** (user-approved 2026-10-16); approach = **render-test** (same as B20 box-drawing tables), per user; **B26** (in-cell list **flattening**) added as a separate High item sharing this root function (`_render_list_inline`) — fixed together.
+
+**Closeout:** (TBD)
+
+<!-- BACKLOG:ITEM:B26 -->
+## B26. Flat in-cell `<ul>`/`<ol>` flattened to `;`-joined text — **OPEN (2026-10-16)**
+
+**Source:** user
+**Requested:** 2026-10-16
+**Priority:** High
+
+**Request (verbatim, 2026-10-16):** "These images show that lists are flattened inside of nested tables as well. These lists need to be unflattened. I don't know if this part of B25 or a separate issue. If a separate issue, this issue should be added to the backlog and given a 'high' priority." (evidence: e78bdeba = portal rendering a proper flat bulleted list inside a table cell; a8812b27 = Markdown output flattening the same list to `;`-joined inline text.)
+
+**Problem / evidence (measured 2026-10-16):** a table cell with a **flat** `<ul>` (top-level `<li>`s, no nesting) is rendered by `_render_list_inline` (`src/m21_crawl/mdconv.py:754`) as `find_all('li')` + `; `-joined string — every `<li>` is folded into one `;`-separated inline string, so the **bullets are lost** and the list's ORGANIZATION is flattened to prose (goal-1 ORGANIZATION violation). A **distinct symptom** from B25 (the **nested**-list **duplication** case) but the **same root function and same fix**.
+
+**Root cause / census:** `_render_list_inline` flattens **all** in-cell lists — flat lists lose bullets (B26); nested lists duplicate sub-items (B25). Population: every `<ul>`/`<ol>` inside a GFM table cell (censused in WI 2).
+
+**Chosen approach (agent-proposed, flagged for user review):** rewrite `_render_list_inline` to emit a **real list** (top-level bullets; nested sub-bullets indented) instead of joining with `; `. Shared with B25 (same function). If the target renderer (GitHub / VMD) will not render a `<ul>` inside a GFM cell, fall back to `<br>`-indented literal bullets. Decided in the doc cycle + TDD RED test, via the approved **render-test loop** (same as B20).
+
+**Work items (in order):**
+1. **WI 1 (done 2026-10-16):** this entry; root cause confirmed (`; `-join in `_render_list_inline`); cross-ref B25 (same function, same fix, closed together).
+2. **WI 2 — census:** count flat in-cell lists (before/after) so closeout reports structure restored.
+3. **WI 3 — doc cycle (algorithm-records-keeper):** decide bullet rendering in a cell (real `<ul>` vs `<br>`-indented); add the rule; bump the doc version at completion (G6); sync `algorithms/INDEX.md`.
+4. **WI 4 — TDD RED→GREEN in `tests/test_mdconv.py`:** (a) flat in-cell `<ul>` renders as real bullets, not `;`-joined (RED now); (b) nested in-cell list renders each sub-item once (B25, RED); GREEN; `make gate` green.
+5. **WI 5 — closeout:** record sha + CI + before/after census; flip DONE; re-queue; regenerate index + `--check`.
+
+**Blast radius:** `_render_list_inline` (`mdconv.py:754`) + algorithm doc + `tests/test_mdconv.py` + the assembled manual (re-crawl). Must NOT change: `_render_list` (block-level, correct); other cell rendering; TEXT (only list structure is restored).
+
+**Acceptance criteria:** at the landing commit — every flat in-cell `<ul>`/`<ol>` in the regenerated manual renders as real bullets (census: 0 `;`-flattened in-cell lists, vs the B26 baseline); the B25 nested-duplication case also renders each sub-item once (closed together); flat prose and other tables unchanged (existing tests pass); TEXT/ORGANIZATION otherwise preserved (goal 1); `make gate` green + GitHub CI green.
+
+**Ordering:** High tier, after B25 (same function, fixed together); before B17/B18/B24 (Medium); before B23 (low). No version (assigned at completion, G6). Cross-ref: B25.
+
+**Progress:**
+- 2026-10-16 — WI 1 done (this entry); priority = **High** (per user: if separate, add to backlog at high); cross-ref B25 (same root function `_render_list_inline`, same fix, closed together).
 
 **Closeout:** (TBD)
 
@@ -2435,4 +2474,5 @@ before B18/B17 (agent placement 2026-10-13, flagged; user may re-order).
 - **Current queue order (2026-10-14, supersedes the bullets above):** **B22 → B20 → B21 → B18 → B17** — B22 (CI gate fix, no version, blocks all pushes) lands first; B20's closeout push is gated on it. Doc versions unchanged: B20 0.15.0, B21 0.16.0, B18 0.17.0, B17 0.18.0.
 - **Current queue order (2026-10-15, supersedes the bullets above):** **B20 → B21 → B18 → B17 → B23 (low priority)** — B22 closed 2026-10-15 (`aa4362b`); B23 (SonarCloud Reliability to A) appended at the end per user, low priority, no version. Doc versions unchanged: B20 0.15.0, B21 0.16.0, B18 0.17.0, B17 0.18.0.
 - **Current queue order (2026-10-15, supersedes the bullets above):** **B21 → B18 → B17 → B24 → B23 (low priority)** — B20 closed 2026-10-15 (`5611151`/`2ddb718`); B24 (wrap punctuation rule) appended 2026-10-15 (normal, after B17, before B23-low); B21 (paragraph breaks) next at doc 0.16.0, then B18 at 0.17.0, B17 at 0.18.0, B24 at 0.19.0, B23 (low, no version) last.
+- **Current queue order (2026-10-16, supersedes the bullets above):** **B25 → B26 → B17 → B18 → B24 → B23 (low)** — B25 (nested-list duplication) + B26 (in-cell list flattening) both **High** (user-approved 2026-10-16), same root function `_render_list_inline`, fixed together; B17/B18/B24 **Medium**; B23 (SonarQube reliability) **low**, last. No version tokens (G6).
 
