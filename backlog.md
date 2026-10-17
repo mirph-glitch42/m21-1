@@ -4,34 +4,34 @@
 id	title	status	priority	start_line	end_line
 INDEX_BLOCK	-	-	-	3	35
 HEADER	-	-	-	37	52
-QUEUE	-	-	-	53	72
-B1	Replace eGain layout tables with standard Markdown layout	DONE	Medium	73	135
-B2	Dead intra-article anchors (`#1a`, `#RM`, …)	DONE	Medium	136	215
-B3	Slug-dedup robustness (anchor collisions)	DONE	Medium	216	286
-B4	Inline emphasis split into standalone paragraphs (goal-1 bug)	DONE	Medium	287	421
-B5	GitHub CI gate failure	DONE	Medium	422	457
-B6	Layout frames with non-heading label cells escape D5	DONE	Medium	458	647
-B7	TOC entries lack internal links	DONE	Medium	648	727
-B8	Dead internal links, incl. "To Top"	DONE	Medium	728	810
-B9	Raw spaces in link destinations	DONE	Medium	811	880
-B10	Broken image links (legacy host)	DONE	Medium	881	978
-B11	Change Date frames → quote block (readability deviation)	DONE	Medium	979	1068
-B12	CI gate for `algorithms/INDEX.md` staleness	DONE	Medium	1069	1139
-B13	Sloppy double horizontal rules around dissolved frames	DONE	Medium	1140	1209
-B14	14 residual leaked layout frames (missed format frames)	DONE	Medium	1210	1335
-B15	Change Date frames not in a quote block (B11 gap)	DONE	Medium	1336	1435
-B16	Nested-in-cell tables unreadable + one leaked multi-section chunk	DONE	Medium	1436	1597
-B17	Inline images break paragraph readability	OPEN	Medium	1598	1678
-B18	Section nav links — unified schema, To Top folded in	OPEN	Medium	1679	1810
-B19	Malformed HTML tags inline entire section chunks	DONE	Medium	1811	1995
-B20	Nested in-cell tables → aligned box-drawing tables in pre	DONE	Medium	1996	2135
-B21	Missing paragraph breaks — inline-only `<div>` paragraphs coalesce	DONE	Medium	2136	2271
-B22	GitHub CI gate failing — SonarCloud security issues on new code	DONE	Medium	2272	2319
-B23	SonarCloud Reliability rating to A (new code)	OPEN	Low	2320	2353
-B24	Wrap must not split a word from its attached punctuation	OPEN	Medium	2354	2387
-B25	Nested `<ul>`/`<ol>` in a table cell duplicates sub-items	OPEN	High	2388	2421
-B26	Flat in-cell `<ul>`/`<ol>` flattened to `;`-joined text	OPEN	High	2422	2454
-CONSTRAINTS	-	-	-	2455	2478
+QUEUE	-	-	-	53	71
+B1	Replace eGain layout tables with standard Markdown layout	DONE	Medium	72	134
+B2	Dead intra-article anchors (`#1a`, `#RM`, …)	DONE	Medium	135	214
+B3	Slug-dedup robustness (anchor collisions)	DONE	Medium	215	285
+B4	Inline emphasis split into standalone paragraphs (goal-1 bug)	DONE	Medium	286	420
+B5	GitHub CI gate failure	DONE	Medium	421	456
+B6	Layout frames with non-heading label cells escape D5	DONE	Medium	457	646
+B7	TOC entries lack internal links	DONE	Medium	647	726
+B8	Dead internal links, incl. "To Top"	DONE	Medium	727	809
+B9	Raw spaces in link destinations	DONE	Medium	810	879
+B10	Broken image links (legacy host)	DONE	Medium	880	977
+B11	Change Date frames → quote block (readability deviation)	DONE	Medium	978	1067
+B12	CI gate for `algorithms/INDEX.md` staleness	DONE	Medium	1068	1138
+B13	Sloppy double horizontal rules around dissolved frames	DONE	Medium	1139	1208
+B14	14 residual leaked layout frames (missed format frames)	DONE	Medium	1209	1334
+B15	Change Date frames not in a quote block (B11 gap)	DONE	Medium	1335	1434
+B16	Nested-in-cell tables unreadable + one leaked multi-section chunk	DONE	Medium	1435	1596
+B17	Inline images break paragraph readability	CANCELLED	Medium	1597	1685
+B18	Section nav links — unified schema, To Top folded in	OPEN	Medium	1686	1817
+B19	Malformed HTML tags inline entire section chunks	DONE	Medium	1818	2002
+B20	Nested in-cell tables → aligned box-drawing tables in pre	DONE	Medium	2003	2142
+B21	Missing paragraph breaks — inline-only `<div>` paragraphs coalesce	DONE	Medium	2143	2278
+B22	GitHub CI gate failing — SonarCloud security issues on new code	DONE	Medium	2279	2326
+B23	SonarCloud Reliability rating to A (new code)	OPEN	Low	2327	2360
+B24	Wrap must not split a word from its attached punctuation	OPEN	Medium	2361	2394
+B25	Nested `<ul>`/`<ol>` in a table cell duplicates sub-items	OPEN	High	2395	2428
+B26	Flat in-cell `<ul>`/`<ol>` flattened to `;`-joined text	OPEN	High	2429	2461
+CONSTRAINTS	-	-	-	2462	2486
 <!-- INDEX:END -->
 
 <!-- BACKLOG:HEADER -->
@@ -44,9 +44,9 @@ decisions, and acceptance criteria.
 
 Order = all High, then Medium, then Low; within a tier in `B<n>` arrival order (G9).
 
-**Migration (2026-10-16):** backlog moved to the priority scheme — every item declares Priority (default **Medium**; **B23** = **Low** per its own notes; **B25** = **High** (user-approved 2026-10-16); **B26** = **High** (new 2026-10-16, in-cell list flattening)); planned version tokens stripped from Ordering fields and the Queue (G6); the Queue is now priority-derived. Per-item migration Progress lines are on the active OPEN items (B17, B18, B23, B24, B25); DONE items are recorded by this note.
+**Migration (2026-10-16):** backlog moved to the priority scheme — every item declares Priority (default **Medium**; **B23** = **Low** per its own notes; **B25** = **High** (user-approved 2026-10-16); **B26** = **High** (new 2026-10-16, in-cell list flattening)); planned version tokens stripped from Ordering fields and the Queue (G6); the Queue is now priority-derived. Per-item migration Progress lines were added on the then-active OPEN items (B18, B23, B24, B25); B17 was later CANCELLED (2026-10-16); DONE items are recorded by this note.
 
-Status: **B1–B22 done** (shas in each closeout — B6/B11 `f48faf9`; B13 `817a8f3`; B12 `403550c`; B7/B8/B9 this session's commit; B10 `f88004b` closed 2026-10-08; B14 `827a8c0` + `cc76aad`; B15 `dd54c1e` + `a922976`; B16 `489fa4a` + `2b21ee9`; B19 `a2c691b`; B20 `5611151`/`2ddb718`; B21 `d1e03ca`/`33c02f4` closed 2026-10-16; B22 `aa4362b` closed 2026-10-15) | **B17, B18 OPEN** (new 2026-10-10) | **B23 OPEN** (new 2026-10-15, Low) | **B24 OPEN** (new 2026-10-15) | **B25 OPEN** (new 2026-10-16, nested-list duplication; **High**) | **B26 OPEN** (new 2026-10-16, in-cell list flattening; **High**) | **In progress:** —
+Status: **B1–B22 done** (shas in each closeout — B6/B11 `f48faf9`; B13 `817a8f3`; B12 `403550c`; B7/B8/B9 this session's commit; B10 `f88004b` closed 2026-10-08; B14 `827a8c0` + `cc76aad`; B15 `dd54c1e` + `a922976`; B16 `489fa4a` + `2b21ee9`; B19 `a2c691b`; B20 `5611151`/`2ddb718`; B21 `d1e03ca`/`33c02f4` closed 2026-10-16; B22 `aa4362b` closed 2026-10-15) | **B17 CANCELLED** (2026-10-16; superseded by B21) | **B18 OPEN** (new 2026-10-10) | **B23 OPEN** (new 2026-10-15, Low) | **B24 OPEN** (new 2026-10-15) | **B25 OPEN** (new 2026-10-16, nested-list duplication; **High**) | **B26 OPEN** (new 2026-10-16, in-cell list flattening; **High**) | **In progress:** —
 
 **Queue:** B25 → B26 | B17 → B18 → B24 | B23 (low) | **In progress:** — | **Done:** B1–B22 | **Updated:** 2026-10-16
 
@@ -62,9 +62,8 @@ Order = all High, then Medium, then Low; within a tier in `B<n>` arrival order (
 
 **Medium** (B# order):
 
-1. **B17** — inline images become block-level (readability).
-2. **B18** — section nav links, unified schema; To Top folded in.
-3. **B24** — wrap never begins a line with a closing punctuation fragment (glue it to its word).
+1. **B18** — section nav links, unified schema; To Top folded in.
+2. **B24** — wrap never begins a line with a closing punctuation fragment (glue it to its word).
 
 **Low** (B# order):
 
@@ -1596,7 +1595,7 @@ ASCII-pipe form); 0 ` — ` hr-flattened joins; TEXT/ORGANIZATION unchanged
 B6/B11/B13/B14/B15.
 
 <!-- BACKLOG:ITEM:B17 -->
-## B17. Inline images break paragraph readability — **OPEN, new 2026-10-10**
+## B17. Inline images break paragraph readability — **CANCELLED 2026-10-16**
 **Priority:** Medium
 
 **User request (verbatim, 2026-10-10):** "Images in-line with text makes
@@ -1675,6 +1674,14 @@ queue); rides the same `mdconv` doc as B6/B11/B13/B14/B15/B16/B18/B19/B20/B21.
 
 - 2026-10-16 — migrated to the priority scheme (G9): priority = **Medium**
   (migration default).
+- 2026-10-16 — **CANCELLED** (user-directed 2026-10-16): non-issue after
+  **B21** (inline-only `<div>` paragraph breaks, DONE `d1e03ca`/`33c02f4`) —
+  B21's block-separation already moves images out of inline paragraph flow,
+  so B17's readability goal is met; no code, doc, or test change required.
+
+**Closeout (cancelled 2026-10-16):** CANCELLED — superseded by **B21** (DONE),
+which already blocks inline images out of paragraph flow. No code/doc/test
+change; no version (G6). Re-queued the remainder (B17 removed from the Queue).
 
 <!-- BACKLOG:ITEM:B18 -->
 ## B18. Section nav links — unified schema, To Top folded in — **OPEN, new 2026-10-10**
@@ -2475,4 +2482,5 @@ before B18/B17 (agent placement 2026-10-13, flagged; user may re-order).
 - **Current queue order (2026-10-15, supersedes the bullets above):** **B20 → B21 → B18 → B17 → B23 (low priority)** — B22 closed 2026-10-15 (`aa4362b`); B23 (SonarCloud Reliability to A) appended at the end per user, low priority, no version. Doc versions unchanged: B20 0.15.0, B21 0.16.0, B18 0.17.0, B17 0.18.0.
 - **Current queue order (2026-10-15, supersedes the bullets above):** **B21 → B18 → B17 → B24 → B23 (low priority)** — B20 closed 2026-10-15 (`5611151`/`2ddb718`); B24 (wrap punctuation rule) appended 2026-10-15 (normal, after B17, before B23-low); B21 (paragraph breaks) next at doc 0.16.0, then B18 at 0.17.0, B17 at 0.18.0, B24 at 0.19.0, B23 (low, no version) last.
 - **Current queue order (2026-10-16, supersedes the bullets above):** **B25 → B26 → B17 → B18 → B24 → B23 (low)** — B25 (nested-list duplication) + B26 (in-cell list flattening) both **High** (user-approved 2026-10-16), same root function `_render_list_inline`, fixed together; B17/B18/B24 **Medium**; B23 (SonarQube reliability) **low**, last. No version tokens (G6).
+- **Current queue order (2026-10-16, supersedes the bullets above):** **B25 → B26 → B18 → B24 → B23 (low)** — **B17 CANCELLED** (2026-10-16, user-directed): non-issue after **B21** (inline-only `<div>` paragraph breaks, DONE) already blocks inline images out of paragraph flow, so B17 is superseded and removed from the Queue; B25/B26 **High** (same root function `_render_list_inline`, fixed together); B18/B24 **Medium**; B23 **low**, last. No version tokens (G6).
 
