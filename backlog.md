@@ -2,9 +2,9 @@
 
 <!-- INDEX:BEGIN format=tsv version=1 -->
 id	title	status	priority	start_line	end_line
-INDEX_BLOCK	-	-	-	3	35
-HEADER	-	-	-	37	52
-QUEUE	-	-	-	53	71
+INDEX_BLOCK	-	-	-	3	36
+HEADER	-	-	-	38	53
+QUEUE	-	-	-	54	71
 B1	Replace eGain layout tables with standard Markdown layout	DONE	Medium	72	134
 B2	Dead intra-article anchors (`#1a`, `#RM`, …)	DONE	Medium	135	214
 B3	Slug-dedup robustness (anchor collisions)	DONE	Medium	215	285
@@ -29,9 +29,10 @@ B21	Missing paragraph breaks — inline-only `<div>` paragraphs coalesce	DONE	Me
 B22	GitHub CI gate failing — SonarCloud security issues on new code	DONE	Medium	2279	2326
 B23	SonarCloud Reliability rating to A (new code)	OPEN	Low	2327	2360
 B24	Wrap must not split a word from its attached punctuation	OPEN	Medium	2361	2394
-B25	Nested `<ul>`/`<ol>` in a table cell duplicates sub-items	OPEN	High	2395	2428
-B26	Flat in-cell `<ul>`/`<ol>` flattened to `;`-joined text	OPEN	High	2429	2461
-CONSTRAINTS	-	-	-	2462	2486
+B25	Nested `<ul>`/`<ol>` in a table cell duplicates sub-items	DONE	High	2395	2438
+B26	Flat in-cell `<ul>`/`<ol>` flattened to `;`-joined text	DONE	High	2439	2479
+B27	Lists inside nested box-drawing (`<pre>`) tables break monospace alignment	OPEN	High	2480	2512
+CONSTRAINTS	-	-	-	2513	2538
 <!-- INDEX:END -->
 
 <!-- BACKLOG:HEADER -->
@@ -46,9 +47,9 @@ Order = all High, then Medium, then Low; within a tier in `B<n>` arrival order (
 
 **Migration (2026-10-16):** backlog moved to the priority scheme — every item declares Priority (default **Medium**; **B23** = **Low** per its own notes; **B25** = **High** (user-approved 2026-10-16); **B26** = **High** (new 2026-10-16, in-cell list flattening)); planned version tokens stripped from Ordering fields and the Queue (G6); the Queue is now priority-derived. Per-item migration Progress lines were added on the then-active OPEN items (B18, B23, B24, B25); B17 was later CANCELLED (2026-10-16); DONE items are recorded by this note.
 
-Status: **B1–B22 done** (shas in each closeout — B6/B11 `f48faf9`; B13 `817a8f3`; B12 `403550c`; B7/B8/B9 this session's commit; B10 `f88004b` closed 2026-10-08; B14 `827a8c0` + `cc76aad`; B15 `dd54c1e` + `a922976`; B16 `489fa4a` + `2b21ee9`; B19 `a2c691b`; B20 `5611151`/`2ddb718`; B21 `d1e03ca`/`33c02f4` closed 2026-10-16; B22 `aa4362b` closed 2026-10-15) | **B17 CANCELLED** (2026-10-16; superseded by B21) | **B18 OPEN** (new 2026-10-10) | **B23 OPEN** (new 2026-10-15, Low) | **B24 OPEN** (new 2026-10-15) | **B25 OPEN** (new 2026-10-16, nested-list duplication; **High**) | **B26 OPEN** (new 2026-10-16, in-cell list flattening; **High**) | **In progress:** —
+Status: **B1–B22, B25, B26 done** (shas in each closeout — B6/B11 `f48faf9`; B13 `817a8f3`; B12 `403550c`; B7/B8/B9 this session's commit; B10 `f88004b` closed 2026-10-08; B14 `827a8c0` + `cc76aad`; B15 `dd54c1e` + `a922976`; B16 `489fa4a` + `2b21ee9`; B19 `a2c691b`; B20 `5611151`/`2ddb718`; B21 `d1e03ca`/`33c02f4` closed 2026-10-16; B22 `aa4362b` closed 2026-10-15; B25/B26 `651913b` closed 2026-10-17) | **B17 CANCELLED** (2026-10-16; superseded by B21) | **B18 OPEN** (new 2026-10-10) | **B23 OPEN** (new 2026-10-15, Low) | **B24 OPEN** (new 2026-10-15) | **B27 OPEN** (new 2026-10-17, nested-table lists break `<pre>` alignment; **High**) | **In progress:** —
 
-**Queue:** B25 → B26 | B17 → B18 → B24 | B23 (low) | **In progress:** — | **Done:** B1–B22 | **Updated:** 2026-10-16
+**Queue:** B27 | B18 → B24 | B23 (low) | **In progress:** — | **Done:** B1–B22, B25, B26 | **Updated:** 2026-10-17
 
 <!-- BACKLOG:QUEUE -->
 ## Queue (execution order)
@@ -57,8 +58,7 @@ Order = all High, then Medium, then Low; within a tier in `B<n>` arrival order (
 
 **High** (B# order):
 
-1. **B25** — nested `<ul>`/`<ol>` in a table cell duplicates sub-items (fix `_render_list_inline`).
-2. **B26** — flat in-cell `<ul>`/`<ol>` flattened to `;`-joined text (same root function; unflatten, close with B25).
+1. **B27** — lists inside nested box-drawing (`<pre>`) tables must use raw text symbols (`•` / `◦`, no dashes, no HTML tags) — regression from the B25/B26 HTML-list fix.
 
 **Medium** (B# order):
 
@@ -2393,7 +2393,7 @@ before B18/B17 (agent placement 2026-10-13, flagged; user may re-order).
 **Closeout:** (TBD)
 
 <!-- BACKLOG:ITEM:B25 -->
-## B25. Nested `<ul>`/`<ol>` in a table cell duplicates sub-items — **OPEN (2026-10-16)**
+## B25. Nested `<ul>`/`<ol>` in a table cell duplicates sub-items — **DONE (2026-10-17)**
 
 **Source:** user
 **Requested:** 2026-10-16
@@ -2423,11 +2423,21 @@ before B18/B17 (agent placement 2026-10-13, flagged; user may re-order).
 
 - 2026-10-16 — WI 1 done (this entry); root cause traced to the `_render_list_inline` double-render; priority = **Medium** (migration default; **flag: goal-1 ORGANIZATION violation — may warrant High, user to confirm**).
 - 2026-10-16 — priority → **High** (user-approved 2026-10-16); approach = **render-test** (same as B20 box-drawing tables), per user; **B26** (in-cell list **flattening**) added as a separate High item sharing this root function (`_render_list_inline`) — fixed together.
+- 2026-10-17 — fixed + verified; closed with B26 (see Closeout). **Follow-on:** **B27** (new, **High**) — the HTML-list fix broke monospace alignment of lists inside nested box-drawing (`<pre>`) tables; those lists must use raw text symbols (`•` level 1, `◦` level 2, no dashes).
 
-**Closeout:** (TBD)
+**Closeout (2026-10-17, verified on the same-day output):**
+
+- **Approach landed (user-approved 2026-10-17):** emit real HTML `<ul>/<ol>/<li>` in the cell — "embedding html lists works on all renderers. this is the preferred method." `_render_list_inline` now iterates only the list element's **direct** `<li>` children (no more `find_all("li")` double-descent); nested lists recurse as real nested `<ul>/<ol>`; inline content preserved verbatim.
+- **Code:** `651913b` — `fix(mdconv): emit real HTML lists for in-cell <ul>/<ol> (B25/B26)`.
+- **CI (verified green on `651913b`):** `SonarCloud Code Analysis` success, `Analyze (python)` success, `Analyze (actions)` success, `gate` success — 4/4.
+- **Version landed:** algorithm `html-to-markdown-section-extraction` **0.17.0** (`render_list_inline` rule; TESTS cases 19, 82–85); `algorithms/INDEX.md` synced (gate-enforced).
+- **Census (regenerated 2026-10-17, 14,731,530 bytes, 0 failed articles):** duplicated-sub-item table rows (repeated ≥20-char `; `-segment) **613 → 0**; flattened `; `-joined rows (≥3 `; `) **1,400 → 4** (the 4 residuals = legitimate prose semicolons); real in-cell `<ul>/<ol>` lists **0 → 3,693**; table rows **18,292 → 18,292** (unchanged).
+- **Spot check (B25 example, article `554400000174881` §`II.iii.3.A.1.d` Step 2):** each nested sub-item renders **exactly once**, as a real nested `<ul>` inside the CONTACT INFORMATION item — matches the portal.
+- **Lesson:** `LLT-0002` recorded in `LESSONS_LEARNED.md` (check green).
+- **Known follow-on (open as B27, High):** lists inside **nested box-drawing (`<pre>`) tables** break monospace alignment with HTML list tags — raw text symbols required there (B27).
 
 <!-- BACKLOG:ITEM:B26 -->
-## B26. Flat in-cell `<ul>`/`<ol>` flattened to `;`-joined text — **OPEN (2026-10-16)**
+## B26. Flat in-cell `<ul>`/`<ol>` flattened to `;`-joined text — **DONE (2026-10-17)**
 
 **Source:** user
 **Requested:** 2026-10-16
@@ -2456,6 +2466,47 @@ before B18/B17 (agent placement 2026-10-13, flagged; user may re-order).
 
 **Progress:**
 - 2026-10-16 — WI 1 done (this entry); priority = **High** (per user: if separate, add to backlog at high); cross-ref B25 (same root function `_render_list_inline`, same fix, closed together).
+- 2026-10-17 — fixed + verified; closed with B25 (see Closeout). **Follow-on:** **B27** (new, **High**) — nested box-drawing (`<pre>`) tables need raw text list symbols, not HTML tags.
+
+**Closeout (2026-10-17, verified on the same-day output; closed with B25 — same root function, same commit):**
+
+- **Code:** `651913b` (shared with B25) — `_render_list_inline` rewritten to emit a real `<ul>/<ol>` of direct `<li>` children instead of `; `-joining; `<ol>` numbering preserved via the real `<ol>` tag.
+- **CI (verified green on `651913b`):** `SonarCloud Code Analysis` success, `Analyze (python)` success, `Analyze (actions)` success, `gate` success — 4/4.
+- **Version landed:** algorithm `html-to-markdown-section-extraction` **0.17.0** (shared with B25); TESTS case 19 (flat) + 82–85 (flat / ordered / nested / mixed).
+- **Census (regenerated 2026-10-17):** flattened `; `-joined table rows (≥3 `; `) **1,400 → 4** (the 4 residuals = legitimate prose, e.g. "BOP input-name, last; name, first; name, middle; name, suffix"); real in-cell `<ul>/<ol>` lists **0 → 3,693**; table rows **18,292 → 18,292** (unchanged).
+- **Spot check (B26 example, §`II.iii.3.A.1.d` Step 4):** "If *no* is selected… / If *yes* is selected…" renders as two real `<li>` bullets (was one `; `-joined sentence) — matches the portal.
+- **Known follow-on (open as B27, High):** lists inside **nested box-drawing (`<pre>`) tables** must use raw text symbols (`•` / `◦`), not HTML list tags (B27).
+
+<!-- BACKLOG:ITEM:B27 -->
+## B27. Lists inside nested box-drawing (`<pre>`) tables break monospace alignment — **OPEN (2026-10-17)**
+
+**Source:** user
+**Requested:** 2026-10-17
+**Priority:** High
+
+**Request (verbatim, 2026-10-17):** "you broke the nested table layout. while ul/ol works in `<pre>` block, it breaks alignment. do not use within nested tables. use raw text symbols only when in `<pre>` block. Use bullet symbols (first level) and circles (second level), not dashes." (evidence: c00bb920 — §`II.ii.2.A.2.c` Step 5: the nested box-drawing table inside the cell renders its in-cell list with list markup that wraps across the fixed column width and breaks the box-drawing borders.)
+
+**Problem / evidence:** the B25/B26 fix (`651913b`, doc 0.17.0) made `_render_list_inline` emit real HTML `<ul>/<ol>/<li>` for **all** in-cell lists. That is correct for top-level GFM table cells (real bullets, user-approved: "embedding html lists works on all renderers"), but **wrong inside nested box-drawing tables**: B20 renders nested in-cell tables as monospace box-drawing tables inside a `<pre>` block, and list markup there (a) renders as list elements and (b) wraps across the fixed column width, breaking the `|`/`─` borders and column alignment (goal-1 ORGANIZATION + readability violation).
+
+**Rule (user-directed, 2026-10-17):** inside a `<pre>` (box-drawing nested-table) context, lists use **raw text symbols only** — level 1 = `•` (U+2022 BULLET), level 2 = `◦` (U+25E6 WHITE BULLET, the user's "circles") — **never** `-`/`*` dashes, **never** HTML `<ul>/<ol>/<li>`. Top-level GFM cells keep the B25/B26 HTML lists. Indentation per level preserved; item text verbatim.
+
+**Work items (in order):**
+
+1. **WI 1 (done 2026-10-17):** this entry.
+2. **WI 2 — census (before):** count in-cell lists currently emitted as HTML tags **inside** `<pre>` box-drawing blocks in the regenerated manual, so closeout reports after = 0.
+3. **WI 3 — doc cycle (algorithm-records-keeper):** add the `<pre>`-context list rule (raw text `•`/`◦`, no dashes, no HTML; top-level GFM cells unchanged); bump the algorithm doc version at completion (G6); sync `algorithms/INDEX.md` (gate-enforced).
+4. **WI 4 — TDD RED→GREEN in `tests/test_mdconv.py`:** (a) a list inside a nested (box-drawing) table cell renders `•`/`◦` raw symbols with **no** `<ul>/<ol>/<li>` (RED on current code); (b) a top-level GFM in-cell list still renders HTML `<ul>/<ol>` (B25/B26 no-regression, existing cases 19/82–85 pass); (c) a nested (sub-list) inside the box-drawing cell uses `◦` at level 2. GREEN; `make gate` green.
+5. **WI 5 — render test:** render-test sample with a box-drawing table containing a multi-level list (same render-test approach as B20), user-approved before closeout.
+6. **WI 6 — closeout:** re-crawl (0 failed articles) + census (0 HTML list tags inside `<pre>`); record sha + CI + census; flip DONE; re-queue; regenerate index + `--check`.
+
+**Blast radius:** the box-drawing nested-table cell renderer + `_render_list_inline` in `src/m21_crawl/mdconv.py`; algorithm doc; `tests/test_mdconv.py`; render-test; the assembled manual (re-crawl). Must NOT change: top-level GFM cell HTML lists (B25/B26 behavior); TEXT of the manual (goal 1).
+
+**Acceptance criteria:** at the landing commit — zero HTML `<ul>/<ol>/<li>` tags inside any `<pre>` block in the regenerated manual (census, vs the B27 baseline); lists in box-drawing cells render as `•` (level 1) / `◦` (level 2) raw text, no dashes, item text verbatim; top-level GFM in-cell lists still render as HTML lists (B25/B26 cases pass); box-drawing borders stay aligned (render test, user-approved); TEXT/ORGANIZATION otherwise unchanged (goal 1); `make gate` green + GitHub CI green.
+
+**Ordering:** **High** tier — first (only active High after B25/B26 close). Cross-refs: B25, B26 (regression source), B20 (box-drawing tables). No version (assigned at completion, G6).
+
+**Progress:**
+- 2026-10-17 — WI 1 done (this entry). Root cause: `_render_list_inline` (B25/B26 fix) emits HTML list tags regardless of context; the box-drawing (`<pre>`) cell path needs a raw-text list renderer (`•`/`◦`) instead.
 
 **Closeout:** (TBD)
 
@@ -2483,4 +2534,5 @@ before B18/B17 (agent placement 2026-10-13, flagged; user may re-order).
 - **Current queue order (2026-10-15, supersedes the bullets above):** **B21 → B18 → B17 → B24 → B23 (low priority)** — B20 closed 2026-10-15 (`5611151`/`2ddb718`); B24 (wrap punctuation rule) appended 2026-10-15 (normal, after B17, before B23-low); B21 (paragraph breaks) next at doc 0.16.0, then B18 at 0.17.0, B17 at 0.18.0, B24 at 0.19.0, B23 (low, no version) last.
 - **Current queue order (2026-10-16, supersedes the bullets above):** **B25 → B26 → B17 → B18 → B24 → B23 (low)** — B25 (nested-list duplication) + B26 (in-cell list flattening) both **High** (user-approved 2026-10-16), same root function `_render_list_inline`, fixed together; B17/B18/B24 **Medium**; B23 (SonarQube reliability) **low**, last. No version tokens (G6).
 - **Current queue order (2026-10-16, supersedes the bullets above):** **B25 → B26 → B18 → B24 → B23 (low)** — **B17 CANCELLED** (2026-10-16, user-directed): non-issue after **B21** (inline-only `<div>` paragraph breaks, DONE) already blocks inline images out of paragraph flow, so B17 is superseded and removed from the Queue; B25/B26 **High** (same root function `_render_list_inline`, fixed together); B18/B24 **Medium**; B23 **low**, last. No version tokens (G6).
+- **Current queue order (2026-10-17, supersedes the bullets above):** **B27 → B18 → B24 → B23 (low)** — B25/B26 closed 2026-10-17 (`651913b`, doc 0.17.0); **B27** (new, **High**) = lists inside nested box-drawing (`<pre>`) tables must use raw text symbols (`•` level 1, `◦` level 2, no dashes, no HTML tags) — regression from the B25/B26 HTML-list fix; B18/B24 **Medium**; B23 **low**, last. No version tokens (G6).
 
