@@ -752,13 +752,33 @@ def _render_cell(cell: Tag, base_url: str, ns: str) -> str:
 
 
 def _render_list_inline(el: Tag, base_url: str, ns: str, anchor_mode: str = "inline") -> str:
-    """List in inline position (inside a cell): items joined by ``"; "``."""
-    items = []
-    for li in el.find_all("li"):  # all li descendants, document order (doc 2.6)
-        item = _normalize_text(_render_inline_children(li, base_url, ns, anchor_mode)).strip()
-        if item != "":
-            items.append(item)
-    return "; ".join(items)
+    """List in inline position (inside a cell): emit real HTML ``<ul>/<ol>/<li>``.
+
+    Direct ``<li>`` only — each item once, so nested children are never duplicated
+    (B25: the old recursive ``find_all("li")`` emitted nested items twice); each
+    ``<li>`` keeps its inline Markdown content and recurses into nested lists;
+    the list is not ``"; "``-flattened, so ``<ol>`` numbering is preserved (B26).
+    Renders as a real list in every renderer while preserving the list's
+    organization (doc D13-adjacent in-cell rule; TESTS 19, 82-85).
+    """
+
+    def render(list_el: Tag) -> str:
+        tag = list_el.name or "ul"
+        parts: list[str] = ["<" + tag + ">"]
+        for li in [c for c in list_el.children if isinstance(c, Tag) and (c.name or "") == "li"]:
+            seq: list[str] = []
+            for c in li.children:
+                if isinstance(c, Tag) and (c.name or "") in _LIST:
+                    seq.append(render(c))
+                else:
+                    seq.append(_render_inline_piece(c, base_url, ns, anchor_mode))
+            content = "".join(seq).strip()
+            if content:
+                parts.append("<li>" + content + "</li>")
+        parts.append("</" + tag + ">")
+        return "".join(parts)
+
+    return render(el)
 
 
 def _escape_pipe(s: str) -> str:

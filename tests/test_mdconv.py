@@ -122,7 +122,7 @@ CASES: list[tuple[str, str, str]] = [
     (
         "case19 list inside a cell",
         "<table><tr><th>K</th></tr><tr><td><ul><li>a</li><li>b</li></ul></td></tr></table>",
-        "| K |\n| --- |\n| a; b |\n",
+        "| K |\n| --- |\n| <ul><li>a</li><li>b</li></ul> |\n",
     ),
     (
         "case20 inline code",
@@ -504,6 +504,27 @@ CASES: list[tuple[str, str, str]] = [
         "<div><div><b><i>Example 1</i></b>: A</div><div></div>"
         "<div><b><i>Analysis</i></b>: B</div></div>",
         "***Example 1***: A\n\n***Analysis***: B\n",
+    ),
+    (
+        "case82 flat unordered list in a cell emits real HTML (B25/B26)",
+        "<table><tr><th>Items</th></tr><tr><td><ul><li>alpha</li><li>beta</li><li>gamma</li></ul></td></tr></table>",
+        "| Items |\n| --- |\n| <ul><li>alpha</li><li>beta</li><li>gamma</li></ul> |\n",
+    ),
+    (
+        "case83 ordered list in a cell keeps <ol> numbering (B26)",
+        "<table><tr><th>Steps</th></tr><tr><td><ol><li>one</li><li>two</li><li>three</li></ol></td></tr></table>",
+        "| Steps |\n| --- |\n| <ol><li>one</li><li>two</li><li>three</li></ol> |\n",
+    ),
+    (
+        "case84 nested list in a cell: each child once, nested recurses (B25)",
+        "<table><tr><th>Tree</th></tr><tr><td><ul><li>outer1<ul><li>inner1</li><li>inner2</li></ul></li><li>outer2</li></ul></td></tr></table>",
+        "| Tree |\n| --- |\n"
+        "| <ul><li>outer1<ul><li>inner1</li><li>inner2</li></ul></li><li>outer2</li></ul> |\n",
+    ),
+    (
+        "case85 mixed nested list in a cell keeps ol/ul tags (B25/B26)",
+        "<table><tr><th>Mix</th></tr><tr><td><ol><li>first<ul><li>sub</li></ul></li><li>second</li></ol></td></tr></table>",
+        "| Mix |\n| --- |\n| <ol><li>first<ul><li>sub</li></ul></li><li>second</li></ol> |\n",
     ),
 ]
 
