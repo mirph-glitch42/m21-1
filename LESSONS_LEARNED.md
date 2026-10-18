@@ -10,10 +10,11 @@ line range.
 
 <!-- LLT:INDEX:BEGIN -->
 id	title	category	severity	status	recorded	start_line	end_line
-LLT_INDEX_BLOCK	—	—	—	—	—	11	17
-LLT-0001	SonarCloud S8707 only credits its documented compliant sanitizer pattern	security	high	active	2026-10-15	19	32
-LLT-0002	In-cell lists: find_all('li') double-renders nested items; '; '-join flattens the list — emit real HTML <ul>/<ol>/<li>	debugging	high	active	2026-10-17	33	46
-LLT-0003	edit_file_tool: large multi-line replace payloads can emit malformed JSON (unterminated string); keep edits small and anchor-unique	tooling	high	active	2026-10-17	47	60
+LLT_INDEX_BLOCK	—	—	—	—	—	11	18
+LLT-0001	SonarCloud S8707 only credits its documented compliant sanitizer pattern	security	high	active	2026-10-15	20	33
+LLT-0002	In-cell lists: find_all('li') double-renders nested items; '; '-join flattens the list — emit real HTML <ul>/<ol>/<li>	debugging	high	active	2026-10-17	34	47
+LLT-0003	edit_file_tool: large multi-line replace payloads can emit malformed JSON (unterminated string); keep edits small and anchor-unique	tooling	high	active	2026-10-17	48	61
+LLT-0004	Fine-grained PAT (github_pat_): git HTTPS push must use the token as the USERNAME, not x-access-token	environment	medium	active	2026-10-17	62	75
 <!-- LLT:INDEX:END -->
 
 <!-- LLT:ENTRY:LLT-0001 -->
@@ -57,3 +58,17 @@ LLT-0003	edit_file_tool: large multi-line replace payloads can emit malformed JS
 - **Supersedes:** —
 - **Prevention:** When an edit call fails with a JSON parse error, do not retry the identical large payload; split it into small anchored edits and verify each.
 - **References:** —
+
+<!-- LLT:ENTRY:LLT-0004 -->
+## LLT-0004 — Fine-grained PAT (github_pat_): git HTTPS push must use the token as the USERNAME, not x-access-token
+
+- **Recorded:** 2026-10-17
+- **Category:** environment
+- **Severity:** medium
+- **Status:** active
+- **Context:** B27 closeout push (mirph-glitch42/m21-1). Workspace token ~/BIONIC/Github_token.txt is a fine-grained PAT (github_pat_). `git push https://x-access-token:<tok>@github.com/...` failed with 'Invalid username or token', yet the same token returned 200 on REST /user and /repos with permissions push:True.
+- **Pitfall:** Using the GitHub-App-installation-token form x-access-token:<token> for a fine-grained PAT. GitHub rejects it as an invalid username/token even though the token is valid and has repo push permission; easy to misread as an expired or insufficient token and waste attempts on it.
+- **Solution:** Put the token in the USERNAME slot: `git push https://<token>@github.com/<owner>/<repo>.git main`. Invoke via Python subprocess with list args (no shell) to avoid zsh quoting of the token-in-URL. Check the prefix first: github_pat_ (fine-grained) => token-as-username; ghp_ (classic) => x-access-token or any username works.
+- **Supersedes:** —
+- **Prevention:** Before a git push, inspect the token prefix. github_pat_ => fine-grained => token-as-username. If 'Invalid username or token' appears but the REST API accepts the token, the credential is fine - fix the HTTPS username, do not regenerate the token.
+- **References:** token file ~/BIONIC/Github_token.txt; B27 commits 28a2a2b / 1070dc7
