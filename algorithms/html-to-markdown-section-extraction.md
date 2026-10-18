@@ -4,12 +4,12 @@
 id	start_line	end_line
 INDEX_BLOCK	3	13
 METADATA	15	36
-THEORY	37	551
-PSEUDOCODE	552	1099
-WALKTHROUGH	1100	1238
-IMPLEMENTATION	1239	1376
-TESTS	1377	1512
-REFERENCES	1513	1528
+THEORY	37	578
+PSEUDOCODE	579	1164
+WALKTHROUGH	1165	1303
+IMPLEMENTATION	1304	1442
+TESTS	1443	1581
+REFERENCES	1582	1597
 <!-- INDEX:END -->
 
 <!-- SECTION:METADATA -->
@@ -19,14 +19,14 @@ REFERENCES	1513	1528
 |---|---|
 | Name | Rich HTML → Markdown block converter for eGain article content |
 | Slug | html-to-markdown-section-extraction |
-| Version | 0.17.0 |
+| Version | 0.18.0 |
 | Status | implemented |
 | Author | Bionic agent (on behalf of murphyjj) |
 | Created | 2026-10-02 |
 | Last modified | 2026-10-17 |
-| Status history | 0.1.0 (2026-10-02): initial draft; 0.2.0 (2026-10-03): implemented in src/m21_crawl/mdconv.py; 0.3.0 (2026-10-04): layout-frame dissolution (D5) — tables whose rows all lead with a heading dissolve into real headings + block content; TESTS case 13 rewritten, cases 26–30 added; 0.4.0 (2026-10-05): named-anchor preservation with per-article namespaces (D6) — an ``<a>`` that carries a non-empty ``id``/``name`` and no usable ``href`` is emitted as a raw-HTML marker element at its source position (hoisted to its own line before a heading), in-article ``#fragment`` links are rewritten to the matching ``art_{id}_`` namespace so the assembled manual keeps unique ids, and a layout label cell's non-heading content is no longer silently dropped; TESTS case 27 rewritten, cases 31–36 added; 0.5.0 (2026-10-06): inline-run coalescing in block context (D7) — text, inline tags, named anchors, and plain links sitting in a `div`/`span`/`font`/`center` container or at the fragment top level no longer fragment into standalone paragraphs: they join a current inline run that is flushed (joined per E8, stripped, appended if non-empty) at the next block element (`h1`–`h6`, `p`, `ul`, `ol`, `table`, `blockquote`, `pre`, `hr`) or at the end of the list, while a container holding a block element keeps the old flush-and-recurse split; TESTS cases 37–43 added; 0.6.0 (2026-10-07): generalized layout-frame dissolution (D8) — the frame test now classifies each row (T1 heading label, T2 plain-text label: after stripping empty spacers exactly two visible inline-only cells remain and the label's plain text is a section mark or a meta label in {Introduction, Change Date, In This Section, Overview}, T3 all-empty row rendering nothing) so eGain's plain-text label variants (section marks with named anchors, bold/meta labels, spacer-first order) dissolve to real headings with anchors hoisted (D6) instead of leaking as header-only GFM tables (backlog B6); a label that normalizes exactly to `Change Date` renders as the GFM quote block `> **Change Date**` + `> {date}` in both the T1 and T2 paths (user-approved readability deviation, backlog B11); TESTS cases 44–56 added; 0.7.0 (2026-10-07): decorative block-level `<hr>` renders nothing (D9) — eGain wraps every layout-frame row in a pure-`<hr>` wrapper div for decoration, and emitting `---` per rule doubled every frame's rules (backlog B13: 12,673 standalone `---` blocks and 13 visible double-rule pairs in the post-B6 manual); a block-level `<hr>` now renders nothing while still acting as a block delimiter/flush point, and the inline cell fallback ` — ` is unchanged; TESTS case 17 rewritten, cases 57–58 added; 0.8.0 (2026-10-08): raw spaces in link/image destinations are percent-encoded to %20 at emit time (D10) — a raw space ends a Markdown destination in most renderers (backlog B9, 2026-10-07 census: 51 destinations — ~40 external URLs, 9 knowva /img/ image URLs, 9 internal space anchors, 2 malformed to-top fragments); rewrite_url (the single choke point for links and images) encodes spaces only and leaves every other character verbatim, on both the namespaced-fragment path and the absolute path; anchor markers keep their raw-space id/name attributes (renderers decode the fragment when matching); TESTS cases 59–62 added; 0.9.0 (2026-10-08): legacy-host remap (D11) — URLs on the dead legacy portal host vaww.vrm.km.va.gov (zero answer records from the authoritative va.gov zone, verified 2026-10-08 while sibling hosts resolve and answer) are remapped at emit time to the canonical live host www.knowva.ebenefits.va.gov, scheme preserved and path verbatim, before D10 space encoding: 36/36 legacy /img/ images and 11/12 legacy document URLs GET-verified live at the same path (backlog B10); look-alike hosts do not match; TESTS cases 63–66 added; 0.10.0 (2026-10-08): container-wrapped layout-frame labels dissolve (D12) — eGain wraps the same logical label in per-article block-level containers (a T2 label's label inside <p>/<span>/<strong>; a T1 heading inside a <div>; a zero-width-spacer cell before the label cell), which D8's first-cell / inline-only tests read as disqualifying, so 14 of the 54 header-only tables (B6 census) still leaked as GFM after B13 (backlog B14): the T1 label cell is now the row's first *visible* cell and its heading may sit inside a decorative container (div/span/font/center), the T2 inline-only guard relaxes to inline-equivalence (every block descendant is a p; a p-wrapped inline label renders identically to the bare label), and a container wrapping the heading contributes its other children in block context (never dropped): the 14 leaked frames dissolve to real headings with anchors hoisted (D6); genuine data rows stay GFM — a p-wrapped letterhead fails the mark/meta test and a nested-table label fails the inline-equivalence guard (TESTS 67–72); 0.11.0 (2026-10-09): invisible heading-bearing first cell kept as the frame label (D5 check restored alongside D12) — an lxml-eaten label cell such as ``<h3>...<introduction<...>`` is invisible yet still leads with its heading, so the D5 ``cells[0]`` check is kept as a union with the D12 first-visible-cell check and the remaining cells block-render (MRS regression, article 554400000014116; TESTS 73); 0.12.0 (2026-10-09): T1 Change Date carve-out compares the heading's normalized plain text, not the rendered inline string (B15) — 218 of the corpus frame labels wrap `Change Date` in `<strong>` (`<h3><strong>Change Date</strong></h3>`), which the rendered-string test read as `**Change Date**` and leaked as bold headings; the T1 test is now emphasis-independent, matching the T2 path's existing plain-text test (TESTS 74); 0.13.0 (2026-10-10): nested tables render as padded ASCII (D13) — a table inside a real table cell no longer emits loose ``" | "``-joined fragments: each row is right-padded to the column width, a ``---`` separator row is always emitted under the first row, and the rows are joined with a bare ``<br>`` (backlog B16: 262 corpus lines across 108 articles), with the outer table's single escape pass still applying (D3); orphan table parts (``caption``/``tbody``/``tfoot``/``thead``/``tr``/``th``/``td``) in block position unwrap with D7 semantics — a part holding a block element recurses into block context, an inline-only one flattens into the current run — so text is never dropped (D14; backlog B16: 1 leak line, article 554400000174883); TESTS row 72 rewritten (test case 70), rows 75–76 added (test cases 73–74); 0.14.0 (2026-10-10): unknown/malformed tags that hold block elements unwrap as transparent block wrappers (D15) — lxml names a malformed source tag after its raw name (a `<div< div="">` source becomes tag `div<<`, attribute `div=""`), so it matched no known dispatch and the inline fallback flattened its entire section chunk (heading + table + nav) into one garbage line (backlog B19: article 554400000176623 §VII.i.3.A.4.d; census: 7 malformed-tag articles, of which 1 leaks — the other 6 are inline-position junk that D15 correctly leaves inline): a block-holding unknown tag now flushes the inline run and recurses into block context (D7 semantics, exactly like a container or an orphan table part), while an inline-only unknown tag keeps the run behavior; TESTS cases 77–78 added; 0.15.0 (2026-10-13): D13 rewritten — nested in-cell tables render as aligned box-drawing monospace tables in a ``<pre>`` block (W = 48 rendered-column wrap, one blank spacer row between data rows; supersedes padded ASCII; backlog B20); D3 note, pseudocode, 4.1, 5.2, TESTS 72/75 updated, 79–80 added; 0.15.1 (2026-10-14): D13 three-level nesting — a cell holding an inner box-drawing table emits that box's lines verbatim as an atomic line block (_cell_lines; re-wrapping would shred the borders), the enclosing column widens to the widest box line, sibling cells pad with blank lines, so arbitrary nesting depth stays border-aligned (backlog B20); TESTS row 81 added (test case 79); 0.16.0 (2026-10-15): an inline-only div in block position is a paragraph boundary (D16) — its inline content becomes its own block so ***Example N:*** / ***Analysis:*** blocks no longer coalesce into one paragraph (backlog B21); a block-holding div still recurses (D7) and an empty div emits nothing; TESTS row 82 added (test case 80); 0.16.1 (2026-10-15): refined D16 — a div grouping child divs is a paragraph container that recurses so each child div becomes its own paragraph (the §II.iii.1.A.2.d Example/Analysis blocks); a leaf inline-only div still flushes to one block (backlog B21); TESTS row 83 added (test case 81); 0.17.0 (2026-10-17): in-cell lists emit real HTML `<ul>`/`<ol>`/`<li>` (direct `<li>` only; each `<li>` keeps its inline Markdown; nested lists recurse) so the cell renders a real list on every renderer — removes B25 (nested-child duplication from recursive `find_all("li")`) and B26 (`"; "`-flatten + lost `<ol>` numbering) while preserving organization; pseudocode + rule table + TESTS row 19 updated, render-test `gen_b25b26_html_lists.py` added |
+| Status history | 0.1.0 (2026-10-02): initial draft; 0.2.0 (2026-10-03): implemented in src/m21_crawl/mdconv.py; 0.3.0 (2026-10-04): layout-frame dissolution (D5) — tables whose rows all lead with a heading dissolve into real headings + block content; TESTS case 13 rewritten, cases 26–30 added; 0.4.0 (2026-10-05): named-anchor preservation with per-article namespaces (D6) — an ``<a>`` that carries a non-empty ``id``/``name`` and no usable ``href`` is emitted as a raw-HTML marker element at its source position (hoisted to its own line before a heading), in-article ``#fragment`` links are rewritten to the matching ``art_{id}_`` namespace so the assembled manual keeps unique ids, and a layout label cell's non-heading content is no longer silently dropped; TESTS case 27 rewritten, cases 31–36 added; 0.5.0 (2026-10-06): inline-run coalescing in block context (D7) — text, inline tags, named anchors, and plain links sitting in a `div`/`span`/`font`/`center` container or at the fragment top level no longer fragment into standalone paragraphs: they join a current inline run that is flushed (joined per E8, stripped, appended if non-empty) at the next block element (`h1`–`h6`, `p`, `ul`, `ol`, `table`, `blockquote`, `pre`, `hr`) or at the end of the list, while a container holding a block element keeps the old flush-and-recurse split; TESTS cases 37–43 added; 0.6.0 (2026-10-07): generalized layout-frame dissolution (D8) — the frame test now classifies each row (T1 heading label, T2 plain-text label: after stripping empty spacers exactly two visible inline-only cells remain and the label's plain text is a section mark or a meta label in {Introduction, Change Date, In This Section, Overview}, T3 all-empty row rendering nothing) so eGain's plain-text label variants (section marks with named anchors, bold/meta labels, spacer-first order) dissolve to real headings with anchors hoisted (D6) instead of leaking as header-only GFM tables (backlog B6); a label that normalizes exactly to `Change Date` renders as the GFM quote block `> **Change Date**` + `> {date}` in both the T1 and T2 paths (user-approved readability deviation, backlog B11); TESTS cases 44–56 added; 0.7.0 (2026-10-07): decorative block-level `<hr>` renders nothing (D9) — eGain wraps every layout-frame row in a pure-`<hr>` wrapper div for decoration, and emitting `---` per rule doubled every frame's rules (backlog B13: 12,673 standalone `---` blocks and 13 visible double-rule pairs in the post-B6 manual); a block-level `<hr>` now renders nothing while still acting as a block delimiter/flush point, and the inline cell fallback ` — ` is unchanged; TESTS case 17 rewritten, cases 57–58 added; 0.8.0 (2026-10-08): raw spaces in link/image destinations are percent-encoded to %20 at emit time (D10) — a raw space ends a Markdown destination in most renderers (backlog B9, 2026-10-07 census: 51 destinations — ~40 external URLs, 9 knowva /img/ image URLs, 9 internal space anchors, 2 malformed to-top fragments); rewrite_url (the single choke point for links and images) encodes spaces only and leaves every other character verbatim, on both the namespaced-fragment path and the absolute path; anchor markers keep their raw-space id/name attributes (renderers decode the fragment when matching); TESTS cases 59–62 added; 0.9.0 (2026-10-08): legacy-host remap (D11) — URLs on the dead legacy portal host vaww.vrm.km.va.gov (zero answer records from the authoritative va.gov zone, verified 2026-10-08 while sibling hosts resolve and answer) are remapped at emit time to the canonical live host www.knowva.ebenefits.va.gov, scheme preserved and path verbatim, before D10 space encoding: 36/36 legacy /img/ images and 11/12 legacy document URLs GET-verified live at the same path (backlog B10); look-alike hosts do not match; TESTS cases 63–66 added; 0.10.0 (2026-10-08): container-wrapped layout-frame labels dissolve (D12) — eGain wraps the same logical label in per-article block-level containers (a T2 label's label inside <p>/<span>/<strong>; a T1 heading inside a <div>; a zero-width-spacer cell before the label cell), which D8's first-cell / inline-only tests read as disqualifying, so 14 of the 54 header-only tables (B6 census) still leaked as GFM after B13 (backlog B14): the T1 label cell is now the row's first *visible* cell and its heading may sit inside a decorative container (div/span/font/center), the T2 inline-only guard relaxes to inline-equivalence (every block descendant is a p; a p-wrapped inline label renders identically to the bare label), and a container wrapping the heading contributes its other children in block context (never dropped): the 14 leaked frames dissolve to real headings with anchors hoisted (D6); genuine data rows stay GFM — a p-wrapped letterhead fails the mark/meta test and a nested-table label fails the inline-equivalence guard (TESTS 67–72); 0.11.0 (2026-10-09): invisible heading-bearing first cell kept as the frame label (D5 check restored alongside D12) — an lxml-eaten label cell such as ``<h3>...<introduction<...>`` is invisible yet still leads with its heading, so the D5 ``cells[0]`` check is kept as a union with the D12 first-visible-cell check and the remaining cells block-render (MRS regression, article 554400000014116; TESTS 73); 0.12.0 (2026-10-09): T1 Change Date carve-out compares the heading's normalized plain text, not the rendered inline string (B15) — 218 of the corpus frame labels wrap `Change Date` in `<strong>` (`<h3><strong>Change Date</strong></h3>`), which the rendered-string test read as `**Change Date**` and leaked as bold headings; the T1 test is now emphasis-independent, matching the T2 path's existing plain-text test (TESTS 74); 0.13.0 (2026-10-10): nested tables render as padded ASCII (D13) — a table inside a real table cell no longer emits loose ``" | "``-joined fragments: each row is right-padded to the column width, a ``---`` separator row is always emitted under the first row, and the rows are joined with a bare ``<br>`` (backlog B16: 262 corpus lines across 108 articles), with the outer table's single escape pass still applying (D3); orphan table parts (``caption``/``tbody``/``tfoot``/``thead``/``tr``/``th``/``td``) in block position unwrap with D7 semantics — a part holding a block element recurses into block context, an inline-only one flattens into the current run — so text is never dropped (D14; backlog B16: 1 leak line, article 554400000174883); TESTS row 72 rewritten (test case 70), rows 75–76 added (test cases 73–74); 0.14.0 (2026-10-10): unknown/malformed tags that hold block elements unwrap as transparent block wrappers (D15) — lxml names a malformed source tag after its raw name (a `<div< div="">` source becomes tag `div<<`, attribute `div=""`), so it matched no known dispatch and the inline fallback flattened its entire section chunk (heading + table + nav) into one garbage line (backlog B19: article 554400000176623 §VII.i.3.A.4.d; census: 7 malformed-tag articles, of which 1 leaks — the other 6 are inline-position junk that D15 correctly leaves inline): a block-holding unknown tag now flushes the inline run and recurses into block context (D7 semantics, exactly like a container or an orphan table part), while an inline-only unknown tag keeps the run behavior; TESTS cases 77–78 added; 0.15.0 (2026-10-13): D13 rewritten — nested in-cell tables render as aligned box-drawing monospace tables in a ``<pre>`` block (W = 48 rendered-column wrap, one blank spacer row between data rows; supersedes padded ASCII; backlog B20); D3 note, pseudocode, 4.1, 5.2, TESTS 72/75 updated, 79–80 added; 0.15.1 (2026-10-14): D13 three-level nesting — a cell holding an inner box-drawing table emits that box's lines verbatim as an atomic line block (_cell_lines; re-wrapping would shred the borders), the enclosing column widens to the widest box line, sibling cells pad with blank lines, so arbitrary nesting depth stays border-aligned (backlog B20); TESTS row 81 added (test case 79); 0.16.0 (2026-10-15): an inline-only div in block position is a paragraph boundary (D16) — its inline content becomes its own block so ***Example N:*** / ***Analysis:*** blocks no longer coalesce into one paragraph (backlog B21); a block-holding div still recurses (D7) and an empty div emits nothing; TESTS row 82 added (test case 80); 0.16.1 (2026-10-15): refined D16 — a div grouping child divs is a paragraph container that recurses so each child div becomes its own paragraph (the §II.iii.1.A.2.d Example/Analysis blocks); a leaf inline-only div still flushes to one block (backlog B21); TESTS row 83 added (test case 81); 0.17.0 (2026-10-17): in-cell lists emit real HTML `<ul>`/`<ol>`/`<li>` (direct `<li>` only; each `<li>` keeps its inline Markdown; nested lists recurse) so the cell renders a real list on every renderer — removes B25 (nested-child duplication from recursive `find_all("li")`) and B26 (`"; "`-flatten + lost `<ol>` numbering) while preserving organization; pseudocode + rule table + TESTS row 19 updated, render-test `gen_b25b26_html_lists.py` added; 0.18.0 (2026-10-17): a list inside a box-drawing `<pre>` cell renders as raw text symbols with hanging indent, not HTML (D17) — `<ul>/<ol>/<li>` inside a `<pre>` break the monospace border alignment, so a list in box-drawing context now emits `•` (U+2022) for level 1 and `◦` (U+25E6) for level 2 (no dashes), each item wrapped to the box width and its continuation lines indented to the item-text column (hanging indent) and every level-2 item indented two columns deeper than its level-1 parent; that leading indent survives the `_cell_lines` split-and-wrap pass because `_wrap_cell` returns a line that already fits the box width verbatim (so the word rejoin cannot strip it); top-level GFM cells keep the D16 HTML lists; pre_ctx threaded through _render_inline_piece/_render_cell; TESTS rows 84–86 added (test cases 86–88), render-test `b27-raw-lists-in-box.md` added |
 | Languages | Python 3.12 (implementation); pseudocode is language-agnostic |
-| Implementation location | src/m21_crawl/mdconv.py — constants L57–92 (D14 table parts L67: _TABLE_PART; D8 frame row kinds L84–87: _SECTION_MARK, _META_LABELS, _CHANGE_DATE, _VISIBLE_BLOCK; D11 legacy host L91–92: _LEGACY_HOST, _LIVE_HOST); HtmlConversionError L95–101; _parse L104–106; convert L109–135; block context L141–242 (inline-run coalescing D7: _render_block_list L141; _contains_block_el L236; D9 hr drop L187–188; D14 orphan-part dispatch L198; D15 unknown-tag dispatch L228–234); inline context L249–326; tables L332–775 (frame classification D5+D8+D12: _layout_heading L353, _cell_visible L386, _plain_label L397, _label_inline_equiv L402, _rest_children L417, _frame_row_kind L435, _is_layout_frame L465; dissolution D8+B11+D5+D12: _change_date_blocks L478, _render_layout_frame L490; nested/cell helpers: _NESTED_W L554, _rendered_width L557, _tokenize L580, _join_units L605, _wrap_cell L615, _BOX_RE L638, _cell_lines L641 (B20), _render_table_inline L666 (D13), _render_cell L730, _escape_pipe L744, _table_rows L748, _cells_of L762, _nearest_ancestor L771); lists L778–807; normalization, named anchors (D6), spaces (D10), legacy-host remap (D11), and URLs L808–934 (v0.15.1, 2026-10-14; D10: _encode_spaces L867; D11: _remap_legacy_host L878; _rewrite_url L896) |
+| Implementation location | src/m21_crawl/mdconv.py — constants L57–92 (D14 table parts L67: _TABLE_PART; D8 frame row kinds L84–87: _SECTION_MARK, _META_LABELS, _CHANGE_DATE, _VISIBLE_BLOCK; D11 legacy host L91–92: _LEGACY_HOST, _LIVE_HOST); HtmlConversionError L95–101; _parse L104–106; convert L109–135; block context L141–263 (inline-run coalescing D7: _render_block_list L141; D9 hr drop L187–188; D14 orphan-part dispatch L207; D15 unknown-tag dispatch L235–242; _contains_block_el L245; _contains_div L255); inline context L269–358 (_render_inline_children L269; _render_inline_piece L296; _wrap L352); tables L360–906 (frame classification D5+D8+D12: _layout_heading L381, _cell_visible L414, _plain_label L425, _label_inline_equiv L430, _rest_children L445, _frame_row_kind L463, _is_layout_frame L493; dissolution D8+B11+D5+D12: _change_date_blocks L506, _render_layout_frame L518; nested/cell helpers: _NESTED_W L582, _rendered_width L585, _tokenize L608, _join_units L633, _wrap_cell L643, _BOX_RE L666, _cell_lines L669 (B20), _render_table_inline L699 (D13), _render_cell L763, _render_list_inline L767 (B25/B26), _render_list_raw L805 (D17/B27), _escape_pipe L845, _table_rows L849, _cells_of L863, _nearest_ancestor L872); block list _render_list L882; normalization, named anchors (D6), spaces (D10), legacy-host remap (D11), and URLs L912–1035 (v0.18.0, 2026-10-17; D10: _encode_spaces L968; D11: _remap_legacy_host L979; _rewrite_url L997) |
 | Time complexity | O(C) — C = characters of input HTML (single pass over the parsed tree) |
 | Space complexity | O(C) — parsed tree + output string |
 | Determinism | deterministic (no timestamps, no randomness, fixed BASE_URL constant) |
@@ -531,6 +531,33 @@ The implementation therefore deviates as follows (all pinned by tests):
   paragraph — and an empty `<div></div>` spacer emits nothing. A div encountered in inline context
   (inside a cell, an `<a>`, …) is unchanged — it still renders inline via the
   inline renderer. (TESTS 82, 83.)
+- **D17 — pre-context lists render raw text symbols with a hanging indent (B27).**
+  A ``<ul>``/``<ol>`` inside a *box-drawing* ``<pre>`` table (a nested table
+  cell) must not emit HTML ``<ul>/<ol>/<li>`` tags: in a monospace ``<pre>``
+  the tags render as list elements that wrap across the fixed 48-column width
+  and break the ``│``/``─`` border alignment. Such a list instead renders as
+  **raw text symbols**: level 1 = ``•`` (U+2022), level 2 = ``◦`` (U+25E6),
+  deeper levels add two indent spaces and alternate the symbol; **no dashes,
+  no HTML list tags** (user rule). Each item's text is wrapped to
+  ``W − prefix_width`` rendered columns with a **hanging indent** — the first
+  line carries the symbol, every continuation line is indented by the symbol
+  prefix's width so the text aligns and each line keeps an identical rendered
+  width, keeping the box borders aligned. Items are joined with ``<br>`` so the
+  enclosing box (:func:`_cell_lines`) splits them into individual box lines.
+  An empty-text parent still emits its sub-items (no bare bullet). A ``<ol>``
+  in pre-context gets the same ``•``/``◦`` symbols (zero live ``<ol>`` in
+  ``<pre>`` today). Top-level GFM cells keep the real HTML lists (D17 is scoped
+  to the box-drawing context only; B25/B26 unchanged). The ``pre_ctx`` flag is
+  threaded ``_render_table_inline → _render_cell → _render_inline_children →
+  _render_inline_piece → _render_list_inline``; the new ``_render_list_raw``
+  emits the raw symbols. ``_render_list_raw`` pre-wraps every line to the box
+  width with the correct leading whitespace (two spaces per level before the
+  symbol, then the hanging indent on continuation lines); :func:`_wrap_cell`
+  then returns a line that already fits the box width **verbatim**, so that
+  leading whitespace survives the :func:`_cell_lines` split-and-wrap pass
+  instead of being stripped by the word rejoin (the first draft hit exactly
+  this: continuation lines and every level-2 item came out flush with the
+  column left border). (TESTS 84–86.)
 
 ### 2.7 Error model (summary)
 
@@ -674,10 +701,10 @@ function contains_block_el(el) -> bool:
     return any(d is a tag and d.name in BLOCK for d in el.descendants)
 
 # --- inline context --------------------------------------------------------
-function render_inline_children(el, base_url, ns, anchor_mode="inline") -> str:
+function render_inline_children(el, base_url, ns, anchor_mode="inline", pre_ctx=False) -> str:
     out <- ""
     for child in el.children:
-        piece <- render_inline_piece(child, base_url, ns, anchor_mode)
+        piece <- render_inline_piece(child, base_url, ns, anchor_mode, pre_ctx)
         out <- join_inline(out, piece)      # rule E8
     return out
 
@@ -688,15 +715,15 @@ function join_inline(left, right) -> str:
         return left + " " + right
     return left + right
 
-function render_inline_piece(child, base_url, ns, anchor_mode="inline") -> str:
+function render_inline_piece(child, base_url, ns, anchor_mode="inline", pre_ctx=False) -> str:
     if child is text: return normalize_text(child)
     name <- child.name
-    if name in {b, strong}:      return wrap(render_inline_children(child, base_url, ns, anchor_mode), "**")
-    if name in {i, em}:          return wrap(render_inline_children(child, base_url, ns, anchor_mode), "*")
-    if name in {s, strike, del}: return wrap(render_inline_children(child, base_url, ns, anchor_mode), "~~")
+    if name in {b, strong}:      return wrap(render_inline_children(child, base_url, ns, anchor_mode, pre_ctx), "**")
+    if name in {i, em}:          return wrap(render_inline_children(child, base_url, ns, anchor_mode, pre_ctx), "*")
+    if name in {s, strike, del}: return wrap(render_inline_children(child, base_url, ns, anchor_mode, pre_ctx), "~~")
     if name == "code":           return "`" + text_content(child) + "`" if text_content(child) != "" else ""
     if name == "a":
-        inner <- render_inline_children(child, base_url, ns, anchor_mode)
+        inner <- render_inline_children(child, base_url, ns, anchor_mode, pre_ctx)
         url   <- rewrite_url(attr(child, "href"), base_url, ns)
         if url is not None:                       # a link: its id/name are dropped (D6)
             if inner == "": inner <- url          # E7: link with no text uses its URL
@@ -711,13 +738,15 @@ function render_inline_piece(child, base_url, ns, anchor_mode="inline") -> str:
         src <- attr(child, "src"); if src is None: return ""
         return "![ " ... -> "!" + "[" + attr(child,"alt") + "](" + rewrite_url(src, base_url, ns) + ")"
     if name in {ul, ol}:                                # list in inline position (cell)
+        if pre_ctx:
+            return render_list_raw(child, base_url, ns, anchor_mode)  # B27: raw symbols + hanging indent
         return render_list_inline(child, base_url, ns, anchor_mode)  # emit real <ul>/<ol>/<li>
     if name == "table": return render_table_inline(child, base_url, ns)
     if name in {h1..h6, p, div, span, font, u, center, small, big, sup, sub, blockquote}:
-        return render_inline_children(child, base_url, ns, anchor_mode)   # unwrap; heading level lost in cells
+        return render_inline_children(child, base_url, ns, anchor_mode, pre_ctx)   # unwrap; heading level lost in cells
     if name == "hr": return " — "                         # hr in inline position
     if name == "pre": return text_content(child)
-    return render_inline_children(child, base_url, ns, anchor_mode)        # unknown: unwrap (totality)
+    return render_inline_children(child, base_url, ns, anchor_mode, pre_ctx)        # unknown: unwrap (totality)
 
 function wrap(inner, marker) -> str:
     return "" if inner == "" else marker + inner + marker    # E10: never empty **
@@ -898,7 +927,7 @@ function render_table_inline(el, base_url, ns) -> str:
     W <- 48
     rows <- []
     for tr in all tr descendants in document order:
-        cells <- [render_inline_piece(td, base_url, ns) for td in tr's direct td/th]
+        cells <- [render_inline_piece(td, base_url, ns, pre_ctx=True) for td in tr's direct td/th]  # B27: pre-context
         if cells is non-empty:
             rows.append(cells)
     if rows is empty:
@@ -945,19 +974,23 @@ function wrap_cell(md, W) -> list[str]:
     return lines if lines non-empty else [""]
 
 function cell_lines(md, W) -> list[str]:
-    # A cell's lines for the enclosing box (B20): plain-text segments
-    # wrap at W via wrap_cell; a segment that is an inner box table —
-    # a <pre>...</pre> run — is split on <br> and emitted verbatim,
-    # since re-wrapping would shred its borders; whitespace-only text
-    # segments contribute no lines. Every emitted line is an opaque
-    # fixed-width line to the enclosing box, so nesting composes to
-    # arbitrary depth.
+    # A cell's lines for the enclosing box (B20/B27): a plain-text
+    # segment is first split on <br> (each piece becomes its own line —
+    # this is what turns a B27 raw-symbol list, whose items are joined
+    # with <br>, into individual box lines) and each non-empty piece is
+    # wrapped at W via wrap_cell; a segment that is an inner box table —
+    # a <pre>...</pre> run — is split on <br> and emitted verbatim, since
+    # re-wrapping would shred its borders; whitespace-only pieces
+    # contribute no lines. Every emitted line is an opaque fixed-width
+    # line to the enclosing box, so nesting composes to arbitrary depth.
     lines <- []
     for each maximal segment of md in document order:
         if segment matches <pre>...</pre>:
             lines.extend(segment's content split on <br>)
-        else if segment.strip() != "":
-            lines.extend(wrap_cell(segment, W))
+        else:
+            for piece in segment.split("<br>"):
+                if piece.strip() != "":
+                    lines.extend(wrap_cell(piece, W))
     return lines if lines non-empty else [""]
 
 function tokenize(md) -> list[(unit, sep)]:
@@ -988,7 +1021,9 @@ function join_units(units) -> str:
         out <- out + (" " if sep and out non-empty else "") + unit
     return out
 
-function render_list_inline(el, base_url, ns, anchor_mode) -> str:
+function render_list_inline(el, base_url, ns, anchor_mode, pre_ctx=False) -> str:
+    if pre_ctx:                          # B27: inside a box-drawing <pre> table
+        return render_list_raw(el, base_url, ns, anchor_mode)
     tag <- el.name or "ul"
     parts <- ["<" + tag + ">"]
     for li in el's direct li children:                    # direct only: no B25 duplication
@@ -1000,6 +1035,36 @@ function render_list_inline(el, base_url, ns, anchor_mode) -> str:
         if content != "": parts.append("<li>" + content + "</li>")
     parts.append("</" + tag + ">")
     return join(parts, "")                                # B26: not "; "-flattened; <ol> numbering kept
+
+function render_list_raw(el, base_url, ns, anchor_mode, level=1) -> str:
+    # B27: a list inside a box-drawing <pre> table. HTML <ul>/<ol>/<li>
+    # tags would render as list elements that wrap across the fixed width
+    # and break the box borders, so emit raw text symbols instead: odd
+    # level = bullet U+2022, even level = circle U+25E6, deeper levels add
+    # two indent spaces. Each item's text is wrapped to (48 - prefix_width)
+    # rendered columns with a HANGING INDENT — the first line carries the
+    # prefix, every continuation line is indented by prefix_width — so the
+    # text aligns and each line keeps an identical rendered width, keeping
+    # the box borders aligned. Items are joined with <br> so cell_lines
+    # splits them into individual box lines. An empty-text parent still
+    # emits its sub-items (no bare bullet).
+    symbol <- U+2022 if level is odd else U+25E6
+    prefix <- ("  " * (level - 1)) + symbol + " "
+    width  <- 48 - len(prefix)
+    lines  <- []
+    for li in el's direct li children:
+        own  <- [render_inline_piece(c, base_url, ns, anchor_mode, True)
+                 for c in li's children if not (c is a tag and c.name in {ul, ol})]
+        text <- strip(join(own, ""))
+        if text != "":
+            wrapped <- wrap_cell(text, width)
+            lines.append(prefix + wrapped[0])
+            for extra in wrapped[1:]:
+                lines.append(" " * len(prefix) + extra)          # hanging indent
+        for sub in li's direct ul/ol children, in document order:
+            for line in render_list_raw(sub, base_url, ns, anchor_mode, level + 1).split("<br>"):
+                lines.append(line)
+    return join(lines, "<br>")
 
 function render_list(el, base_url, ns) -> str:
     ordered <- el.name == "ol"
@@ -1182,7 +1247,7 @@ string or a recursive call on a strictly smaller subtree.
    not ASCII pipes, so the outer table's escape pass leaves them
    untouched (a literal pipe in cell content still escapes exactly once)
    (D13).
-11. Lists number or dash their items; nested lists indent by four spaces.
+11. Lists number or dash their items; nested lists indent by four spaces. (In a box-drawing `<pre>` cell, D17/B27 instead emits raw text symbols — `•` for level 1, `◦` for level 2 — with each item wrapped to the box width and its continuation lines hanging-indented to the item-text column, because HTML `<ul>/<ol>/<li>` would break the monospace borders.)
 12. All finished blocks are joined with a blank line and one trailing newline.
 
 ### 4.2 Worked example
@@ -1303,7 +1368,8 @@ so the function stays pure and testable.
 | Unknown/malformed tag in block position holding a block element (e.g. `div<<` wrapping an hr wrapper, a frame table, and a nav `<p>`) | unwraps as a transparent block wrapper — children render in block context, nothing inline-dumped (D15; TESTS 77) | the inline fallback used to flatten the whole section chunk into one garbage line (B19) |
 | Unknown/malformed tag holding only inline content (e.g. `p<span` wrapping styled spans) | still joins the inline run (D15; TESTS 78) | genuinely-inline unknowns keep their current behavior — no regression |
 | Heading elsewhere in a table cell | plain inline text, level lost (documented) | GFM cells cannot hold headings |
-| List inside a cell | emits real HTML `<ul>/<ol>/<li>` — direct `<li>` only (each item once), each `<li>` keeps its inline Markdown content, nested lists recurse (B25/B26) | renders as a real list on every renderer; preserves the list's organization; removes B25 (nested-child duplication) + B26 (`"; "`-flatten, lost `<ol>` numbering) |
+| List inside a top-level GFM cell | emits real HTML `<ul>/<ol>/<li>` — direct `<li>` only (each item once), each `<li>` keeps its inline Markdown content, nested lists recurse (B25/B26) | renders as a real list on every renderer; preserves the list's organization; removes B25 (nested-child duplication) + B26 (`"; "`-flatten, lost `<ol>` numbering) |
+| List inside a box-drawing `<pre>` cell (nested table) | renders raw text symbols — level 1 bullet `•` (U+2022), level 2 circle `◦` (U+25E6), deeper levels indented two spaces and alternating — with a hanging indent (continuation lines indented by the prefix width), no HTML list tags (B27) | HTML `<ul>/<ol>/<li>` would render as list elements that wrap across the fixed 48-column width and break the `│`/`─` borders; raw symbols keep the monospace box border-aligned and readable (TESTS 84–86) |
 | `<hr>` in a cell | ` — ` | visible separator, no block break |
 | Block-level `<hr>` (outside a cell) | renders nothing (D9; TESTS 57) — still a block delimiter | eGain decorates every layout-frame row with a pure-hr wrapper div; emitting `---` doubled every rule (B13) |
 | `<pre>` whose code contains ` ``` ` | fence of four backticks | fence must exceed content |
@@ -1470,6 +1536,9 @@ shown as `""`).
 | 81 | three-level nested table keeps inner box lines atomic (B20, D13) | `<table><tr><td>Condition</td><td>Action</td></tr><tr><td>If X</td><td><table><tr><th>Step</th><th>What</th></tr><tr><td>1</td><td><table><tr><th>A</th></tr><tr><td>a1</td></tr><tr><td>a2</td></tr></table></td></tr></table></td></tr></table>` | `\| Condition \| Action \|\n\| --- \| --- \|\n\| If X \| <pre>┌──────┬────────┐<br>│ Step │ What   │<br>├──────┼────────┤<br>│ 1    │ ┌────┐ │<br>│      │ │ A  │ │<br>│      │ ├────┤ │<br>│      │ │ a1 │ │<br>│      │ │    │ │<br>│      │ │ a2 │ │<br>│      │ └────┘ │<br>└──────┴────────┘</pre> \|` | D13 (B20): a cell holding an inner box table emits that box's lines verbatim as an atomic line block — re-wrapping would shred the borders; the enclosing column widens to the widest box line, a
 | 82 | two inline-only divs in block position become two paragraph blocks (B21, D16)  | `<div><em>Example 1:</em> text one.</div><div></div><div><em>Analysis:</em> text two.</div>`  | `*Example 1:* text one.\n\n*Analysis:* text two.\n`  | D16: an inline-only div flushes the run and emits its inline content as its own block, so the two divs no longer coalesce into one paragraph; the empty div between them emits nothing |
 | 83 | nested div container: each inner div is its own paragraph (B21, D16)  | `<div><div><b><i>Example 1</i></b>: A</div><div></div><div><b><i>Analysis</i></b>: B</div></div>`  | `***Example 1***: A\n\n***Analysis***: B\n`  | D16 refinement: a div grouping child divs is a paragraph container — it recurses so each child div flushes to its own block (a leaf inline-only div becomes a paragraph); the empty inner div emits nothing |
+| 84 | flat unordered list in a nested (box) cell becomes a raw-symbol box list (B27, D17; test case 86)  | `<table><tr><th>Outer</th></tr><tr><td><table><tr><th>Items</th></tr><tr><td><ul><li>alpha</li><li>beta</li></ul></td></tr></table></td></tr></table>`  | `\| Outer \|\n\| --- \|\n\| <pre>┌─────────┐<br>│ Items   │<br>├─────────┤<br>│ • alpha │<br>│ • beta  │<br>└─────────┘</pre> \|\n`  | D17 (B27): a list in box-drawing context emits a `•` (U+2022) per level-1 item, not HTML `<ul>/<li>`, so the monospace borders stay aligned |
+| 85 | nested list (L1 + L2) in a nested cell: bullet then circle (B27, D17; test case 87)  | `<table><tr><th>Outer</th></tr><tr><td><table><tr><th>Tree</th></tr><tr><td><ul><li>outer1<ul><li>inner1</li><li>inner2</li></ul></li><li>outer2</li></ul></td></tr></table></td></tr></table>`  | `\| Outer \|\n\| --- \|\n\| <pre>┌────────────┐<br>│ Tree       │<br>├────────────┤<br>│ • outer1   │<br>│   ◦ inner1 │<br>│   ◦ inner2 │<br>│ • outer2   │<br>└────────────┘</pre> \|\n`  | D17 (B27): level 2 uses `◦` (U+25E6) and indents two columns before the symbol; level 1 reverts to `•` |
+| 86 | long list item in a nested cell wraps with hanging indent (B27, D17; test case 88)  | `<table><tr><th>Outer</th></tr><tr><td><table><tr><th>Action</th></tr><tr><td><ul><li>Enter the representative name and verify the address against the OGC accreditation list before submitting</li><li>short</li></ul></td></tr></table></td></tr></table>`  | `\| Outer \|\n\| --- \|\n\| <pre>┌────────────────────────────────────────────────┐<br>│ Action                                         │<br>├────────────────────────────────────────────────┤<br>│ • Enter the representative name and verify the │<br>│   address against the OGC accreditation list   │<br>│   before submitting                            │<br>│ • short                                        │<br>└────────────────────────────────────────────────┘</pre> \|\n`  | D17 (B27): the item is wrapped to the box width and each continuation line is indented to the item-text column (hanging indent), keeping the right border aligned |
 
 **Namespaced (article_id) group.** The cases above use `article_id=""` (unit
 tests), so markers carry bare ids. A separate group calls

@@ -526,6 +526,43 @@ CASES: list[tuple[str, str, str]] = [
         "<table><tr><th>Mix</th></tr><tr><td><ol><li>first<ul><li>sub</li></ul></li><li>second</li></ol></td></tr></table>",
         "| Mix |\n| --- |\n| <ol><li>first<ul><li>sub</li></ul></li><li>second</li></ol> |\n",
     ),
+    (
+        "case86 flat ul in nested cell becomes raw-symbol box list (B27, D17)",
+        "<table><tr><th>Outer</th></tr>"
+        "<tr><td><table><tr><th>Items</th></tr>"
+        "<tr><td><ul><li>alpha</li><li>beta</li></ul></td></tr></table></td></tr></table>",
+        "| Outer |\n| --- |\n"
+        "| <pre>┌─────────┐<br>│ Items   │<br>├─────────┤<br>"
+        "│ • alpha │<br>│ • beta  │<br>└─────────┘</pre> |\n",
+    ),
+    (
+        "case87 nested ul (L1 + L2) in nested cell: bullet and circle, hanging indent (B27, D17)",
+        "<table><tr><th>Outer</th></tr>"
+        "<tr><td><table><tr><th>Tree</th></tr>"
+        "<tr><td><ul><li>outer1<ul><li>inner1</li><li>inner2</li></ul></li><li>outer2</li></ul>"
+        "</td></tr></table></td></tr></table>",
+        "| Outer |\n| --- |\n"
+        "| <pre>┌────────────┐<br>│ Tree       │<br>├────────────┤<br>"
+        "│ • outer1   │<br>│   ◦ inner1 │<br>│   ◦ inner2 │<br>│ • outer2   │<br>"
+        "└────────────┘</pre> |\n",
+    ),
+    (
+        "case88 long item in nested cell: wrapped with hanging indent (B27, D17)",
+        "<table><tr><th>Outer</th></tr>"
+        "<tr><td><table><tr><th>Action</th></tr>"
+        "<tr><td><ul><li>Enter the representative name and verify the address against "
+        "the OGC accreditation list before submitting</li><li>short</li></ul>"
+        "</td></tr></table></td></tr></table>",
+        "| Outer |\n| --- |\n"
+        "| <pre>┌────────────────────────────────────────────────┐<br>"
+        "│ Action                                         │<br>"
+        "├────────────────────────────────────────────────┤<br>"
+        "│ • Enter the representative name and verify the │<br>"
+        "│   address against the OGC accreditation list   │<br>"
+        "│   before submitting                            │<br>"
+        "│ • short                                        │<br>"
+        "└────────────────────────────────────────────────┘</pre> |\n",
+    ),
 ]
 
 

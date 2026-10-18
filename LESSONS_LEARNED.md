@@ -10,9 +10,10 @@ line range.
 
 <!-- LLT:INDEX:BEGIN -->
 id	title	category	severity	status	recorded	start_line	end_line
-LLT_INDEX_BLOCK	—	—	—	—	—	11	16
-LLT-0001	SonarCloud S8707 only credits its documented compliant sanitizer pattern	security	high	active	2026-10-15	18	31
-LLT-0002	In-cell lists: find_all('li') double-renders nested items; '; '-join flattens the list — emit real HTML <ul>/<ol>/<li>	debugging	high	active	2026-10-17	32	45
+LLT_INDEX_BLOCK	—	—	—	—	—	11	17
+LLT-0001	SonarCloud S8707 only credits its documented compliant sanitizer pattern	security	high	active	2026-10-15	19	32
+LLT-0002	In-cell lists: find_all('li') double-renders nested items; '; '-join flattens the list — emit real HTML <ul>/<ol>/<li>	debugging	high	active	2026-10-17	33	46
+LLT-0003	edit_file_tool: large multi-line replace payloads can emit malformed JSON (unterminated string); keep edits small and anchor-unique	tooling	high	active	2026-10-17	47	60
 <!-- LLT:INDEX:END -->
 
 <!-- LLT:ENTRY:LLT-0001 -->
@@ -42,3 +43,17 @@ LLT-0002	In-cell lists: find_all('li') double-renders nested items; '; '-join fl
 - **Supersedes:** —
 - **Prevention:** When rendering a list, iterate the list element's direct children, never find_all('li') (descends into nested lists); and never serialize list structure into '; '-joined prose — a list is structure, so keep it a list.
 - **References:** backlog.md B25/B26; algorithms/html-to-markdown-section-extraction.md 0.17.0; render-test/b25b26-html-lists.md; src/m21_crawl/mdconv.py _render_list_inline
+
+<!-- LLT:ENTRY:LLT-0003 -->
+## LLT-0003 — edit_file_tool: large multi-line replace payloads can emit malformed JSON (unterminated string); keep edits small and anchor-unique
+
+- **Recorded:** 2026-10-17
+- **Category:** tooling
+- **Severity:** high
+- **Status:** active
+- **Context:** B27 (M21-1 manual): user reported the error "Unterminated string in JSON at position 1662 (line 1 column 1663)" four times while files were edited via edit_file_tool, then asked the agent to refine its file-editing approach.
+- **Pitfall:** Composing large edit_file_tool payloads (long multi-line replace_from / replace_to strings, or many edits per call) can yield a malformed JSON tool call that aborts; re-trying the same big payload fails repeatedly for the same reason.
+- **Solution:** Keep edit_file_tool edits small and anchor-unique: one focused short replace per call with a unique replace_from anchor; add new code as several small edits instead of one giant multi-line string; use replace_file only for full rewrites; re-read after each edit to confirm before continuing.
+- **Supersedes:** —
+- **Prevention:** When an edit call fails with a JSON parse error, do not retry the identical large payload; split it into small anchored edits and verify each.
+- **References:** —

@@ -266,10 +266,12 @@ def _contains_div(el: Tag) -> bool:
 # --- inline context ----------------------------------------------------------
 
 
-def _render_inline_children(el: Tag, base_url: str, ns: str, anchor_mode: str = "inline") -> str:
+def _render_inline_children(
+    el: Tag, base_url: str, ns: str, anchor_mode: str = "inline", pre_ctx: bool = False
+) -> str:
     out = ""
     for child in el.children:
-        out = _join_inline(out, _render_inline_piece(child, base_url, ns, anchor_mode))
+        out = _join_inline(out, _render_inline_piece(child, base_url, ns, anchor_mode, pre_ctx))
     return out
 
 
@@ -291,21 +293,23 @@ def _join_inline(left: str, right: str) -> str:
     return left + right
 
 
-def _render_inline_piece(child, base_url: str, ns: str, anchor_mode: str = "inline") -> str:
+def _render_inline_piece(
+    child, base_url: str, ns: str, anchor_mode: str = "inline", pre_ctx: bool = False
+) -> str:
     if isinstance(child, NavigableString):
         return _normalize_text(str(child))
     name = child.name or ""
     if name in {"b", "strong"}:
-        return _wrap(_render_inline_children(child, base_url, ns, anchor_mode), "**")
+        return _wrap(_render_inline_children(child, base_url, ns, anchor_mode, pre_ctx), "**")
     if name in {"i", "em"}:
-        return _wrap(_render_inline_children(child, base_url, ns, anchor_mode), "*")
+        return _wrap(_render_inline_children(child, base_url, ns, anchor_mode, pre_ctx), "*")
     if name in {"s", "strike", "del"}:
-        return _wrap(_render_inline_children(child, base_url, ns, anchor_mode), "~~")
+        return _wrap(_render_inline_children(child, base_url, ns, anchor_mode, pre_ctx), "~~")
     if name == "code":
         text = child.get_text().strip()
         return f"`{text}`" if text != "" else ""
     if name == "a":
-        inner = _render_inline_children(child, base_url, ns, anchor_mode).strip()
+        inner = _render_inline_children(child, base_url, ns, anchor_mode, pre_ctx).strip()
         url = _rewrite_url(child.get("href"), base_url, ns)
         if url is not None:
             if inner == "":
@@ -329,16 +333,20 @@ def _render_inline_piece(child, base_url: str, ns: str, anchor_mode: str = "inli
         alt = child.get("alt") or ""
         return f"![{alt}]({url})"
     if name in _LIST:
-        return _render_list_inline(child, base_url, ns, anchor_mode)
+        return _render_list_inline(child, base_url, ns, anchor_mode, pre_ctx)
     if name == "table":
         return _render_table_inline(child, base_url, ns)
     if name in _INLINE_UNWRAP:
-        return _render_inline_children(child, base_url, ns, anchor_mode)  # level lost in cells
+        return _render_inline_children(
+            child, base_url, ns, anchor_mode, pre_ctx
+        )  # level lost in cells
     if name == "hr":
         return " — "  # hr in inline position
     if name == "pre":
         return child.get_text()
-    return _render_inline_children(child, base_url, ns, anchor_mode)  # unknown: unwrap (totality)
+    return _render_inline_children(
+        child, base_url, ns, anchor_mode, pre_ctx
+    )  # unknown: unwrap (totality)
 
 
 def _wrap(inner: str, marker: str) -> str:
@@ -635,9 +643,15 @@ def _join_units(units: list[tuple[str, bool]]) -> str:
 def _wrap_cell(md: str, width: int) -> list[str]:
     """Greedy wrap at *width* rendered columns (D13).
 
-    Atomic units never split; an oversized atomic unit takes its own
-    line.
+    A piece that already fits within *width* is returned verbatim. This is
+    what keeps a B27 raw-symbol list line's leading whitespace intact — its
+    bullet/circle level indent and its hanging indent — because the word
+    tokenizer would otherwise strip that whitespace when it rejoins the
+    words (D17). Pieces that overflow are wrapped: atomic units never split,
+    and an oversized atomic unit takes its own line.
     """
+    if _rendered_width(md) <= width:
+        return [md]
     lines: list[str] = []
     cur: list[tuple[str, bool]] = []
     cur_w = 0
@@ -661,9 +675,12 @@ _BOX_RE = re.compile(r"<pre>(.*?)</pre>", re.S)  # inner box within a cell (B20)
 def _cell_lines(md: str) -> list[str]:
     """A cell's lines for the enclosing box: text wraps, boxes stay atomic (D13).
 
-    Plain-text segments wrap at ``_NESTED_W`` as before; a segment that
-    is an inner ``<pre>`` box-drawing table is emitted line-for-line
-    verbatim, because re-wrapping it would shred its borders.
+    A non-box segment is first split on ``<br>`` — each piece becomes its
+    own line, which is what turns a B27 raw-symbol list (items joined with
+    ``<br>``) into individual box lines — and each non-empty piece wraps at
+    ``_NESTED_W``; a segment that is an inner ``<pre>`` box-drawing table is
+    emitted line-for-line verbatim, because re-wrapping it would shred its
+    borders.
     Whitespace-only text segments contribute no lines. A cell holding
     an inner box therefore stretches the outer row and its siblings
     pad with blanks; each inner box line is an opaque fixed-width line,
@@ -673,13 +690,15 @@ def _cell_lines(md: str) -> list[str]:
     pos = 0
     for m in _BOX_RE.finditer(md):
         seg = md[pos : m.start()]
-        if seg.strip() != "":
-            lines.extend(_wrap_cell(seg, _NESTED_W))
+        for piece in seg.split("<br>"):
+            if piece.strip() != "":
+                lines.extend(_wrap_cell(piece, _NESTED_W))
         lines.extend(m.group(1).split("<br>"))
         pos = m.end()
     tail = md[pos:]
-    if tail.strip() != "":
-        lines.extend(_wrap_cell(tail, _NESTED_W))
+    for piece in tail.split("<br>"):
+        if piece.strip() != "":
+            lines.extend(_wrap_cell(piece, _NESTED_W))
     return lines or [""]
 
 
@@ -708,7 +727,7 @@ def _render_table_inline(el: Tag, base_url: str, ns: str) -> str:
     """
     rows: list[list[str]] = []
     for tr in _table_rows(el):
-        cells = [_render_cell(c, base_url, ns) for c in _cells_of(tr)]
+        cells = [_render_cell(c, base_url, ns, pre_ctx=True) for c in _cells_of(tr)]
         if cells:
             rows.append(cells)
     if not rows:
@@ -747,11 +766,13 @@ def _render_table_inline(el: Tag, base_url: str, ns: str) -> str:
     return "<pre>" + "<br>".join(lines) + "</pre>"
 
 
-def _render_cell(cell: Tag, base_url: str, ns: str) -> str:
-    return _render_inline_children(cell, base_url, ns).strip()
+def _render_cell(cell: Tag, base_url: str, ns: str, pre_ctx: bool = False) -> str:
+    return _render_inline_children(cell, base_url, ns, pre_ctx=pre_ctx).strip()
 
 
-def _render_list_inline(el: Tag, base_url: str, ns: str, anchor_mode: str = "inline") -> str:
+def _render_list_inline(
+    el: Tag, base_url: str, ns: str, anchor_mode: str = "inline", pre_ctx: bool = False
+) -> str:
     """List in inline position (inside a cell): emit real HTML ``<ul>/<ol>/<li>``.
 
     Direct ``<li>`` only — each item once, so nested children are never duplicated
@@ -760,7 +781,13 @@ def _render_list_inline(el: Tag, base_url: str, ns: str, anchor_mode: str = "inl
     the list is not ``"; "``-flattened, so ``<ol>`` numbering is preserved (B26).
     Renders as a real list in every renderer while preserving the list's
     organization (doc D13-adjacent in-cell rule; TESTS 19, 82-85).
+
+    Inside a box-drawing ``<pre>`` table (``pre_ctx``) the HTML list tags would
+    wrap across the fixed width and break the borders, so defer to the raw-symbol
+    renderer instead (B27; doc D17; TESTS 84-86).
     """
+    if pre_ctx:
+        return _render_list_raw(el, base_url, ns, anchor_mode)
 
     def render(list_el: Tag) -> str:
         tag = list_el.name or "ul"
@@ -779,6 +806,46 @@ def _render_list_inline(el: Tag, base_url: str, ns: str, anchor_mode: str = "inl
         return "".join(parts)
 
     return render(el)
+
+
+def _render_list_raw(
+    el: Tag, base_url: str, ns: str, anchor_mode: str = "inline", level: int = 1
+) -> str:
+    """A list inside a box-drawing ``<pre>`` table (B27).
+
+    HTML ``<ul>/<ol>/<li>`` tags would render as list elements that wrap
+    across the fixed 48-column width and break the box borders, so emit raw
+    text symbols instead: odd level = bullet ``\u2022``, even level = circle
+    ``\u25e6``, deeper levels add two indent spaces. Each item's text is
+    wrapped to ``(48 - prefix_width)`` rendered columns with a hanging indent —
+    the first line carries the prefix, every continuation line is indented by
+    the prefix width — so the text aligns and each line keeps an identical
+    rendered width, keeping the box borders aligned. Items are joined with
+    ``<br>`` so :func:`_cell_lines` splits them into individual box lines. An
+    empty-text parent still emits its sub-items (no bare bullet).
+    """
+    symbol = "\u2022" if level % 2 == 1 else "\u25e6"
+    prefix = "  " * (level - 1) + symbol + " "
+    width = _NESTED_W - len(prefix)
+    lines: list[str] = []
+    for li in [c for c in el.children if isinstance(c, Tag) and (c.name or "") == "li"]:
+        own: list[str] = []
+        subs: list[Tag] = []
+        for c in li.children:
+            if isinstance(c, Tag) and (c.name or "") in _LIST:
+                subs.append(c)
+            else:
+                own.append(_render_inline_piece(c, base_url, ns, anchor_mode, True))
+        text = "".join(own).strip()
+        if text != "":
+            wrapped = _wrap_cell(text, width)
+            lines.append(prefix + wrapped[0])
+            for extra in wrapped[1:]:
+                lines.append(" " * len(prefix) + extra)  # hanging indent
+        for sub in subs:
+            for line in _render_list_raw(sub, base_url, ns, anchor_mode, level + 1).split("<br>"):
+                lines.append(line)
+    return "<br>".join(lines)
 
 
 def _escape_pipe(s: str) -> str:
