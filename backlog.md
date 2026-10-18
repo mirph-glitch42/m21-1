@@ -31,8 +31,8 @@ B23	SonarCloud Reliability rating to A (new code)	OPEN	Low	2327	2360
 B24	Wrap must not split a word from its attached punctuation	OPEN	Medium	2361	2394
 B25	Nested `<ul>`/`<ol>` in a table cell duplicates sub-items	DONE	High	2395	2438
 B26	Flat in-cell `<ul>`/`<ol>` flattened to `;`-joined text	DONE	High	2439	2479
-B27	Lists inside nested box-drawing (`<pre>`) tables break monospace alignment	OPEN	High	2480	2512
-CONSTRAINTS	-	-	-	2513	2538
+B27	Lists inside nested box-drawing (`<pre>`) tables break monospace alignment	DONE	High	2480	2521
+CONSTRAINTS	-	-	-	2522	2547
 <!-- INDEX:END -->
 
 <!-- BACKLOG:HEADER -->
@@ -47,9 +47,9 @@ Order = all High, then Medium, then Low; within a tier in `B<n>` arrival order (
 
 **Migration (2026-10-16):** backlog moved to the priority scheme — every item declares Priority (default **Medium**; **B23** = **Low** per its own notes; **B25** = **High** (user-approved 2026-10-16); **B26** = **High** (new 2026-10-16, in-cell list flattening)); planned version tokens stripped from Ordering fields and the Queue (G6); the Queue is now priority-derived. Per-item migration Progress lines were added on the then-active OPEN items (B18, B23, B24, B25); B17 was later CANCELLED (2026-10-16); DONE items are recorded by this note.
 
-Status: **B1–B22, B25, B26 done** (shas in each closeout — B6/B11 `f48faf9`; B13 `817a8f3`; B12 `403550c`; B7/B8/B9 this session's commit; B10 `f88004b` closed 2026-10-08; B14 `827a8c0` + `cc76aad`; B15 `dd54c1e` + `a922976`; B16 `489fa4a` + `2b21ee9`; B19 `a2c691b`; B20 `5611151`/`2ddb718`; B21 `d1e03ca`/`33c02f4` closed 2026-10-16; B22 `aa4362b` closed 2026-10-15; B25/B26 `651913b` closed 2026-10-17) | **B17 CANCELLED** (2026-10-16; superseded by B21) | **B18 OPEN** (new 2026-10-10) | **B23 OPEN** (new 2026-10-15, Low) | **B24 OPEN** (new 2026-10-15) | **B27 OPEN** (new 2026-10-17, nested-table lists break `<pre>` alignment; **High**) | **In progress:** —
+Status: **B1–B22, B25–B27 done** (shas in each closeout — B6/B11 `f48faf9`; B13 `817a8f3`; B12 `403550c`; B7/B8/B9 this session's commit; B10 `f88004b` closed 2026-10-08; B14 `827a8c0` + `cc76aad`; B15 `dd54c1e` + `a922976`; B16 `489fa4a` + `2b21ee9`; B19 `a2c691b`; B20 `5611151`/`2ddb718`; B21 `d1e03ca`/`33c02f4` closed 2026-10-16; B22 `aa4362b` closed 2026-10-15; B25/B26 `651913b` closed 2026-10-17; B27 `28a2a2b` closed 2026-10-17) | **B17 CANCELLED** (2026-10-16; superseded by B21) | **B18 OPEN** (new 2026-10-10) | **B23 OPEN** (new 2026-10-15, Low) | **B24 OPEN** (new 2026-10-15) | **B27 DONE** (2026-10-17, `28a2a2b` — box-list `•`/`◦` + hanging indent) | **In progress:** —
 
-**Queue:** B27 | B18 → B24 | B23 (low) | **In progress:** — | **Done:** B1–B22, B25, B26 | **Updated:** 2026-10-17
+**Queue:** B18 → B24 | B23 (low) | **In progress:** — | **Done:** B1–B22, B25–B27 | **Updated:** 2026-10-17
 
 <!-- BACKLOG:QUEUE -->
 ## Queue (execution order)
@@ -58,7 +58,7 @@ Order = all High, then Medium, then Low; within a tier in `B<n>` arrival order (
 
 **High** (B# order):
 
-1. **B27** — lists inside nested box-drawing (`<pre>`) tables must use raw text symbols (`•` / `◦`, no dashes, no HTML tags) — regression from the B25/B26 HTML-list fix.
+*(none — B27 closed 2026-10-17, `28a2a2b`)*
 
 **Medium** (B# order):
 
@@ -2478,7 +2478,7 @@ before B18/B17 (agent placement 2026-10-13, flagged; user may re-order).
 - **Known follow-on (open as B27, High):** lists inside **nested box-drawing (`<pre>`) tables** must use raw text symbols (`•` / `◦`), not HTML list tags (B27).
 
 <!-- BACKLOG:ITEM:B27 -->
-## B27. Lists inside nested box-drawing (`<pre>`) tables break monospace alignment — **OPEN (2026-10-17)**
+## B27. Lists inside nested box-drawing (`<pre>`) tables break monospace alignment — **DONE (2026-10-17)**
 
 **Source:** user
 **Requested:** 2026-10-17
@@ -2507,8 +2507,17 @@ before B18/B17 (agent placement 2026-10-13, flagged; user may re-order).
 
 **Progress:**
 - 2026-10-17 — WI 1 done (this entry). Root cause: `_render_list_inline` (B25/B26 fix) emits HTML list tags regardless of context; the box-drawing (`<pre>`) cell path needs a raw-text list renderer (`•`/`◦`) instead.
+- 2026-10-17 — status → IN PROGRESS; WI 2–4 done (before/after census, D17 doc rule, TDD RED→GREEN cases 87/88); WI 5 render test user-approved; WI 6 closeout — status → **DONE** (see Closeout).
 
-**Closeout:** (TBD)
+**Closeout (2026-10-17, verified on the same-day output):**
+
+- **Root cause / fix:** `_cell_lines` split each `<br>` piece and re-wrapped it via `_tokenize` + rejoin, which **stripped the leading whitespace** the raw-text list renderer (`_render_list_raw`) emits (level indent + hanging indent), collapsing every list line to the left border. Fix: `_wrap_cell` returns an already-fitting line **verbatim** (`if _rendered_width(md) <= width: return [md]`), preserving the list renderer's indentation; only over-width lines wrap (with hanging indent).
+- **Code:** `28a2a2b` — `fix(mdconv): preserve box-list level-2 + hanging indent (B27)` (6 files: `src/m21_crawl/mdconv.py`, `tests/test_mdconv.py`, algorithm doc, `algorithms/INDEX.md`, `render-test/b27-raw-lists-in-box.md`, `LESSONS_LEARNED.md`; `output/` excluded per standing rule).
+- **CI (verified green on `28a2a2b`):** `SonarCloud Code Analysis` success, `Analyze (python)` success, `Analyze (actions)` success, `gate` success — 4/4.
+- **Version landed:** algorithm `html-to-markdown-section-extraction` **0.18.0** (D17 rule; TESTS cases 85/86 → test cases 87/88); `algorithms/INDEX.md` synced (gate-enforced via `make doc-index-check`).
+- **Census (regenerated 2026-10-17, 14,713,273 bytes, 0 failed articles):** `<pre>` blocks containing `<ul>/<ol>/<li>` **→ 0** (of 269); L1 `•` bullets **1,441**, L2 `◦` circles **211**, dash/asterisk bullets **0**; box-drawing `<pre>` blocks misaligned **0** (of 269); top-level `<ul>/<ol>` **5,473** preserved (B25/B26 HTML lists — no regression).
+- **Render test (user-approved 2026-10-17):** `render-test/b27-raw-lists-in-box.md` — box-drawing nested table with a multi-level list (L1 `•` / L2 `◦`), continuation lines hanging-indented, right borders aligned (user reviewed the render before closeout).
+- **Lesson:** `LLT-0003` (`LESSONS_LEARNED.md`) — large `edit_file_tool` payloads trip “Unterminated string in JSON”; keep edits small + uniquely anchored.
 
 <!-- BACKLOG:CONSTRAINTS -->
 ## Standing constraints (apply to all items)
